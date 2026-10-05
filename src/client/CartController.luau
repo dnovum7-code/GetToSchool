@@ -52,7 +52,7 @@ type ControllerData = {
 	boostTime: number, -- Restzeit des laufenden Schubs
 	boostAcceleration: number,
 	boostSpeedExtra: number, -- so viel darf man gerade ueber MaxSpeed fahren
-	padCooldowns: { [Instance]: number }, -- wann welches Pad zuletzt ausgeloest hat
+	padCooldowns: { [Instance]: number }, -- wann welches Pad zuletzt unter dem Wagen war
 }
 
 export type Controller = typeof(setmetatable({} :: ControllerData, CartController))
@@ -144,13 +144,12 @@ end
 function CartController.applyPads(self: Controller, surface: TrackSensors.Surface): string?
 	local T = Config.Track
 	local now = os.clock()
+	-- Ein Pad loest nur beim Drauffahren aus: Solange man drauf ist, wird "zuletzt gesehen"
+	-- jeden Frame erneuert. Erst wer PadCooldown Sekunden weg war, wird wieder geschoben.
 	local function ready(pad: Instance): boolean
 		local last = self.padCooldowns[pad]
-		if last and now - last < T.PadCooldown then
-			return false
-		end
 		self.padCooldowns[pad] = now
-		return true
+		return last == nil or now - last >= T.PadCooldown
 	end
 	local event: string? = nil
 	local boostPad = surface.boostPad

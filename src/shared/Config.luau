@@ -113,7 +113,7 @@ Config.Track = {
 	BoostPadStrength = 40, -- Studs/s Tempo-Zuwachs
 	-- JumpPad: schleudert nach oben, entlang der Oberseite des Parts (Attribut "Strength")
 	JumpPadStrength = 70, -- Studs/s nach oben (70 = ca. 12 Studs hoch)
-	PadCooldown = 0.5, -- so lange (s) wirkt dasselbe Pad nicht nochmal
+	PadCooldown = 0.5, -- Pads wirken nur beim Drauffahren; so lange (s) muss man weg gewesen sein
 	-- Nach einem JumpPad zaehlt eine harte Landung erst ab dem x-fachen Crash.ImpactSpeedChange
 	JumpLandingTolerance = 2.5,
 
