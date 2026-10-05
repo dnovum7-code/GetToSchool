@@ -44,4 +44,91 @@ function Economy.pickupInRange(distance: number, speed: number, coinRadius: numb
 	return distance <= allowed
 end
 
+-- Upgrades (Shop) ---------------------------------------------------------------------
+
+export type UpgradeLevel = {
+	price: number,
+	description: string,
+}
+
+export type UpgradeDef = {
+	id: string,
+	name: string,
+	levels: { UpgradeLevel },
+}
+
+function Economy.findUpgrade(defs: { UpgradeDef }, id: unknown): UpgradeDef?
+	for _, def in defs do
+		if def.id == id then
+			return def
+		end
+	end
+	return nil
+end
+
+function Economy.maxLevel(def: UpgradeDef): number
+	return #def.levels
+end
+
+-- Stufe, mit der gespielt wird. `allMax`: alles auf hoechster Stufe (Test-Schalter in Studio)
+function Economy.effectiveLevel(upgrades: { [string]: number }, def: UpgradeDef, allMax: boolean?): number
+	if allMax then
+		return #def.levels
+	end
+	return math.clamp(math.floor(upgrades[def.id] or 0), 0, #def.levels)
+end
+
+-- Preis der naechsten Stufe, nil = schon hoechste Stufe
+function Economy.nextPrice(def: UpgradeDef, currentLevel: number): number?
+	local nextLevel = def.levels[currentLevel + 1]
+	return if nextLevel then math.max(0, math.floor(nextLevel.price)) else nil
+end
+
+-- Naechste Stufe kaufen. Veraendert `data` nur bei Erfolg.
+-- Rueckgabe: Erfolg, Grund ("Ok", "MaxLevel", "NotEnoughCoins"), neue Stufe, Preis
+function Economy.purchase(
+	data: { coins: number, upgrades: { [string]: number } },
+	def: UpgradeDef
+): (boolean, string, number, number)
+	local level = math.clamp(math.floor(data.upgrades[def.id] or 0), 0, #def.levels)
+	local price = Economy.nextPrice(def, level)
+	if not price then
+		return false, "MaxLevel", level, 0
+	end
+	if data.coins < price then
+		return false, "NotEnoughCoins", level, price
+	end
+	data.coins -= price
+	data.upgrades[def.id] = level + 1
+	return true, "Ok", level + 1, price
+end
+
+local function formatValue(value: unknown): string
+	if type(value) == "number" then
+		if value == math.floor(value) then
+			return tostring(math.floor(value))
+		end
+		local text = string.format("%.2f", value)
+		text = string.gsub(text, "0+$", "")
+		return text
+	end
+	return tostring(value)
+end
+
+-- Platzhalter wie "{Abilities.TurboCooldown2}" durch den Wert aus der Config ersetzen, damit
+-- Beschreibungen nach dem Tunen stimmen.
+function Economy.describe(text: string, config: { [string]: any }): string
+	-- (als `any`, weil die Typpruefung Ersetz-Funktionen mit zwei Teilen nicht kennt)
+	local replace: any = function(section: string, key: string): string
+		local sectionTable = config[section]
+		local value = if type(sectionTable) == "table" then sectionTable[key] else nil
+		if value == nil then
+			return "{" .. section .. "." .. key .. "}"
+		end
+		return formatValue(value)
+	end
+	local result = string.gsub(text, "{(%w+)%.(%w+)}", replace)
+	return result
+end
+
 return Economy

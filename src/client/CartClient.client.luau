@@ -8,6 +8,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
+local AbilityHud = require(script.Parent:WaitForChild("AbilityHud"))
+local Abilities = require(script.Parent:WaitForChild("Abilities"))
 local CartController = require(script.Parent:WaitForChild("CartController"))
 local ChaseCamera = require(script.Parent:WaitForChild("ChaseCamera"))
 local CoinsClient = require(script.Parent:WaitForChild("CoinsClient"))
@@ -151,6 +153,10 @@ ProgressUI.init() -- Muenzzaehler
 CoinsClient.init() -- Muenzen drehen und einsammeln
 LaunchablesClient.init() -- Objekte wegschleudern (Kuh, Muelltonne ...)
 ProgressClient.init() -- Spielstand-Kopie vom Server
+AbilityHud.init() -- Abilities unten links
+ProgressClient.onChanged(function(snapshot)
+	Abilities.setLevels(snapshot.upgrades) -- gekaufte Upgrade-Stufen
+end)
 Obstacles.init() -- bewegte Hindernisse (Mover, Spinner, Pendulum)
 RandomEventsClient.init() -- Zufallsereignisse ein-/ausblenden
 SoundSystem.init()
@@ -164,6 +170,7 @@ local HANDBRAKE_ACTION = "GetToSchoolHandbrake"
 local HOP_ACTION = "GetToSchoolHop"
 local shiftHeld = false -- Shift / Gamepad B: wechselt zwischen Drift und normal (Config.Drift.DriftByDefault)
 local hopRequested = false -- Hopp-Taste gedrueckt: Hopp im naechsten Physik-Frame
+local jumpHeld = false -- Hopp-Taste wird gehalten (Fallschirm)
 
 -- Diese Zustaende wuerden die Figur aus dem Sitz werfen
 local BLOCKED_STATES = {
@@ -192,6 +199,8 @@ local function deactivate()
 	ContextActionService:UnbindAction(HANDBRAKE_ACTION)
 	ContextActionService:UnbindAction(HOP_ACTION)
 	shiftHeld = false
+	jumpHeld = false
+	Abilities.deactivate()
 	DriftEffects.detach()
 	SoundSystem.detach()
 	local humanoid = activeHumanoid
@@ -249,13 +258,18 @@ local function activate(seat: BasePart, humanoid: Humanoid)
 
 	-- Hopp: Leertaste (Gamepad A), Touch-Button "Hopp". Hohe Prioritaet und "Sink", damit
 	-- Roblox' eigener Sprung die Taste im Wagen nicht bekommt.
+	-- Gehalten (jumpHeld): Rucksack-Fallschirm.
 	ContextActionService:BindActionAtPriority(HOP_ACTION, function(_, inputState)
 		if inputState == Enum.UserInputState.Begin then
 			hopRequested = true
+			jumpHeld = true
+		elseif inputState == Enum.UserInputState.End or inputState == Enum.UserInputState.Cancel then
+			jumpHeld = false
 		end
 		return Enum.ContextActionResult.Sink
 	end, true, Enum.ContextActionPriority.High.Value, Enum.KeyCode.Space, Enum.KeyCode.ButtonA)
 	ContextActionService:SetTitle(HOP_ACTION, "Hopp")
+	Abilities.activate() -- Ability-Tasten (z. B. Turbo F)
 
 	DriftEffects.attach(cart, character)
 	SoundSystem.attach(cart)
@@ -278,6 +292,22 @@ local function requestRestartNow(kind: "Checkpoint" | "Full")
 	end
 	requestRestart:FireServer(kind)
 end
+
+-- Rueckmeldungen fuer Abilities (Kamera, Text, Sound)
+local abilityEffects = {
+	fovKick = function(degrees: number)
+		ChaseCamera.kickFov(degrees)
+	end,
+	shake = function(degrees: number)
+		ChaseCamera.addShake(degrees)
+	end,
+	toast = function(text: string, color: Color3?)
+		RaceUI.showToast(text, 1.5, color)
+	end,
+	sound = function(name: string)
+		SoundSystem.play(name)
+	end,
+}
 
 -- Schwung fuer die Ragdoll: Tempo von VOR dem Aufprall (sonst waere es ~0), plus Extra-Schwung
 local function computeRagdollLaunch(base: BasePart?)
@@ -324,6 +354,7 @@ end
 local function helmetSave(reason: string, base: BasePart)
 	lifeState.shield -= 1
 	ProgressUI.setLives(lifeState.lives, lifeState.maxLives, lifeState.shield, lifeState.maxShield)
+	Abilities.setShield(lifeState.shield, lifeState.maxShield)
 	helmetGraceUntil = os.clock() + Config.Abilities.HelmetGrace
 	crashDetector:reset()
 	RaceUI.showMessage("HELM!", Color3.fromRGB(90, 180, 255), "Der Fahrradhelm hat dich gerettet!", 1.2)
@@ -451,6 +482,7 @@ local function onLives(lives: number, maxLives: number, shield: number, maxShiel
 	lifeState.lives, lifeState.maxLives = lives, maxLives
 	lifeState.shield, lifeState.maxShield = shield, maxShield
 	ProgressUI.setLives(lives, maxLives, shield, maxShield)
+	Abilities.setShield(shield, maxShield)
 	if lost and lives > 0 then
 		SoundSystem.play("LifeLost")
 		RaceUI.showToast(`-1 Leben (noch {lives})`, 2, Color3.fromRGB(255, 110, 100))
@@ -537,7 +569,11 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 			RaceUI.hideResult()
 			RaceUI.hideGameOver()
 			CoinsClient.resetAll() -- Muenzen erscheinen wieder
+			Abilities.reset("Full")
 			LaunchablesClient.resetAll() -- weggeschleuderte Objekte stehen wieder
+		end
+		if keepRunning then
+			Abilities.reset("Checkpoint")
 		end
 		onReset(spawnCFrame)
 	elseif kind == "Events" then
@@ -708,7 +744,27 @@ RunService.PreSimulation:Connect(function(dt)
 	local surface = TrackSensors.sampleGround(current.cart)
 	local hop = hopRequested and UserInputService:GetFocusedTextBox() == nil
 	hopRequested = false
+	-- Abilities (Sprungfeder, Turbo, Fallschirm ...): vor und nach der Fahrphysik
+	local abilityContext: Abilities.StepContext = {
+		controller = current,
+		telemetry = nil,
+		character = player.Character,
+		jumpPressed = hop,
+		jumpHeld = jumpHeld and UserInputService:GetFocusedTextBox() == nil,
+		dt = dt,
+		expectImpulse = function(delta: Vector3)
+			crashDetector:expectVelocityChange(delta)
+		end,
+		effects = abilityEffects,
+	}
+	if not crashed then
+		Abilities.beforeStep(abilityContext)
+	end
 	local telemetry = current:step(dt, throttle, steer, driftMode, hop, surface)
+	if not crashed then
+		abilityContext.telemetry = telemetry
+		Abilities.afterStep(abilityContext)
+	end
 	if not crashed then
 		CoinsClient.update(current.base)
 		-- Launchable getroffen: Hit-Stop, Kamera-Wackeln; ein riesiger Tempo-Sprung ist hier

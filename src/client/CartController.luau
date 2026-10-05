@@ -65,6 +65,7 @@ type ControllerData = {
 	settleTime: number, -- Restzeit der Beruhigung nach Einsteigen/Neustart
 	freezeTime: number, -- Hit-Stop: Restzeit, in der der Wagen still steht
 	freezeVelocity: Vector3, -- Tempo nach dem Hit-Stop
+	hopSpeedOverride: number?, -- Sprung-Tempo statt Config.Hop.Speed (Sprungfeder)
 }
 
 export type Controller = typeof(setmetatable({} :: ControllerData, CartController))
@@ -116,6 +117,7 @@ function CartController.new(cart: Model, character: Model): Controller
 		settleTime = Config.Drive.SettleTime,
 		freezeTime = 0,
 		freezeVelocity = Vector3.zero,
+		hopSpeedOverride = nil,
 	}, CartController)
 	return self
 end
@@ -181,6 +183,44 @@ local function setVelocity(cart: Model, velocity: Vector3)
 			end
 		end
 	end
+end
+
+-- Schnittstelle fuer Abilities -------------------------------------------------------------
+-- (Aufruf nach step() im selben Frame: Kraefte gelten dann fuer diesen Physik-Schritt.)
+
+-- Zusaetzliche Kraft (Newton-artig: Beschleunigung * Masse) fuer diesen Frame
+function CartController.addForce(self: Controller, force: Vector3)
+	self.driveForce.Force += force
+end
+
+-- Zusaetzliches Drehmoment fuer diesen Frame
+function CartController.addTorque(self: Controller, torque: Vector3)
+	self.steerTorque.Torque += torque
+end
+
+-- Sprung in der Luft (Doppelsprung): Tempo nach oben auf `speed` setzen. Danach dreht der
+-- Wagen wie beim Hopp in Lenkrichtung. Gibt den Tempo-Sprung zurueck (fuer die Crash-Erkennung).
+function CartController.airJump(self: Controller, speed: number): Vector3
+	local current = self.base.AssemblyLinearVelocity.Y
+	local delta = Vector3.yAxis * (speed - math.min(current, speed))
+	addVelocity(self.cart, delta)
+	self.hopTime = 0
+	return delta
+end
+
+-- Schub nach vorne: `gain` Studs/s mehr Tempo, verteilt auf `duration` Sekunden
+-- (wie der Drift-Boost; ein laufender Boost wird ersetzt)
+function CartController.startBoost(self: Controller, gain: number, duration: number)
+	self.boostTime = math.max(duration, 0.05)
+	self.boostAcceleration = gain / self.boostTime
+end
+
+function CartController.getMass(self: Controller): number
+	return self.mass
+end
+
+function CartController.getInertia(self: Controller): number
+	return self.inertia
 end
 
 -- Hit-Stop: Wagen steht `duration` Sekunden still (schwebt), danach faehrt er mit dem
@@ -330,7 +370,7 @@ function CartController.step(
 	local hopped = false
 	self.hopTime += dt
 	if H.Enabled and hopPressed and grounded and self.hopTime >= H.Cooldown then
-		local delta = up * H.Speed
+		local delta = up * (self.hopSpeedOverride or H.Speed)
 		addVelocity(self.cart, delta)
 		selfImpulse += delta
 		velocity = base.AssemblyLinearVelocity

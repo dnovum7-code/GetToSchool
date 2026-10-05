@@ -259,6 +259,10 @@ Config.Sounds = {
 	GameOver = { Id = "", Volume = 0.8 },
 	LifeLost = { Id = "", Volume = 0.6 },
 	Shield = { Id = "", Volume = 0.7 }, -- Fahrradhelm faengt einen Crash ab
+	Turbo = { Id = "", Volume = 0.7 }, -- Turbo-Pausenbrot (z. B. Mampf-Geraeusch)
+	DoubleJump = { Id = "", Volume = 0.6 },
+	Glide = { Id = "", Volume = 0.4 }, -- Fallschirm geht auf
+	Purchase = { Id = "", Volume = 0.7 }, -- Kauf im Shop
 	Launch = { Id = "", Volume = 0.8 }, -- Treffer (wenn das Objekt kein eigenes Attribut "Sound" hat)
 	SkyStar = { Id = "", Volume = 0.6 }, -- Stern-Blinken, wenn ein Objekt im Himmel verschwindet
 	Finish = { Id = "", Volume = 0.8 }, -- im Ziel
@@ -306,6 +310,22 @@ Config.TuningPanel = {
 	{ label = "Hit-Stop (s)", path = "Launch.HitStop" },
 	{ label = "Tempo nach Treffer", path = "Launch.HitSpeedKeep", span = 0.15 },
 	{ label = "Flug-Bonus pro Meter", path = "Launch.BonusPerMeter", server = true },
+	{ label = "Sprungfeder 1 (Tempo)", path = "Abilities.JumpSpeed1" },
+	{ label = "Sprungfeder 2 (Tempo)", path = "Abilities.JumpSpeed2" },
+	{ label = "Doppelsprung (Tempo)", path = "Abilities.DoubleJumpSpeed" },
+	{ label = "Helm-Ladungen Stufe 1", path = "Abilities.HelmetCharges1", server = true },
+	{ label = "Helm-Ladungen Stufe 2", path = "Abilities.HelmetCharges2", server = true },
+	{ label = "Helm-Ladungen Stufe 3", path = "Abilities.HelmetCharges3", server = true },
+	{ label = "Helm-Schutzzeit (s)", path = "Abilities.HelmetGrace" },
+	{ label = "Turbo-Schub", path = "Abilities.TurboGain" },
+	{ label = "Turbo-Dauer (s)", path = "Abilities.TurboDuration" },
+	{ label = "Turbo-Abklingzeit 1 (s)", path = "Abilities.TurboCooldown1" },
+	{ label = "Turbo-Abklingzeit 2 (s)", path = "Abilities.TurboCooldown2" },
+	{ label = "Turbo-Abklingzeit 3 (s)", path = "Abilities.TurboCooldown3" },
+	{ label = "Fallschirm: Falltempo", path = "Abilities.GlideFallSpeed" },
+	{ label = "Fallschirm: Bremsen", path = "Abilities.GlideResponse" },
+	{ label = "Fallschirm: Schub", path = "Abilities.GlideForwardAccel" },
+	{ label = "Fallschirm: Lenken", path = "Abilities.GlideSteerRate" },
 	{ label = "Ragdoll-Flug hoch", path = "Crash.RagdollUpSpeed" },
 	{ label = "Ragdoll-Flug vorne", path = "Crash.RagdollForwardBoost" },
 	{ label = "Ragdoll schwebt (0..1)", path = "Crash.RagdollFloat", span = 0.45 },
@@ -316,6 +336,8 @@ Config.Debug = {
 	-- true = im Output melden, wenn ein Rad einen Bodenbaustein erkennt und welcher
 	-- Effekt (BoostPad, JumpPad) ausgeloest wird
 	TrackPieces = false,
+	-- true = alle Upgrades auf hoechster Stufe (nur in Studio), zum Testen ohne Shop
+	AllUpgrades = false,
 }
 
 -- Verfolgerkamera
@@ -388,12 +410,85 @@ Config.Lives = {
 }
 
 -- Abilities (ueber Upgrades im Shop freischaltbar). Werte pro Stufe heissen Name1, Name2 ...
+-- Neue Ability: Modul in src/client/Abilities (siehe AbilityTypes), Eintrag in
+-- Config.Upgrades und ihre Werte hier.
 Config.Abilities = {
-	-- Fahrradhelm: so viele Ladungen pro Stufe (jede faengt einen Crash/Treffer ab)
+	-- Trampolin-Sprungfeder (Upgrade "Spring"): Leertaste / Gamepad A.
+	-- Ohne Upgrade gibt es den kleinen Hopp (Config.Hop.Speed).
+	JumpSpeed1 = 60, -- Stufe 1: Sprung-Tempo nach oben (Studs/s); Hoehe ~ Tempo^2 / 392 -> ca. 9 Studs
+	JumpSpeed2 = 60, -- Stufe 2: gleicher Sprung ...
+	DoubleJumpSpeed = 55, -- ... plus Doppelsprung: Leertaste in der Luft (Tempo nach oben)
+
+	-- Fahrradhelm (Upgrade "Helmet"): so viele Ladungen pro Stufe (jede faengt einen
+	-- Crash/Treffer ab, laedt sich am naechsten Checkpoint wieder auf)
 	HelmetCharges1 = 1,
 	HelmetCharges2 = 2,
 	HelmetCharges3 = 3,
 	HelmetGrace = 1.0, -- nach einer Helm-Rettung so lange (s) keine neuen Crashs
+
+	-- Turbo-Pausenbrot (Upgrade "Turbo"): Taste F / Gamepad RB
+	TurboGain = 40, -- Tempo-Zuwachs (Studs/s)
+	TurboDuration = 0.7, -- ueber so viele Sekunden verteilt
+	TurboCooldown1 = 12, -- Abklingzeit (s) pro Stufe
+	TurboCooldown2 = 8,
+	TurboCooldown3 = 5,
+
+	-- Rucksack-Fallschirm (Upgrade "Glider"): Leertaste in der Luft halten
+	GlideFallSpeed = 10, -- so schnell (Studs/s) faellt man hoechstens
+	GlideResponse = 6, -- wie schnell das Fallen auf GlideFallSpeed gebremst wird
+	GlideForwardAccel = 15, -- leichter Schub nach vorne (Studs/s^2) ...
+	GlideMaxSpeed = 110, -- ... bis zu diesem Tempo
+	GlideSteerRate = 1.2, -- Lenken in der Luft (Radiant/s)
+}
+
+-- Upgrades im Shop (Taste B). Pro Stufe: Preis und Beschreibung. In Beschreibungen werden
+-- Platzhalter wie {Abilities.TurboCooldown2} durch den Config-Wert ersetzt.
+Config.Upgrades = {
+	{
+		id = "Spring",
+		name = "Trampolin-Sprungfeder",
+		levels = {
+			{
+				price = 60,
+				description = "Leertaste macht einen richtigen Sprung statt nur einen Hopp - ueber Hindernisse und auf neue Wege.",
+			},
+			{ price = 180, description = "Doppelsprung: in der Luft nochmal Leertaste druecken." },
+		},
+	},
+	{
+		id = "Helmet",
+		name = "Fahrradhelm",
+		levels = {
+			{
+				price = 50,
+				description = "Faengt {Abilities.HelmetCharges1} Crash ab (kein Leben weg). Laedt sich am naechsten Checkpoint wieder auf.",
+			},
+			{ price = 150, description = "{Abilities.HelmetCharges2} Ladungen pro Checkpoint." },
+			{ price = 350, description = "{Abilities.HelmetCharges3} Ladungen pro Checkpoint." },
+		},
+	},
+	{
+		id = "Turbo",
+		name = "Turbo-Pausenbrot",
+		levels = {
+			{
+				price = 80,
+				description = "Taste F (Gamepad RB): kurzer Schub nach vorne. Abklingzeit {Abilities.TurboCooldown1} s.",
+			},
+			{ price = 200, description = "Abklingzeit nur noch {Abilities.TurboCooldown2} s." },
+			{ price = 400, description = "Abklingzeit nur noch {Abilities.TurboCooldown3} s." },
+		},
+	},
+	{
+		id = "Glider",
+		name = "Rucksack-Fallschirm",
+		levels = {
+			{
+				price = 150,
+				description = "Leertaste in der Luft halten: langsamer fallen und weiter fliegen.",
+			},
+		},
+	},
 }
 
 -- Rennablauf (Server)

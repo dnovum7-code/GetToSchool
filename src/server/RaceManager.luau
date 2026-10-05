@@ -118,7 +118,13 @@ end
 
 -- Helm-Ladungen je nach gekaufter Stufe (Upgrade "Helmet")
 local function maxShieldFor(player: Player): number
-	local level = Profiles.get(player).upgrades.Helmet or 0
+	local def = Economy.findUpgrade(Config.Upgrades, "Helmet")
+	if not def then
+		return 0
+	end
+	-- Config.Debug.AllUpgrades: in Studio alle Upgrades auf hoechster Stufe (zum Testen)
+	local allMax = Config.Debug.AllUpgrades and RunService:IsStudio()
+	local level = Economy.effectiveLevel(Profiles.get(player).upgrades, def, allMax)
 	return math.max(0, math.floor(RunRules.levelValue(Config.Abilities, "HelmetCharges", level, 0)))
 end
 
