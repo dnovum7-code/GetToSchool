@@ -74,6 +74,16 @@ function TrackPieces.init()
 		end)
 	end)
 
+	-- Bewegte Hindernisse: verankert, die Bewegung rechnet jeder Client selbst
+	-- (siehe src/client/Obstacles.luau)
+	for _, tag in { "Mover", "Spinner", "Pendulum" } do
+		TagList.watch(tag, function(instance)
+			forEachPart(instance, function(part)
+				part.Anchored = true
+			end)
+		end)
+	end
+
 	-- Hazard: standardmaessig nicht fest (Wasser, Grube), mit Attribut Solid = true fest
 	TagList.watch("Hazard", function(instance)
 		local solid = instance:GetAttribute("Solid") == true

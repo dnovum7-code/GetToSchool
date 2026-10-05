@@ -132,6 +132,21 @@ Config.Track = {
 	SensorPadding = 0.3, -- so viel (Studs) um den Wagen herum zaehlt schon als Beruehrung
 }
 
+-- Bewegte Hindernisse (Standardwerte; Attribute am Part/Modell gehen vor).
+-- Alle Zeiten in Sekunden, Winkel in Grad. Attribut "Phase" (Sekunden) verschiebt den Takt,
+-- damit nicht alle Hindernisse gleichzeitig loslegen.
+Config.Movers = {
+	-- Mover: faehrt von der Startposition zu Startposition + Offset und zurueck
+	MoverOffset = Vector3.new(0, 0, -30), -- Attribut "Offset" (Vector3), relativ zum Part (-Z = vorne)
+	MoverDuration = 3, -- Attribut "Duration": Fahrzeit fuer eine Richtung
+	MoverPause = 1, -- Attribut "Pause": Wartezeit an jedem Ende
+	-- Spinner: dreht sich um die eigene Hochachse
+	SpinnerSpeed = 90, -- Attribut "Speed": Grad pro Sekunde (negativ = andersherum)
+	-- Pendulum: schwingt um die Oberkante des Parts (bei Modellen um den Pivot), Achse = X
+	PendulumAngle = 45, -- Attribut "Angle": maximaler Ausschlag zu jeder Seite
+	PendulumDuration = 3, -- Attribut "Duration": Zeit fuer einmal hin und zurueck
+}
+
 -- Verfolgerkamera
 Config.Camera = {
 	Distance = 14,
