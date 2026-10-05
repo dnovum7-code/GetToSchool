@@ -95,6 +95,10 @@ Config.Crash = {
 Config.Race = {
 	StartZoneTag = "StartZone",
 	FinishZoneTag = "FinishZone",
+	-- Blickrichtung am Start: "Downhill" = automatisch bergab (bei flachem Boden zur
+	-- Vorderseite der Startzone), "ZoneFront" = immer zur Vorderseite der Startzone.
+	StartFacing = "Downhill",
+	DownhillMinSlope = 5, -- Grad; flacher gilt als eben
 	MinRestartInterval = 0.3, -- Schutz gegen Spam der Neustart-Taste
 	StartGrace = 0.3, -- nach einem Neustart so lange keine Zonen pruefen
 	AutoRestartAfterFinish = 3, -- Sekunden nach dem Ziel bis zum Neustart (0 = aus)

@@ -20,8 +20,27 @@ function Track.init(folder: Instance)
 	cartsFolder = folder
 end
 
+-- Mittlere Bodenneigung rund um `center` (mehrere Strahlen, damit kleine Huckel
+-- die Richtung nicht verfaelschen).
+local function averageGroundNormal(center: Vector3, params: RaycastParams): Vector3?
+	local sum = Vector3.zero
+	local count = 0
+	for _, offset in { Vector3.zero, Vector3.xAxis, -Vector3.xAxis, Vector3.zAxis, -Vector3.zAxis } do
+		local hit = workspace:Raycast(center + offset * 3, Vector3.new(0, -200, 0), params)
+		if hit then
+			sum += hit.Normal
+			count += 1
+		end
+	end
+	if count == 0 or sum.Magnitude < 0.01 then
+		return nil
+	end
+	return sum.Unit
+end
+
 -- Sucht unterhalb von `origin` den Boden und gibt die passende Position fuer die
--- Mitte des Korbbodens zurueck. Blickrichtung = LookVector von `origin` (waagerecht).
+-- Mitte des Korbbodens zurueck. Blickrichtung: bergab (Config.Race.StartFacing) oder,
+-- bei flachem Boden, der LookVector von `origin` (waagerecht).
 function Track.placeOnGround(origin: CFrame, ignore: { Instance }): CFrame
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
@@ -44,6 +63,14 @@ function Track.placeOnGround(origin: CFrame, ignore: { Instance }): CFrame
 	local look = Vector3.new(origin.LookVector.X, 0, origin.LookVector.Z)
 	if look.Magnitude < 0.01 then
 		look = -Vector3.zAxis
+	end
+	if Config.Race.StartFacing == "Downhill" then
+		-- Die Bodennormale kippt in Richtung bergab; ihr waagerechter Anteil zeigt dorthin.
+		local normal = averageGroundNormal(start, params)
+		local minSlope = math.sin(math.rad(Config.Race.DownhillMinSlope))
+		if normal and Vector3.new(normal.X, 0, normal.Z).Magnitude >= minSlope then
+			look = Vector3.new(normal.X, 0, normal.Z)
+		end
 	end
 	-- Blickrichtung an den Hang anpassen (rechtwinklig zur Bodennormalen)
 	local right = look.Unit:Cross(up).Unit

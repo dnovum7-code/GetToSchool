@@ -78,11 +78,10 @@ die per `require` geladen werden.
      `StartZone` bzw. `FinishZone`.
 3. Empfohlen: *Transparency* `0.7`, *Anchored* an, *CanCollide* aus. (Das Skript setzt
    Anchored/CanCollide/CanTouch/CanQuery beim Start ohnehin richtig.)
-4. **Richtung der Startzone:** Der Wagen startet in der Mitte der Startzone und schaut zur
-   **Vorderseite (Front)** des Parts. So prüfst du sie: einen *Decal* in das Part einfügen,
-   bei *Face* steht `Front` – die Seite mit dem Bild ist vorne. Dreh die Zone so, dass vorne
-   den Hügel hinunter zeigt (danach den Decal wieder löschen). Startet der Wagen falsch
-   herum, die Zone einfach um 90°/180° um die Hochachse drehen.
+4. **Richtung:** Der Wagen startet in der Mitte der Startzone und schaut automatisch
+   **bergab**. Ist der Boden dort flach (unter 5°), schaut er zur **Vorderseite (Front)**
+   des Parts. Startet er dann falsch herum: Stop, Zone um 90°/180° um die Hochachse drehen,
+   nochmal Play. (Immer die Vorderseite nutzen: `Race.StartFacing = "ZoneFront"` in der Config.)
 5. Die Zeit läuft los, sobald der Wagen die Startzone verlässt, und stoppt, sobald er in die
    Zielzone fährt. Ohne Startzone startet der Wagen 10 Studs vor dem *SpawnLocation*.
 
