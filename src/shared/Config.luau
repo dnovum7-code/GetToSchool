@@ -156,6 +156,19 @@ Config.Events = {
 	DefaultGroupWeight = 1,
 }
 
+-- Sounds (nur lokal). Id leer lassen = kein Sound, kein Fehler.
+-- Id aus dem Creator Store eintragen, z. B. 1234567 oder "rbxassetid://1234567".
+Config.Sounds = {
+	-- Rollgeraeusch, laeuft dauernd; Tonhoehe und Lautstaerke steigen mit dem Tempo
+	Engine = { Id = "", Volume = 0.4, MinPitch = 0.6, MaxPitch = 1.6, FullSpeed = 100 },
+	Drift = { Id = "", Volume = 0.5 }, -- Quietschen, laeuft waehrend des Drifts
+	Boost = { Id = "", Volume = 0.7 }, -- Drift-Boost und BoostPad
+	Crash = { Id = "", Volume = 0.8 },
+	Checkpoint = { Id = "", Volume = 0.6 },
+	Bell = { Id = "", Volume = 0.8 }, -- Schulglocke um 8:00
+	Finish = { Id = "", Volume = 0.8 }, -- im Ziel
+}
+
 -- Verfolgerkamera
 Config.Camera = {
 	Distance = 14,

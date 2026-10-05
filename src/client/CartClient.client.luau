@@ -19,6 +19,7 @@ local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
 local TrackSensors = require(script.Parent:WaitForChild("TrackSensors"))
 local Obstacles = require(script.Parent:WaitForChild("Obstacles"))
 local RandomEventsClient = require(script.Parent:WaitForChild("RandomEventsClient"))
+local SoundSystem = require(script.Parent:WaitForChild("SoundSystem"))
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local SchoolClock = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SchoolClock"))
@@ -47,6 +48,8 @@ local wasGrounded = true -- fuer die Landungs-Erkennung (Kamera-Wackeln)
 local runPhase: "Ready" | "Running" | "Finished" | "Aborted" = "Ready"
 local runStartedAt = 0
 local runTimeScale = Config.Clock.TimeScale -- Spielsekunden pro echter Sekunde (vom Server)
+local bellRung = false -- Schulglocke in diesem Lauf schon gelaeutet?
+local wasBoosting = false
 
 -- Aktuelle Spielzeit (Sekunden seit Mitternacht) fuer die Uhr im UI
 local finishedArrival = 0 -- Ankunftszeit des letzten Laufs (bleibt auf der Uhr stehen)
@@ -106,6 +109,7 @@ local CRASH_TEXTS: { [string]: string } = {
 RaceUI.init()
 Obstacles.init() -- bewegte Hindernisse (Mover, Spinner, Pendulum)
 RandomEventsClient.init() -- Zufallsereignisse ein-/ausblenden
+SoundSystem.init()
 DevPanel.init() -- Tuning-Panel, nur in Studio (F2)
 EnterPrompt.init(function()
 	requestEnter:FireServer()
@@ -142,6 +146,7 @@ local function deactivate()
 	ContextActionService:UnbindAction(HANDBRAKE_ACTION)
 	handbrakeHeld = false
 	DriftEffects.detach()
+	SoundSystem.detach()
 	local humanoid = activeHumanoid
 	if humanoid then
 		for _, state in BLOCKED_STATES do
@@ -195,6 +200,7 @@ local function activate(seat: BasePart, humanoid: Humanoid)
 	ContextActionService:SetTitle(HANDBRAKE_ACTION, "Drift")
 
 	DriftEffects.attach(cart, character)
+	SoundSystem.attach(cart)
 end
 
 -- Neustart beim Server anfragen. Der Server entscheidet und antwortet mit "Reset".
@@ -223,6 +229,7 @@ local function onCrash(reason: string, base: BasePart, text: string?)
 	end
 	crashedAt = os.clock()
 	RaceUI.showMessage("CRASH!", Color3.fromRGB(255, 80, 60), text or CRASH_TEXTS[reason])
+	SoundSystem.play("Crash")
 
 	-- Schwung fuer die Ragdoll: Tempo von VOR dem Aufprall (sonst waere es ~0)
 	local C = Config.Crash
@@ -316,6 +323,7 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		if not keepRunning then
 			-- kompletter Neustart: neuer Lauf. Beim Checkpoint-Neustart laeuft die Uhr weiter.
 			runPhase = "Ready"
+			bellRung = false
 			RaceUI.hideResult()
 		end
 		onReset(spawnCFrame)
@@ -324,6 +332,7 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		RandomEventsClient.setSelection(...)
 	elseif kind == "Checkpoint" then
 		RaceUI.showToast("Checkpoint!")
+		SoundSystem.play("Checkpoint")
 	elseif kind == "WrongCheckpoint" then
 		RaceUI.showToast("Falscher Checkpoint - falsche Reihenfolge!", 2)
 	elseif kind == "Ragdoll" then
@@ -344,6 +353,7 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		finishedArrival = result.arrival
 		RaceUI.setBest(result.bestArrival)
 		showResult(result)
+		SoundSystem.play("Finish")
 	end
 end)
 
@@ -437,7 +447,13 @@ RunService.PreSimulation:Connect(function(dt)
 	if runPhase == "Aborted" then
 		RaceUI.setClockInvalid()
 	else
-		RaceUI.setClock(currentGameTime())
+		local gameTime = currentGameTime()
+		RaceUI.setClock(gameTime)
+		-- Schulglocke genau einmal pro Lauf, wenn es 8:00 wird
+		if runPhase == "Running" and not bellRung and gameTime >= SchoolClock.schoolSeconds() then
+			bellRung = true
+			SoundSystem.play("Bell")
+		end
 	end
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -474,6 +490,12 @@ RunService.PreSimulation:Connect(function(dt)
 		crashDetector:relaxImpact(Config.Track.JumpLandingTolerance, airTime)
 	end
 	DriftEffects.update(dt, telemetry)
+	local drifting = telemetry.grounded and telemetry.driftAmount > 0.5 and telemetry.speed > 10
+	SoundSystem.update(telemetry.speed, telemetry.grounded, drifting)
+	if telemetry.padEvent == "Boost" or (telemetry.boosting and not wasBoosting) then
+		SoundSystem.play("Boost")
+	end
+	wasBoosting = telemetry.boosting
 	RaceUI.setSpeed(telemetry.speed)
 
 	-- Harte Landung: Fallgeschwindigkeit kurz vor dem Aufsetzen bestimmt das Wackeln
