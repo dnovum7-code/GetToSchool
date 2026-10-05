@@ -18,6 +18,7 @@ local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
 local TrackSensors = require(script.Parent:WaitForChild("TrackSensors"))
 local Obstacles = require(script.Parent:WaitForChild("Obstacles"))
+local RandomEventsClient = require(script.Parent:WaitForChild("RandomEventsClient"))
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local SchoolClock = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SchoolClock"))
@@ -104,6 +105,7 @@ local CRASH_TEXTS: { [string]: string } = {
 
 RaceUI.init()
 Obstacles.init() -- bewegte Hindernisse (Mover, Spinner, Pendulum)
+RandomEventsClient.init() -- Zufallsereignisse ein-/ausblenden
 DevPanel.init() -- Tuning-Panel, nur in Studio (F2)
 EnterPrompt.init(function()
 	requestEnter:FireServer()
@@ -317,6 +319,9 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 			RaceUI.hideResult()
 		end
 		onReset(spawnCFrame)
+	elseif kind == "Events" then
+		-- neuer Lauf: Server hat gewuerfelt, welche Zufallsereignisse aktiv sind
+		RandomEventsClient.setSelection(...)
 	elseif kind == "Checkpoint" then
 		RaceUI.showToast("Checkpoint!")
 	elseif kind == "WrongCheckpoint" then

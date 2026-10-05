@@ -8,6 +8,7 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
 local DevTuning = require(script.Parent:WaitForChild("DevTuning"))
 local RaceManager = require(script.Parent:WaitForChild("RaceManager"))
+local RandomEvents = require(script.Parent:WaitForChild("RandomEvents"))
 local Track = require(script.Parent:WaitForChild("Track"))
 local TrackPieces = require(script.Parent:WaitForChild("TrackPieces"))
 
@@ -30,6 +31,7 @@ CartManager.setSpawnResolver(function(_player)
 end)
 RaceManager.start()
 TrackPieces.init() -- getaggte Streckenbausteine einstellen
+RandomEvents.init() -- Zufallsereignisse durchnummerieren
 DevTuning.init(cartsFolder) -- Tuning-Panel (nur in Studio aktiv)
 
 -- Eingaben vom Client nie blind vertrauen: Der Client darf nur "bitte Neustart" sagen

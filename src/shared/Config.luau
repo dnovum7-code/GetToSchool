@@ -147,6 +147,15 @@ Config.Movers = {
 	PendulumDuration = 3, -- Attribut "Duration": Zeit fuer einmal hin und zurueck
 }
 
+-- Zufallsereignisse: Parts/Modelle mit Tag "RandomEvent" sind pro Lauf aktiv oder nicht.
+-- Attribut "Chance" (0..1): Wahrscheinlichkeit, dass es aktiv ist.
+-- Attribut "Group" (Text): aus jeder Gruppe ist pro Lauf genau ein Element aktiv
+-- (dann wirkt "Chance" als Gewicht: 2 = doppelt so oft wie 1).
+Config.Events = {
+	DefaultChance = 0.5,
+	DefaultGroupWeight = 1,
+}
+
 -- Verfolgerkamera
 Config.Camera = {
 	Distance = 14,

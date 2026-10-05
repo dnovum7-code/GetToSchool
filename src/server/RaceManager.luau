@@ -19,6 +19,7 @@ local RunService = game:GetService("RunService")
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local SchoolClock = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SchoolClock"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
+local RandomEvents = require(script.Parent:WaitForChild("RandomEvents"))
 local Track = require(script.Parent:WaitForChild("Track"))
 
 local runState = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("RunState") :: RemoteEvent
@@ -94,6 +95,8 @@ function RaceManager.restart(player: Player)
 	race.spawnPosition = spawnCFrame.Position
 	race.runId += 1
 	race.lastRestart = os.clock()
+	-- Neuer Lauf: Zufallsereignisse neu wuerfeln (vor "Reset", damit die Strecke steht)
+	runState:FireClient(player, "Events", RandomEvents.roll())
 	runState:FireClient(player, "Reset", spawnCFrame, false)
 end
 
