@@ -14,6 +14,12 @@
         },
         "RunState": {
           "$className": "RemoteEvent"
+        },
+        "RequestExit": {
+          "$className": "RemoteEvent"
+        },
+        "RequestEnter": {
+          "$className": "RemoteEvent"
         }
       }
     },

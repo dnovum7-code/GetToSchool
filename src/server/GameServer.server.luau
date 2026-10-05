@@ -11,6 +11,8 @@ local Track = require(script.Parent:WaitForChild("Track"))
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local requestRestart = remotes:WaitForChild("RequestRestart") :: RemoteEvent
+local requestExit = remotes:WaitForChild("RequestExit") :: RemoteEvent
+local requestEnter = remotes:WaitForChild("RequestEnter") :: RemoteEvent
 
 Players.RespawnTime = Config.Race.RespawnTime
 
@@ -29,6 +31,13 @@ RaceManager.start()
 -- Argumente werden ignoriert, der Spam-Schutz steckt in RaceManager.requestRestart.
 requestRestart.OnServerEvent:Connect(function(player)
 	RaceManager.requestRestart(player)
+end)
+-- Aus-/Einsteigen: Der Server prueft selbst, ob es erlaubt ist (sitzt er? nah genug?).
+requestExit.OnServerEvent:Connect(function(player)
+	RaceManager.requestExit(player)
+end)
+requestEnter.OnServerEvent:Connect(function(player)
+	RaceManager.requestEnter(player)
 end)
 
 local function onCharacterAdded(player: Player, character: Model)

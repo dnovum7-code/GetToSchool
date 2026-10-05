@@ -106,6 +106,16 @@ Config.Race = {
 	RespawnTime = 1, -- Wartezeit, falls der Charakter doch einmal stirbt
 }
 
+-- Aus- und Einsteigen (Taste E / Gamepad X)
+Config.Exit = {
+	EnterDistance = 10, -- so nah (Studs) muss man am leeren Wagen sein, damit "Einsteigen" erscheint
+	LandingDistance = 3.5, -- so weit neben dem Wagen landet die Figur beim Aussteigen
+	ActionCooldown = 0.3, -- Schutz gegen Spam von E
+	-- Leere Wagen bremsen von selbst ab, statt allein den Huegel hinunterzurollen.
+	ParkBrake = 6, -- Staerke der Bremse (pro Sekunde), 0 = Wagen rollt frei
+	ParkBrakeMaxAcceleration = 150,
+}
+
 -- Anzeige
 Config.UI = {
 	ResultDisplayTime = 3, -- so lange bleibt "ZIEL!" sichtbar

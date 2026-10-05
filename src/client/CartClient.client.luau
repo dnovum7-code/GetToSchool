@@ -11,6 +11,7 @@ local UserInputService = game:GetService("UserInputService")
 local CartController = require(script.Parent:WaitForChild("CartController"))
 local ChaseCamera = require(script.Parent:WaitForChild("ChaseCamera"))
 local CrashDetector = require(script.Parent:WaitForChild("CrashDetector"))
+local EnterPrompt = require(script.Parent:WaitForChild("EnterPrompt"))
 local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
@@ -18,6 +19,8 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local requestRestart = remotes:WaitForChild("RequestRestart") :: RemoteEvent
 local runState = remotes:WaitForChild("RunState") :: RemoteEvent
+local requestExit = remotes:WaitForChild("RequestExit") :: RemoteEvent
+local requestEnter = remotes:WaitForChild("RequestEnter") :: RemoteEvent
 
 local player = Players.LocalPlayer
 
@@ -30,7 +33,7 @@ local crashedAt = 0
 
 -- Zeitmessung: Der Server entscheidet Start und Ziel. Die laufende Zeit zaehlen wir
 -- hier nur zur Anzeige mit; das Endergebnis kommt vom Server.
-local runPhase: "Ready" | "Running" | "Finished" = "Ready"
+local runPhase: "Ready" | "Running" | "Finished" | "Aborted" = "Ready"
 local runStartedAt = 0
 
 local CRASH_TEXTS: { [string]: string } = {
@@ -40,6 +43,11 @@ local CRASH_TEXTS: { [string]: string } = {
 }
 
 RaceUI.init()
+EnterPrompt.init(function()
+	requestEnter:FireServer()
+end)
+
+local EXIT_ACTION = "GetToSchoolExit"
 
 -- Diese Zustaende wuerden die Figur aus dem Sitz werfen
 local BLOCKED_STATES = {
@@ -64,6 +72,7 @@ local function deactivate()
 	end
 	controller = nil
 	activeSeat = nil
+	ContextActionService:UnbindAction(EXIT_ACTION)
 	local humanoid = activeHumanoid
 	if humanoid then
 		for _, state in BLOCKED_STATES do
@@ -85,12 +94,23 @@ local function activate(seat: BasePart, humanoid: Humanoid)
 	ChaseCamera.start(cart:WaitForChild("Base") :: BasePart, { cart, character })
 	crashDetector:reset()
 	crashed = false
+
+	-- Aussteigen: E (Gamepad X). Auf Touch-Geraeten erscheint ein eigener Button.
+	-- Nur gebunden, solange man faehrt; zu Fuss gehoert E dem "Einsteigen"-Hinweis.
+	ContextActionService:BindAction(EXIT_ACTION, function(_, inputState)
+		if inputState == Enum.UserInputState.Begin then
+			requestExit:FireServer()
+		end
+		return Enum.ContextActionResult.Sink
+	end, true, Enum.KeyCode.E, Enum.KeyCode.ButtonX)
+	ContextActionService:SetTitle(EXIT_ACTION, "Raus")
 end
 
 -- Neustart beim Server anfragen. Der Server entscheidet und antwortet mit "Reset".
 local lastRestartRequest = 0
 local function requestRestartNow()
-	if not controller or os.clock() - lastRestartRequest < Config.Race.MinRestartInterval then
+	-- funktioniert im Wagen und zu Fuss; der Server entscheidet
+	if os.clock() - lastRestartRequest < Config.Race.MinRestartInterval then
 		return
 	end
 	lastRestartRequest = os.clock()
@@ -137,11 +157,36 @@ local function onReset(spawnCFrame: CFrame)
 	ChaseCamera.snap()
 end
 
+-- Server hat uns aussteigen lassen: Figur sicher neben den Wagen stellen.
+-- Unsere Figur rechnet dieser Client, also Position und Tempo auch hier setzen
+-- (sonst fliegt sie mit dem Tempo des Wagens weiter).
+local function onExited(landing: CFrame)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not character or not humanoid then
+		return
+	end
+	humanoid.Sit = false
+	character:PivotTo(landing)
+	for _, part in character:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.AssemblyLinearVelocity = Vector3.zero
+			part.AssemblyAngularVelocity = Vector3.zero
+		end
+	end
+end
+
 runState.OnClientEvent:Connect(function(kind: string, ...)
 	if kind == "Reset" then
 		runPhase = "Ready"
 		RaceUI.setTimer(0)
 		onReset(...)
+	elseif kind == "Exited" then
+		onExited(...)
+	elseif kind == "Aborted" then
+		runPhase = "Aborted"
+		RaceUI.setTimerInvalid()
+		RaceUI.showMessage("Lauf abgebrochen", Color3.fromRGB(255, 200, 80), "R: Neustart", 2)
 	elseif kind == "Started" then
 		runPhase = "Running"
 		runStartedAt = os.clock()
@@ -218,6 +263,10 @@ end
 -- PreSimulation laeuft direkt vor jedem Physik-Schritt (wie FixedUpdate in Unity).
 RunService.PreSimulation:Connect(function(dt)
 	updateSeat()
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	EnterPrompt.update(controller == nil and humanoid ~= nil and humanoid.Health > 0)
+
 	local current = controller
 	if not current then
 		return

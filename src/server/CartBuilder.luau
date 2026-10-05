@@ -36,6 +36,17 @@ function CartBuilder.getRideHeight(): number
 	return c.WheelDiameter + c.WheelGap + c.FloorThickness / 2
 end
 
+-- Gesamtmasse des Wagens (alle Teile, die zur Masse beitragen; Raeder eingeschlossen).
+function CartBuilder.getMass(cart: Model): number
+	local mass = 0
+	for _, part in cart:GetDescendants() do
+		if part:IsA("BasePart") and not part.Massless then
+			mass += part.Mass
+		end
+	end
+	return math.max(mass, 0.1)
+end
+
 local function makePart(props: { [string]: any }): Part
 	local part = Instance.new("Part")
 	part.Anchored = false

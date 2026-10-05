@@ -3,6 +3,7 @@
 --   Ready    Wagen steht am Start. Die Zeit startet, sobald er die Startzone verlaesst.
 --   Running  Zeit laeuft. Erreicht der Wagen die Zielzone, ist der Lauf beendet.
 --   Finished Ergebnis wird angezeigt, danach automatischer Neustart.
+--   Aborted  Spieler ist waehrend des Laufs ausgestiegen: Zeit ungueltig, weiter mit R.
 --
 -- Der Server misst die Zeit selbst (os.clock) und schaut sich jeden Frame die Position
 -- des Wagens an. Der Client kann also keine Zeit "melden", er bekommt sie nur gesagt.
@@ -19,7 +20,7 @@ local runState = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("RunStat
 
 local RaceManager = {}
 
-type Phase = "Ready" | "Running" | "Finished"
+type Phase = "Ready" | "Running" | "Finished" | "Aborted"
 
 type RaceState = {
 	phase: Phase,
@@ -92,6 +93,25 @@ local function finish(player: Player, race: RaceState)
 	end
 end
 
+-- Aussteigen (vom Client gewuenscht, vom CartManager geprueft).
+function RaceManager.requestExit(player: Player)
+	local landing = CartManager.exit(player)
+	if not landing then
+		return
+	end
+	local race = getRace(player)
+	if race.phase == "Running" or race.phase == "Finished" then
+		-- Wer aussteigt, hat keinen gueltigen Lauf mehr (und kein Auto-Neustart nach dem Ziel)
+		race.phase = "Aborted"
+		runState:FireClient(player, "Aborted")
+	end
+	runState:FireClient(player, "Exited", landing)
+end
+
+function RaceManager.requestEnter(player: Player)
+	CartManager.enter(player)
+end
+
 local function updatePlayer(player: Player, race: RaceState)
 	local cart = CartManager.getCart(player)
 	local base = cart and cart:FindFirstChild("Base")
@@ -100,6 +120,11 @@ local function updatePlayer(player: Player, race: RaceState)
 		if cart and os.clock() - race.lastRestart > 1 then
 			RaceManager.restart(player)
 		end
+		return
+	end
+	-- Zonen zaehlen nur, wenn der Spieler wirklich im Wagen sitzt
+	-- (ein leerer Wagen, der ins Ziel rollt, gewinnt nichts).
+	if not CartManager.isSeated(player) then
 		return
 	end
 	local position = base.Position

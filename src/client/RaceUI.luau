@@ -94,7 +94,7 @@ function RaceUI.init()
 		Position = UDim2.new(0.5, 0, 1, -10),
 		Size = UDim2.new(0.6, 0, 0, 22),
 		Font = Enum.Font.Gotham,
-		Text = "W/S: Anschieben/Bremsen   A/D: Lenken   R: Neustart",
+		Text = "W/S: Anschieben/Bremsen   A/D: Lenken   E: Aus-/Einsteigen   R: Neustart",
 		TextTransparency = 0.2,
 	})
 end
@@ -123,6 +123,11 @@ end
 
 function RaceUI.setTimer(seconds: number)
 	timerLabel.Text = RaceUI.formatTime(seconds)
+end
+
+-- Lauf ungueltig (z. B. ausgestiegen)
+function RaceUI.setTimerInvalid()
+	timerLabel.Text = "--.-- s"
 end
 
 function RaceUI.setBest(seconds: number?)
