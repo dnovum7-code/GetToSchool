@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
+local DevTuning = require(script.Parent:WaitForChild("DevTuning"))
 local RaceManager = require(script.Parent:WaitForChild("RaceManager"))
 local Track = require(script.Parent:WaitForChild("Track"))
 
@@ -27,6 +28,7 @@ CartManager.setSpawnResolver(function(_player)
 	return Track.getSpawn()
 end)
 RaceManager.start()
+DevTuning.init(cartsFolder) -- Tuning-Panel (nur in Studio aktiv)
 
 -- Eingaben vom Client nie blind vertrauen: Der Client darf nur "bitte Neustart" sagen.
 -- Argumente werden ignoriert, der Spam-Schutz steckt in RaceManager.requestRestart.

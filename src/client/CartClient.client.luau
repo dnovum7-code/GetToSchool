@@ -11,6 +11,7 @@ local UserInputService = game:GetService("UserInputService")
 local CartController = require(script.Parent:WaitForChild("CartController"))
 local ChaseCamera = require(script.Parent:WaitForChild("ChaseCamera"))
 local CrashDetector = require(script.Parent:WaitForChild("CrashDetector"))
+local DevPanel = require(script.Parent:WaitForChild("DevPanel"))
 local EnterPrompt = require(script.Parent:WaitForChild("EnterPrompt"))
 local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
@@ -48,6 +49,7 @@ local CRASH_TEXTS: { [string]: string } = {
 }
 
 RaceUI.init()
+DevPanel.init() -- Tuning-Panel, nur in Studio (F2)
 EnterPrompt.init(function()
 	requestEnter:FireServer()
 end)

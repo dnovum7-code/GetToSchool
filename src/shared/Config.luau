@@ -43,6 +43,8 @@ Config.Drive = {
 	-- Bremsen durch Luft und Rollen. AirDrag begrenzt das Tempo bergab:
 	-- Endgeschwindigkeit ~ Wurzel(196 * sin(Hangwinkel) / AirDrag)
 	AirDrag = 0.008,
+	MaxSpeed = 110, -- Hoechsttempo: darueber bremst der Wagen deutlich ab
+	OverSpeedBrake = 10, -- wie hart ueber MaxSpeed gebremst wird (pro Sekunde)
 	RollingResistance = 0.15,
 
 	-- Seitenhalt: wie stark seitliches Rutschen abgebremst wird (pro Sekunde).

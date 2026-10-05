@@ -28,6 +28,7 @@ type ControllerData = {
 	inertia: number,
 	rayParams: RaycastParams,
 	time: number,
+	nextMeasure: number,
 	wobbleSeed: number,
 }
 
@@ -67,6 +68,7 @@ function CartController.new(cart: Model, character: Model): Controller
 		inertia = inertia,
 		rayParams = rayParams,
 		time = 0,
+		nextMeasure = 0.5,
 		wobbleSeed = math.random() * 100,
 	}, CartController)
 	return self
@@ -87,8 +89,13 @@ function CartController.step(self: Controller, dt: number, throttle: number, ste
 	local up, forward, right = cf.UpVector, cf.LookVector, cf.RightVector
 	local velocity = base.AssemblyLinearVelocity
 	local angular = base.AssemblyAngularVelocity
-	local m = self.mass
 	self.time += dt
+	-- Masse regelmaessig neu bestimmen (das Tuning-Panel kann den Ballast verschieben)
+	if self.time >= self.nextMeasure then
+		self.nextMeasure = self.time + 0.5
+		self.mass, self.inertia = measure(self.cart, base)
+	end
+	local m = self.mass
 
 	local speed = velocity.Magnitude
 	local forwardSpeed = velocity:Dot(forward)
@@ -96,6 +103,10 @@ function CartController.step(self: Controller, dt: number, throttle: number, ste
 
 	-- Luftwiderstand wirkt immer (begrenzt das Tempo bergab)
 	local force = -velocity * speed * D.AirDrag * m
+	-- Hoechsttempo: alles darueber wird kraeftig abgebremst
+	if speed > D.MaxSpeed then
+		force -= velocity.Unit * math.min((speed - D.MaxSpeed) * D.OverSpeedBrake, 200) * m
+	end
 	local torque = Vector3.zero
 
 	if grounded then

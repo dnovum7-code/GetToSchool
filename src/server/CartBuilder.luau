@@ -47,6 +47,15 @@ function CartBuilder.getMass(cart: Model): number
 	return math.max(mass, 0.1)
 end
 
+-- Ballast eines bestehenden Wagens auf die aktuelle Config.Cart.BallastHeight setzen.
+function CartBuilder.applyBallastHeight(cart: Model)
+	local ballast = cart:FindFirstChild("Ballast")
+	local ballastWeld = ballast and ballast:FindFirstChild("BallastWeld")
+	if ballastWeld and ballastWeld:IsA("Weld") then
+		ballastWeld.C0 = CFrame.new(0, Config.Cart.FloorThickness / 2 + Config.Cart.BallastHeight, 0)
+	end
+end
+
 local function makePart(props: { [string]: any }): Part
 	local part = Instance.new("Part")
 	part.Anchored = false
@@ -169,7 +178,14 @@ function CartBuilder.build(owner: Player, cframe: CFrame): Model
 		CustomPhysicalProperties = PhysicalProperties.new(math.clamp(c.BallastMass, 0.01, 100), 0, 0),
 	})
 	ballast.Parent = model
-	weld(base, ballast)
+	-- Weld statt WeldConstraint: Der Versatz (C0) laesst sich spaeter aendern
+	-- (Tuning-Panel: Ballast-Hoehe live verstellen).
+	local ballastWeld = Instance.new("Weld")
+	ballastWeld.Name = "BallastWeld"
+	ballastWeld.Part0 = base
+	ballastWeld.Part1 = ballast
+	ballastWeld.C0 = CFrame.new(0, t / 2 + c.BallastHeight, 0)
+	ballastWeld.Parent = ballast
 
 	-- Kraft und Drehmoment fuer das Fahrskript
 	local center = Instance.new("Attachment")

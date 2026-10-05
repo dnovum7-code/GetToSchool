@@ -23,6 +23,9 @@
         },
         "ReportCrash": {
           "$className": "RemoteEvent"
+        },
+        "DevTuning": {
+          "$className": "RemoteEvent"
         }
       }
     },
