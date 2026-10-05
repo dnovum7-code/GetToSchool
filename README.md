@@ -74,7 +74,7 @@ selene src        # Linter (findet typische Fehler)
 | `src/shared/TagList.luau` | beiden | Aktuelle Liste aller Objekte pro Tag |
 | `src/server/TrackPieces.luau` | Server | Stellt getaggte Bausteine ein (Anchored, Kollision, Material) |
 | `src/server/RandomEvents.luau` | Server | Würfelt pro Lauf die Zufallsereignisse |
-| `src/client/TrackSensors.luau` | Client | Erkennt Bausteine unter/um den Wagen (Raycast, Overlap) |
+| `src/client/TrackSensors.luau` | Client | Erkennt Bausteine unter/um den Wagen (Erkennungs-Kästen) |
 | `src/client/Obstacles.luau` | Client | Bewegt Mover, Spinner, Pendulum |
 | `src/client/RandomEventsClient.luau` | Client | Blendet inaktive Zufallsereignisse aus |
 | `src/client/SoundSystem.luau` | Client | Sounds (IDs in `Config.Sounds`) |
@@ -131,9 +131,9 @@ geschrieben wie in der Tabelle). Mehrere Tags pro Part sind erlaubt (z. B. `Move
 Hinweise:
 - **Ausrichtung:** „Vorderseite“ ist die *Front*-Seite des Parts (−Z). BoostPad und Mover
   richten sich danach. Im Zweifel ausprobieren und das Part drehen.
-- **Bodenbausteine** (BoostPad, JumpPad, Mud, Ice) werden per Raycast unter den Rädern
-  erkannt: Sie müssen befahrbar sein, also die Oberfläche der Straße bilden (oder knapp
-  darüber liegen).
+- **Bodenbausteine** (BoostPad, JumpPad, Mud, Ice) werden an der Aufstandsfläche der Räder
+  erkannt: Sie dürfen auf der Straße liegen, bündig sein oder bis ca. 0.5 Studs eingelassen
+  sein (`Track.FloorSensorBelow`). Klappt etwas nicht: `Config.Debug.TrackPieces = true`.
 - **Bewegte Hindernisse** dürfen Modelle sein (z. B. ein Auto aus mehreren Parts). Bei
   Modellen bestimmt der *Pivot* (Studio: *Edit Pivot*) den Dreh- bzw. Schwingpunkt.
   Mach schnelle Hindernisse nicht zu dünn, sonst kann der Wagen hindurchrutschen.
