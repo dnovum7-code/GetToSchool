@@ -31,6 +31,8 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
 - Nach jeder Änderung kurz erklären, was ich in Studio testen soll.
 - Keine Gratis-Modelle aus der Toolbox voraussetzen.
 - Commits nach jedem funktionierenden Schritt.
+- Git: Nur der Branch main. Keine eigenen Branches, direkt auf main
+  committen und pushen. Vor jeder Aufgabe git pull.
 
 ## Aktueller Meilenstein
 M2 – Erster Track: Baukasten aus getaggten Bausteinen (siehe README „Baukasten“),
