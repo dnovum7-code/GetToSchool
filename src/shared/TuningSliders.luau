@@ -17,8 +17,17 @@ export type Slider = {
 }
 
 local sliders: { Slider } = {
-	{ label = "Motorkraft", section = "Drive", key = "PushAcceleration", min = 0, max = 100, step = 1 },
-	{ label = "Hoechsttempo", section = "Drive", key = "MaxSpeed", min = 30, max = 250, step = 5 },
+	{ label = "Motorkraft", section = "Drive", key = "PushAcceleration", min = 0, max = 150, step = 1 },
+	{
+		label = "Hoechsttempo (Motor)",
+		section = "Drive",
+		key = "MaxPushSpeed",
+		min = 20,
+		max = 150,
+		step = 1,
+	},
+	{ label = "Bremskraft (S)", section = "Drive", key = "BrakeAcceleration", min = 10, max = 250, step = 5 },
+	{ label = "Ausrollen", section = "Drive", key = "RollingResistance", min = 0, max = 1, step = 0.01 },
 	{ label = "Lenkung", section = "Drive", key = "SteerRate", min = 0.5, max = 4, step = 0.05 },
 	{ label = "Seitenhalt", section = "Drive", key = "LateralGrip", min = 0, max = 20, step = 0.5 },
 	{

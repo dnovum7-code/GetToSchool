@@ -55,7 +55,6 @@ type ControllerData = {
 	wasHandbrake: boolean,
 	boostTime: number, -- Restzeit des laufenden Schubs
 	boostAcceleration: number,
-	boostSpeedExtra: number, -- so viel darf man gerade ueber MaxSpeed fahren
 	padCooldowns: { [Instance]: number }, -- wann welches Pad zuletzt unter dem Wagen war
 }
 
@@ -102,7 +101,6 @@ function CartController.new(cart: Model, character: Model): Controller
 		wasHandbrake = false,
 		boostTime = 0,
 		boostAcceleration = 0,
-		boostSpeedExtra = 0,
 		padCooldowns = {},
 	}, CartController)
 	return self
@@ -132,7 +130,6 @@ function CartController.resetDrift(self: Controller)
 	self.wasHandbrake = false
 	self.boostTime = 0
 	self.boostAcceleration = 0
-	self.boostSpeedExtra = 0
 end
 
 -- Ganzen Wagen um `delta` schneller machen. Wichtig: einmal pro Physik-Koerper (Assembly)!
@@ -167,12 +164,11 @@ function CartController.applyPads(self: Controller, surface: TrackSensors.Surfac
 	local impulse = Vector3.zero
 	local boostPad = surface.boostPad
 	if boostPad and ready(boostPad) then
-		-- Schub in Blickrichtung des Pads; Hoechsttempo kurz um den Schub anheben
+		-- Schub in Blickrichtung des Pads
 		local strength = Attributes.number(boostPad, "Strength", T.BoostPadStrength, true)
 		local delta = TrackSensors.pieceCFrame(boostPad).LookVector * strength
 		addVelocity(self.cart, delta)
 		impulse += delta
-		self.boostSpeedExtra = math.max(self.boostSpeedExtra, strength)
 		event = "Boost"
 	end
 	local jumpPad = surface.jumpPad
@@ -257,30 +253,25 @@ function CartController.step(
 		local level = boostLevelFor(self.driftTime)
 		if level > 0 then
 			local share = if level == 2 then DR.Level2Boost else DR.Level1Boost
-			local gain = share * D.MaxSpeed -- Tempo-Zuwachs in Studs/s
+			local gain = share * D.MaxPushSpeed -- Tempo-Zuwachs in Studs/s (Anteil am Motor-Hoechsttempo)
 			self.boostTime = DR.BoostDuration
 			self.boostAcceleration = gain / math.max(DR.BoostDuration, 0.05)
-			self.boostSpeedExtra = gain
 		end
 		self.driftTime = 0
 	end
 	self.wasHandbrake = handbrake
 
-	-- Hoechsttempo, waehrend und kurz nach einem Boost etwas hoeher
 	local boosting = self.boostTime > 0
 	if boosting then
 		self.boostTime -= dt
-	elseif self.boostSpeedExtra > 0 then
-		local fadePerSecond = (DR.Level2Boost * D.MaxSpeed) / math.max(DR.BoostFadeTime, 0.05)
-		self.boostSpeedExtra = math.max(0, self.boostSpeedExtra - fadePerSecond * dt)
 	end
-	local maxSpeed = D.MaxSpeed + self.boostSpeedExtra
 
-	-- Luftwiderstand wirkt immer (begrenzt das Tempo bergab)
+	-- Leichter Luftwiderstand wirkt immer. Bergab darf der Wagen schneller werden als das
+	-- Motor-Hoechsttempo; nur ganz oben (TerminalSpeed) bremst eine Sicherheitsgrenze, damit
+	-- die Physik nicht durch Waende "tunnelt".
 	local force = -velocity * speed * D.AirDrag * m
-	-- Hoechsttempo: alles darueber wird kraeftig abgebremst
-	if speed > maxSpeed then
-		force -= velocity.Unit * math.min((speed - maxSpeed) * D.OverSpeedBrake, 200) * m
+	if speed > D.TerminalSpeed then
+		force -= velocity.Unit * (speed - D.TerminalSpeed) * 10 * m
 	end
 	if boosting then
 		force += forward * self.boostAcceleration * m
@@ -288,8 +279,10 @@ function CartController.step(
 	local torque = Vector3.zero
 
 	if grounded then
-		-- Rollwiderstand
-		force -= forward * forwardSpeed * D.RollingResistance * m
+		-- Ausrollen: nur ohne Gas (W) bremst der Rollwiderstand, sanft wie in echt
+		if throttle <= 0 then
+			force -= forward * forwardSpeed * D.RollingResistance * m
+		end
 
 		-- Schlamm: bremst in alle Richtungen am Boden, anteilig nach Raedern im Schlamm
 		if onMud then

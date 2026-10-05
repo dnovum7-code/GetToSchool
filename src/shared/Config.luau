@@ -33,19 +33,22 @@ Config.Cart = {
 
 -- Fahrverhalten (laeuft auf dem Client des Fahrers).
 Config.Drive = {
-	-- W: anschieben / S: bremsen bzw. rueckwaerts
-	PushAcceleration = 30,
-	MaxPushSpeed = 35, -- ueber diesem Tempo bringt Anschieben nichts mehr
-	BrakeAcceleration = 60,
+	-- W: Motor ("anschieben"). Er schiebt nur bis MaxPushSpeed; bergab darf der Wagen durch
+	-- die Schwerkraft schneller werden, ohne dass etwas bremst.
+	PushAcceleration = 45, -- Motorkraft (Studs/s^2)
+	MaxPushSpeed = 60, -- Motor-Hoechsttempo auf flachem Boden
+	-- S: bremst kraeftig, im Stand rueckwaerts
+	BrakeAcceleration = 100,
 	ReverseAcceleration = 15,
 	MaxReverseSpeed = 12,
 
-	-- Bremsen durch Luft und Rollen. AirDrag begrenzt das Tempo bergab:
-	-- Endgeschwindigkeit ~ Wurzel(196 * sin(Hangwinkel) / AirDrag)
-	AirDrag = 0.008,
-	MaxSpeed = 110, -- Hoechsttempo: darueber bremst der Wagen deutlich ab
-	OverSpeedBrake = 10, -- wie hart ueber MaxSpeed gebremst wird (pro Sekunde)
-	RollingResistance = 0.15,
+	-- Ausrollen ohne Gas: Rollwiderstand (pro Sekunde, Anteil des Tempos). Mit W: kein Rollwiderstand.
+	RollingResistance = 0.2,
+	-- Leichter Luftwiderstand (waechst mit dem Tempo im Quadrat), wirkt immer.
+	-- Endtempo bergab ~ Wurzel(196 * sin(Hangwinkel) / AirDrag), z. B. 20 Grad -> ~210 Studs/s
+	AirDrag = 0.0015,
+	-- Sicherheitsgrenze gegen Physik-Fehler (kein Gameplay-Limit)
+	TerminalSpeed = 250,
 
 	-- Seitenhalt: wie stark seitliches Rutschen abgebremst wird (pro Sekunde).
 	-- MaxGripAcceleration begrenzt den Halt; darueber rutscht/driftet der Wagen.
@@ -91,10 +94,9 @@ Config.Drift = {
 	MinAngle = 12, -- Grad
 	Level1Time = 1.0, -- Sekunden Driftzeit fuer Stufe 1
 	Level2Time = 2.0, -- Sekunden Driftzeit fuer Stufe 2
-	Level1Boost = 0.15, -- Schub beim Loslassen: Anteil von Drive.MaxSpeed (0.15 = +15 %)
+	Level1Boost = 0.15, -- Schub beim Loslassen: Anteil von Drive.MaxPushSpeed (0.15 = +15 %)
 	Level2Boost = 0.25,
 	BoostDuration = 0.4, -- so lange (s) wird geschoben
-	BoostFadeTime = 1.0, -- so lange (s) darf man danach noch schneller als MaxSpeed sein
 
 	-- Effekte (nur lokal sichtbar)
 	SparkColor = Color3.fromRGB(255, 240, 200), -- Funken ohne Boost-Ladung
@@ -277,7 +279,7 @@ Config.UI = {
 	ShowSpeed = true, -- kleine Anzeige in Studs/s (fuers Tunen)
 	-- Tacho: 1 Stud entspricht in Roblox etwa 0.28 m, also km/h = Studs/s * 0.28 * 3.6
 	StudsToMeters = 0.28,
-	SpeedometerMaxKmh = 120, -- bei diesem Tempo ist der Tacho-Balken voll
+	SpeedometerMaxKmh = 150, -- bei diesem Tempo ist der Tacho-Balken voll
 }
 
 return Config
