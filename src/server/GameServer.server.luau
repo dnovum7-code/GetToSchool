@@ -13,6 +13,7 @@ local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local requestRestart = remotes:WaitForChild("RequestRestart") :: RemoteEvent
 local requestExit = remotes:WaitForChild("RequestExit") :: RemoteEvent
 local requestEnter = remotes:WaitForChild("RequestEnter") :: RemoteEvent
+local reportCrash = remotes:WaitForChild("ReportCrash") :: RemoteEvent
 
 Players.RespawnTime = Config.Race.RespawnTime
 
@@ -38,6 +39,10 @@ requestExit.OnServerEvent:Connect(function(player)
 end)
 requestEnter.OnServerEvent:Connect(function(player)
 	RaceManager.requestEnter(player)
+end)
+-- Crash-Meldung: wird nur angenommen, wenn der Spieler gerade wirklich faehrt.
+reportCrash.OnServerEvent:Connect(function(player)
+	RaceManager.reportCrash(player)
 end)
 
 local function onCharacterAdded(player: Player, character: Model)

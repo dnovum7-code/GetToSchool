@@ -88,7 +88,16 @@ Config.Crash = {
 	ImpactSpeedChange = 60, -- Tempoaenderung in einem Frame = harter Aufprall
 	KillY = -100, -- unter dieser Hoehe gilt der Wagen als abgestuerzt
 	GracePeriod = 0.5, -- nach einem Neustart so lange keine Crashs erkennen
-	RestartDelay = 0.5, -- so lange "CRASH!" zeigen, dann Neustart (gesamt < 1 s)
+	RestartDelay = 1.2, -- so lange den Crash zeigen, dann Neustart (R ueberspringt das)
+
+	-- Ragdoll: Bei einem Crash fliegt die Figur schlaff aus dem Wagen.
+	Ragdoll = true, -- false = Figur bleibt im Wagen sitzen
+	RagdollCarry = 0.8, -- Anteil des Wagen-Tempos, den die Figur mitnimmt
+	RagdollForwardBoost = 10, -- zusaetzlicher Schwung in Fahrtrichtung (Studs/s)
+	RagdollUpSpeed = 25, -- Schwung nach oben (Studs/s)
+	RagdollSpin = 6, -- zufaelliges Drehen (Radiant/s), fuer mehr Slapstick
+	RagdollJointAngle = 60, -- wie weit Arme, Beine und Kopf schlackern duerfen (Grad)
+	ServerRestartTimeout = 4, -- Sicherheitsnetz: so lange (s) nach dem Crash startet der Server selbst neu
 }
 
 -- Rennablauf (Server)

@@ -6,30 +6,16 @@
 -- Der Prompt wird nur auf diesem Client erzeugt, andere Spieler sehen ihn also nicht.
 -- Beim Ausloesen fragen wir den Server; der prueft Abstand und ob der Wagen frei ist.
 
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 
 local EnterPrompt = {}
 
-local player = Players.LocalPlayer
 local prompt: ProximityPrompt? = nil
 local promptCart: Model? = nil
 local onTriggered: () -> () = function() end
-
-local function findOwnCart(): Model?
-	local folder = workspace:FindFirstChild("Carts")
-	if not folder then
-		return nil
-	end
-	for _, cart in folder:GetChildren() do
-		if cart:IsA("Model") and cart:GetAttribute("OwnerUserId") == player.UserId then
-			return cart
-		end
-	end
-	return nil
-end
 
 local function createPrompt(cart: Model): ProximityPrompt?
 	local base = cart:FindFirstChild("Base")
@@ -59,7 +45,7 @@ end
 
 -- Jeden Frame aufrufen. `onFoot`: Spieler laeuft gerade zu Fuss herum.
 function EnterPrompt.update(onFoot: boolean)
-	local cart = findOwnCart()
+	local cart = OwnCart.find()
 	if cart ~= promptCart then
 		-- neuer Wagen (z. B. nach einem Neubau): Prompt umziehen
 		if prompt then

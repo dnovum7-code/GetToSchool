@@ -12,6 +12,7 @@ local CartController = require(script.Parent:WaitForChild("CartController"))
 local ChaseCamera = require(script.Parent:WaitForChild("ChaseCamera"))
 local CrashDetector = require(script.Parent:WaitForChild("CrashDetector"))
 local EnterPrompt = require(script.Parent:WaitForChild("EnterPrompt"))
+local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
@@ -21,6 +22,7 @@ local requestRestart = remotes:WaitForChild("RequestRestart") :: RemoteEvent
 local runState = remotes:WaitForChild("RunState") :: RemoteEvent
 local requestExit = remotes:WaitForChild("RequestExit") :: RemoteEvent
 local requestEnter = remotes:WaitForChild("RequestEnter") :: RemoteEvent
+local reportCrash = remotes:WaitForChild("ReportCrash") :: RemoteEvent
 
 local player = Players.LocalPlayer
 
@@ -30,6 +32,8 @@ local activeHumanoid: Humanoid? = nil
 local crashDetector = CrashDetector.new()
 local crashed = false
 local crashedAt = 0
+local previousVelocity = Vector3.zero -- Wagen-Tempo im letzten Frame (vor einem Aufprall)
+local ragdollLaunch = Vector3.zero -- Schwung fuer die Ragdoll, beim Crash berechnet
 
 -- Zeitmessung: Der Server entscheidet Start und Ziel. Die laufende Zeit zaehlen wir
 -- hier nur zur Anzeige mit; das Endergebnis kommt vom Server.
@@ -114,46 +118,86 @@ local function requestRestartNow()
 		return
 	end
 	lastRestartRequest = os.clock()
+	-- Als Ragdoll zuerst aufstehen, damit der Server uns wieder in den Sitz setzen kann
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid and humanoid:GetState() == Enum.HumanoidStateType.Physics then
+		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+	end
 	requestRestart:FireServer()
 end
 
-local function onCrash(reason: string)
+local function onCrash(reason: string, base: BasePart)
 	crashed = true
 	crashedAt = os.clock()
 	RaceUI.showMessage("CRASH!", Color3.fromRGB(255, 80, 60), CRASH_TEXTS[reason])
-	-- Kurz zeigen, was passiert ist, dann automatisch neu starten (gesamt unter 1 s)
-	task.delay(Config.Crash.RestartDelay, function()
+
+	-- Schwung fuer die Ragdoll: Tempo von VOR dem Aufprall (sonst waere es ~0)
+	local C = Config.Crash
+	local velocity = base.AssemblyLinearVelocity
+	if previousVelocity.Magnitude > velocity.Magnitude then
+		velocity = previousVelocity
+	end
+	local forward = Vector3.new(base.CFrame.LookVector.X, 0, base.CFrame.LookVector.Z)
+	forward = if forward.Magnitude > 0.1 then forward.Unit else Vector3.zero
+	ragdollLaunch = velocity * C.RagdollCarry
+		+ forward * C.RagdollForwardBoost
+		+ Vector3.yAxis * C.RagdollUpSpeed
+	if C.Ragdoll then
+		reportCrash:FireServer()
+	end
+
+	-- Crash eine Weile zeigen, dann automatisch neu starten. R ueberspringt das.
+	task.delay(C.RestartDelay, function()
 		if crashed then
 			requestRestartNow()
 		end
 	end)
 end
 
--- Antwort des Servers: Wagen steht wieder am Start.
-local function onReset(spawnCFrame: CFrame)
-	local current = controller
-	if not current then
+-- Server hat die Ragdoll gebaut: Figur schlaff schalten und wegschleudern.
+-- (Unsere Figur rechnet dieser Client, deshalb setzen wir Zustand und Tempo hier.)
+local function onRagdoll()
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not character or not humanoid then
 		return
 	end
-	-- Wir rechnen die Physik des Wagens, also setzen wir Position und Tempo auch hier
-	-- zurueck (Geschwindigkeiten vom Server wuerden bei uns nicht ankommen).
-	current.cart:PivotTo(spawnCFrame)
-	local models: { Instance } = { current.cart }
-	local character = activeHumanoid and activeHumanoid.Parent
-	if character then
-		table.insert(models, character)
-	end
-	for _, model in models do
-		for _, part in model:GetDescendants() do
-			if part:IsA("BasePart") then
-				part.AssemblyLinearVelocity = Vector3.zero
-				part.AssemblyAngularVelocity = Vector3.zero
-			end
+	humanoid:ChangeState(Enum.HumanoidStateType.Physics) -- Humanoid steuert nichts mehr
+	local spin = Config.Crash.RagdollSpin
+	local randomSpin = Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 2 * spin
+	for _, part in character:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.AssemblyLinearVelocity = ragdollLaunch
+			part.AssemblyAngularVelocity = randomSpin
 		end
 	end
+end
+
+-- Antwort des Servers: Wagen steht wieder am Start.
+local function onReset(spawnCFrame: CFrame)
 	crashDetector:reset()
 	crashed = false
+	previousVelocity = Vector3.zero
 	RaceUI.hideMessage()
+
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid and humanoid:GetState() == Enum.HumanoidStateType.Physics then
+		-- aus der Ragdoll aufstehen, damit der Server uns wieder hinsetzen kann
+		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+	end
+
+	-- Wir rechnen die Physik des Wagens, also setzen wir Position und Tempo auch hier
+	-- zurueck (Geschwindigkeiten vom Server wuerden bei uns nicht ankommen).
+	local cart = OwnCart.find()
+	if cart then
+		cart:PivotTo(spawnCFrame)
+		OwnCart.stopMotion(cart)
+	end
+	if character then
+		OwnCart.stopMotion(character)
+	end
 	ChaseCamera.snap()
 end
 
@@ -168,12 +212,7 @@ local function onExited(landing: CFrame)
 	end
 	humanoid.Sit = false
 	character:PivotTo(landing)
-	for _, part in character:GetDescendants() do
-		if part:IsA("BasePart") then
-			part.AssemblyLinearVelocity = Vector3.zero
-			part.AssemblyAngularVelocity = Vector3.zero
-		end
-	end
+	OwnCart.stopMotion(character)
 end
 
 runState.OnClientEvent:Connect(function(kind: string, ...)
@@ -181,6 +220,8 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		runPhase = "Ready"
 		RaceUI.setTimer(0)
 		onReset(...)
+	elseif kind == "Ragdoll" then
+		onRagdoll()
 	elseif kind == "Exited" then
 		onExited(...)
 	elseif kind == "Aborted" then
@@ -215,10 +256,26 @@ ContextActionService:SetTitle("GetToSchoolRestart", "R")
 
 -- Prueft jeden Frame, ob wir (noch) im eigenen Wagen sitzen. Das ist robuster als nur
 -- auf Events zu hoeren, z. B. nach einem Respawn.
+local seatMismatchSince: number? = nil
 local function updateSeat()
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	local seat = humanoid and humanoid.SeatPart
+
+	-- Der Server hat uns in den Sitz geschweisst, aber der Humanoid hat es (z. B. direkt
+	-- nach der Ragdoll) nicht mitbekommen: nach kurzer Zeit selbst hinsetzen.
+	local cart = OwnCart.find()
+	local cartSeat = cart and cart:FindFirstChild("Seat") :: Seat?
+	if humanoid and not seat and cartSeat and cartSeat.Occupant == humanoid then
+		seatMismatchSince = seatMismatchSince or os.clock()
+		if os.clock() - (seatMismatchSince :: number) > 0.3 then
+			humanoid.Sit = true
+			seatMismatchSince = nil
+		end
+	else
+		seatMismatchSince = nil
+	end
+
 	if humanoid and seat and isOwnCartSeat(seat) and humanoid.Health > 0 then
 		if seat ~= activeSeat then
 			deactivate()
@@ -265,7 +322,13 @@ RunService.PreSimulation:Connect(function(dt)
 	updateSeat()
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	EnterPrompt.update(controller == nil and humanoid ~= nil and humanoid.Health > 0)
+	EnterPrompt.update(controller == nil and not crashed and humanoid ~= nil and humanoid.Health > 0)
+
+	-- Sicherheitsnetz: falls die Neustart-Anfrage nach einem Crash verloren ging, nochmal fragen
+	if crashed and os.clock() - crashedAt > Config.Crash.RestartDelay + 1 then
+		crashedAt = os.clock()
+		requestRestartNow()
+	end
 
 	local current = controller
 	if not current then
@@ -285,11 +348,8 @@ RunService.PreSimulation:Connect(function(dt)
 	if not crashed then
 		local reason = crashDetector:update(dt, current.base)
 		if reason then
-			onCrash(reason)
+			onCrash(reason, current.base)
 		end
-	elseif os.clock() - crashedAt > 1.5 then
-		-- Sicherheitsnetz: falls die erste Anfrage verloren ging, nochmal fragen
-		crashedAt = os.clock()
-		requestRestartNow()
 	end
+	previousVelocity = current.base.AssemblyLinearVelocity
 end)

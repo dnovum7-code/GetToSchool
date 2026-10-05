@@ -9,6 +9,7 @@
 -- Modus pro Spieler:
 --   Riding  sitzt im Wagen (wird automatisch wieder hineingesetzt, falls er herausfaellt)
 --   OnFoot  ist mit E ausgestiegen und laeuft herum
+--   Ragdoll ist nach einem Crash als schlaffe Puppe aus dem Wagen geflogen
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -20,13 +21,14 @@ local CartBuilder = require(script.Parent:WaitForChild("CartBuilder"))
 
 local CartManager = {}
 
-export type Mode = "Riding" | "OnFoot"
+export type Mode = "Riding" | "OnFoot" | "Ragdoll"
 
 type PlayerState = {
 	cart: Model?,
 	seatConnection: RBXScriptConnection?,
 	mode: Mode,
 	lastAction: number, -- Zeitpunkt des letzten Aus-/Einsteigens (Spam-Schutz)
+	ragdollSince: number, -- Zeitpunkt des letzten Crashs mit Ragdoll
 }
 
 local states: { [Player]: PlayerState } = {}
@@ -49,7 +51,7 @@ end
 local function getState(player: Player): PlayerState
 	local state = states[player]
 	if not state then
-		state = { mode = "Riding", lastAction = -math.huge }
+		state = { mode = "Riding", lastAction = -math.huge, ragdollSince = 0 }
 		states[player] = state
 	end
 	return state
@@ -96,31 +98,90 @@ end
 
 -- Im Wagen hat die Figur kein Gewicht (das Gewicht steckt im Ballast) und gehoert zur
 -- Kollisionsgruppe der Wagen (Fahrer anderer Wagen stoeren nicht). Zu Fuss: alles normal.
-local function applyRidingToPart(part: BasePart, riding: boolean)
+-- Als Ragdoll hat sie wieder Gewicht, bleibt aber in der Wagen-Gruppe, damit sie sich
+-- nicht im eigenen Wagen verhakt.
+local function applyModeToPart(part: BasePart, mode: Mode)
 	if part:GetAttribute("OriginalMassless") == nil then
 		part:SetAttribute("OriginalMassless", part.Massless)
 	end
-	if riding then
-		part.Massless = true
-		part.CollisionGroup = CartBuilder.COLLISION_GROUP
-	else
-		part.Massless = part:GetAttribute("OriginalMassless") == true
-		part.CollisionGroup = "Default"
-	end
+	part.Massless = if mode == "Riding" then true else part:GetAttribute("OriginalMassless") == true
+	part.CollisionGroup = if mode == "OnFoot" then "Default" else CartBuilder.COLLISION_GROUP
 end
 
-local function setRiding(character: Model, riding: boolean)
-	character:SetAttribute("Riding", riding)
+local function setCharacterMode(character: Model, mode: Mode)
+	character:SetAttribute("CartMode", mode)
 	for _, part in character:GetDescendants() do
 		if part:IsA("BasePart") then
-			applyRidingToPart(part, riding)
+			applyModeToPart(part, mode)
 		end
 	end
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
 		-- Im Wagen nicht springen (der Client sperrt den Sprung zusaetzlich).
-		humanoid.JumpPower = if riding then 0 else StarterPlayer.CharacterJumpPower
-		humanoid.JumpHeight = if riding then 0 else StarterPlayer.CharacterJumpHeight
+		local onFoot = mode == "OnFoot"
+		humanoid.JumpPower = if onFoot then StarterPlayer.CharacterJumpPower else 0
+		humanoid.JumpHeight = if onFoot then StarterPlayer.CharacterJumpHeight else 0
+	end
+end
+
+-- Ragdoll an/aus. Unity-Vergleich: Animator aus, Character Joints an.
+-- In Roblox halten Motor6D-Gelenke die Koerperteile starr zusammen (die Animation bewegt
+-- sie). Fuer die Ragdoll schalten wir sie ab und setzen an dieselben Stellen lose
+-- Kugelgelenke (BallSocketConstraint) mit Winkelgrenzen.
+local function setRagdoll(character: Model, humanoid: Humanoid, enabled: boolean)
+	if enabled then
+		humanoid.RequiresNeck = false -- sonst stirbt die Figur ohne festen Hals
+		local angle = Config.Crash.RagdollJointAngle
+		for _, motor in character:GetDescendants() do
+			-- Root-Gelenk (unsichtbarer HumanoidRootPart <-> Koerper) bleibt fest
+			if motor:IsA("Motor6D") and motor.Name ~= "Root" and motor.Name ~= "RootJoint" then
+				local part0, part1 = motor.Part0, motor.Part1
+				if part0 and part1 then
+					local a0 = Instance.new("Attachment")
+					a0.Name = "RagdollAttachment"
+					a0.CFrame = motor.C0
+					a0:SetAttribute("Ragdoll", true)
+					a0.Parent = part0
+					local a1 = Instance.new("Attachment")
+					a1.Name = "RagdollAttachment"
+					a1.CFrame = motor.C1
+					a1:SetAttribute("Ragdoll", true)
+					a1.Parent = part1
+					local socket = Instance.new("BallSocketConstraint")
+					socket.Name = "RagdollSocket"
+					socket.Attachment0 = a0
+					socket.Attachment1 = a1
+					socket.LimitsEnabled = true
+					socket.UpperAngle = angle
+					socket.TwistLimitsEnabled = true
+					socket.TwistLowerAngle = -angle
+					socket.TwistUpperAngle = angle
+					socket:SetAttribute("Ragdoll", true)
+					socket.Parent = part1
+					motor.Enabled = false
+				end
+			end
+		end
+		-- Arme und Beine kollidieren normalerweise nicht; als Ragdoll sollen sie aufschlagen
+		for _, part in character:GetDescendants() do
+			if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+				if part:GetAttribute("OriginalCanCollide") == nil then
+					part:SetAttribute("OriginalCanCollide", part.CanCollide)
+				end
+				part.CanCollide = true
+			end
+		end
+	else
+		for _, item in character:GetDescendants() do
+			if item:GetAttribute("Ragdoll") then
+				item:Destroy()
+			elseif item:IsA("Motor6D") then
+				item.Enabled = true
+			elseif item:IsA("BasePart") and item:GetAttribute("OriginalCanCollide") ~= nil then
+				item.CanCollide = item:GetAttribute("OriginalCanCollide") == true
+			end
+		end
+		humanoid.RequiresNeck = true
 	end
 end
 
@@ -223,11 +284,13 @@ function CartManager.onCharacterAdded(_player: Player, character: Model)
 	if not character:IsDescendantOf(workspace) then
 		character.AncestryChanged:Wait()
 	end
-	setRiding(character, true)
+	(character:FindFirstChildOfClass("Humanoid") :: Humanoid).BreakJointsOnDeath = false
+	setCharacterMode(character, "Riding")
 	-- Accessoires etc. koennen spaeter nachgeladen werden: gleichen Modus anwenden
 	character.DescendantAdded:Connect(function(part)
-		if part:IsA("BasePart") then
-			applyRidingToPart(part, character:GetAttribute("Riding") == true)
+		local mode = character:GetAttribute("CartMode")
+		if part:IsA("BasePart") and type(mode) == "string" then
+			applyModeToPart(part, mode :: Mode)
 		end
 	end)
 	task.wait() -- einen Frame warten, bis die Figur vollstaendig in der Welt ist
@@ -242,9 +305,13 @@ function CartManager.reset(player: Player): CFrame?
 		return nil
 	end
 	local state = getState(player)
+	local character = humanoid.Parent :: Model
+	if state.mode == "Ragdoll" then
+		setRagdoll(character, humanoid, false)
+	end
 	if state.mode ~= "Riding" then
 		state.mode = "Riding"
-		setRiding(humanoid.Parent :: Model, true)
+		setCharacterMode(character, "Riding")
 	end
 	local spawnCFrame = spawnResolver(player)
 	local cart = state.cart
@@ -289,7 +356,7 @@ function CartManager.exit(player: Player): CFrame?
 	if seatWeld then
 		seatWeld:Destroy() -- so steht man in Roblox von einem Sitz auf
 	end
-	setRiding(character, false)
+	setCharacterMode(character, "OnFoot")
 	setOwner(cart, nil) -- leerer Wagen: der Server rechnet die Physik
 	character:PivotTo(landing)
 	return landing
@@ -315,9 +382,46 @@ function CartManager.enter(player: Player): boolean
 		return false
 	end
 	state.mode = "Riding"
-	setRiding(humanoid.Parent :: Model, true)
+	setCharacterMode(humanoid.Parent :: Model, "Riding")
 	task.spawn(seatPlayer, player, cart) -- gibt den Physik-Besitz wieder an den Client
 	return true
+end
+
+-- Crash (vom Client gemeldet): Figur fliegt als Ragdoll aus dem Wagen.
+-- Der Wagen bleibt beim Client, damit er sich fluessig weiter ueberschlaegt.
+-- Gibt true zurueck, wenn die Ragdoll ausgeloest wurde.
+function CartManager.crash(player: Player): boolean
+	if not Config.Crash.Ragdoll or not CartManager.isSeated(player) then
+		return false
+	end
+	local state = states[player] :: PlayerState
+	local humanoid = getAliveHumanoid(player) :: Humanoid
+	local character = humanoid.Parent :: Model
+	local seat = getSeat(state.cart :: Model)
+
+	state.mode = "Ragdoll" -- zuerst, damit watchSeat nicht wieder hineinsetzt
+	state.ragdollSince = os.clock()
+	local seatWeld = seat:FindFirstChild("SeatWeld")
+	if seatWeld then
+		seatWeld:Destroy()
+	end
+	setCharacterMode(character, "Ragdoll")
+	setRagdoll(character, humanoid, true)
+	return true
+end
+
+function CartManager.getMode(player: Player): Mode?
+	local state = states[player]
+	return if state then state.mode else nil
+end
+
+-- Seit wann (Sekunden) liegt der Spieler als Ragdoll herum? nil = gar nicht.
+function CartManager.getRagdollTime(player: Player): number?
+	local state = states[player]
+	if state and state.mode == "Ragdoll" then
+		return os.clock() - state.ragdollSince
+	end
+	return nil
 end
 
 -- Sitzt der Spieler gerade wirklich im eigenen Wagen?

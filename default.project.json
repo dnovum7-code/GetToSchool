@@ -20,6 +20,9 @@
         },
         "RequestEnter": {
           "$className": "RemoteEvent"
+        },
+        "ReportCrash": {
+          "$className": "RemoteEvent"
         }
       }
     },

@@ -112,7 +112,23 @@ function RaceManager.requestEnter(player: Player)
 	CartManager.enter(player)
 end
 
+-- Crash (vom Client gemeldet). Der Server prueft, ob der Spieler wirklich faehrt, und
+-- laesst die Figur als Ragdoll herausfliegen. Den Neustart fragt der Client danach an.
+function RaceManager.reportCrash(player: Player)
+	if CartManager.crash(player) then
+		runState:FireClient(player, "Ragdoll")
+	end
+end
+
 local function updatePlayer(player: Player, race: RaceState)
+	-- Sicherheitsnetz: Liegt die Figur zu lange als Ragdoll herum (z. B. Neustart-Anfrage
+	-- des Clients verloren), startet der Server selbst neu.
+	local ragdollTime = CartManager.getRagdollTime(player)
+	if ragdollTime and ragdollTime > Config.Crash.ServerRestartTimeout then
+		RaceManager.restart(player)
+		return
+	end
+
 	local cart = CartManager.getCart(player)
 	local base = cart and cart:FindFirstChild("Base")
 	if not base or not base:IsA("BasePart") or not base:IsDescendantOf(workspace) then
