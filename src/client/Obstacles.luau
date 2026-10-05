@@ -17,6 +17,7 @@ local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local TagList = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("TagList"))
+local Kinematic = require(script.Parent:WaitForChild("Kinematic"))
 
 local Obstacles = {}
 
@@ -87,42 +88,11 @@ local function targetCFrame(obstacle: Obstacle, t: number): CFrame
 	end
 end
 
--- Teil(e) bewegen und die passende Geschwindigkeit setzen
+-- Teil(e) bewegen und die passende Geschwindigkeit setzen (siehe Kinematic)
 local function apply(obstacle: Obstacle, target: CFrame, dt: number)
 	local last = obstacle.lastCFrame
 	obstacle.lastCFrame = target
-	local instance = obstacle.instance
-	if instance:IsA("BasePart") then
-		instance.CFrame = target
-	elseif instance:IsA("Model") then
-		instance:PivotTo(target)
-	end
-	if dt <= 0 then
-		return
-	end
-
-	-- Geschwindigkeit aus der Bewegung seit dem letzten Frame
-	local linear = (target.Position - last.Position) / dt
-	local axis, angle = (last.Rotation:Inverse() * target.Rotation):ToAxisAngle()
-	local angular = Vector3.zero
-	if math.abs(angle) > 1e-6 then
-		angular = last.Rotation:VectorToWorldSpace(axis) * (angle / dt)
-	end
-	local pivot = target.Position
-
-	local function setVelocity(part: BasePart)
-		-- Punkt auf einem drehenden Teil: Tempo des Drehpunkts + Drehung * Hebelarm
-		part.AssemblyLinearVelocity = linear + angular:Cross(part.Position - pivot)
-		part.AssemblyAngularVelocity = angular
-	end
-	if instance:IsA("BasePart") then
-		setVelocity(instance)
-	end
-	for _, descendant in instance:GetDescendants() do
-		if descendant:IsA("BasePart") then
-			setVelocity(descendant)
-		end
-	end
+	Kinematic.move(obstacle.instance, last, target, dt)
 end
 
 local function track(kind: string, instance: Instance)

@@ -13,6 +13,10 @@ local TagList = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("T
 
 local TrackPieces = {}
 
+-- Tags des erweiterten Baukastens (M2.5)
+local TOOLKIT_TAGS =
+	{ "TriggerZone", "Spawner", "PathMover", "Gate", "Collapse", "Prop", "ForceZone", "Chaser" }
+
 local function forEachPart(instance: Instance, callback: (BasePart) -> ())
 	if instance:IsA("BasePart") then
 		callback(instance)
@@ -83,6 +87,29 @@ function TrackPieces.init()
 			end)
 		end)
 	end
+
+	-- Erweiterter Baukasten (M2.5): Jeder Baustein bekommt eine feste Nummer ("PieceId"),
+	-- aus der jeder Client denselben Zufall berechnet (gleiche Steine fuer alle Spieler).
+	local nextPieceId = 0
+	for _, tag in TOOLKIT_TAGS do
+		TagList.watch(tag, function(instance)
+			if type(instance:GetAttribute("PieceId")) ~= "string" then
+				nextPieceId += 1
+				instance:SetAttribute("PieceId", tag .. tostring(nextPieceId))
+			end
+		end)
+	end
+
+	-- Unsichtbare Bereiche (TriggerZone): nur Messbereich, im Spiel unsichtbar
+	TagList.watch("TriggerZone", function(instance)
+		forEachPart(instance, function(part)
+			part.Anchored = true
+			part.CanCollide = false
+			part.CanQuery = false
+			part.CanTouch = false
+			part.Transparency = 1
+		end)
+	end)
 
 	-- Hazard: standardmaessig nicht fest (Wasser, Grube), mit Attribut Solid = true fest
 	TagList.watch("Hazard", function(instance)

@@ -24,6 +24,7 @@ local ProgressUI = require(script.Parent:WaitForChild("ProgressUI"))
 local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
 local ShopUI = require(script.Parent:WaitForChild("ShopUI"))
 local TrackSensors = require(script.Parent:WaitForChild("TrackSensors"))
+local Toolkit = require(script.Parent:WaitForChild("Toolkit"))
 local Obstacles = require(script.Parent:WaitForChild("Obstacles"))
 local RandomEventsClient = require(script.Parent:WaitForChild("RandomEventsClient"))
 local SoundSystem = require(script.Parent:WaitForChild("SoundSystem"))
@@ -155,6 +156,7 @@ CoinsClient.init() -- Muenzen drehen und einsammeln
 LaunchablesClient.init() -- Objekte wegschleudern (Kuh, Muelltonne ...)
 ProgressClient.init() -- Spielstand-Kopie vom Server
 AbilityHud.init() -- Abilities unten links
+Toolkit.init() -- erweiterter Baukasten (Trigger, Spawner, Tore ...)
 -- Shop (Taste B): nur ausserhalb eines Laufs (der Server prueft das auch)
 ShopUI.init(function()
 	return runPhase == "Ready" or runPhase == "Finished" or runPhase == "Aborted"
@@ -579,9 +581,11 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 			RaceUI.hideGameOver()
 			Abilities.reset("Full")
 			LaunchablesClient.resetAll() -- weggeschleuderte Objekte stehen wieder
+			Toolkit.reset("Full")
 		end
 		if keepRunning then
 			Abilities.reset("Checkpoint")
+			Toolkit.reset("Checkpoint")
 		end
 		onReset(spawnCFrame)
 	elseif kind == "Events" then
@@ -753,6 +757,7 @@ RunService.PreSimulation:Connect(function(dt)
 	local current = controller
 	if not current then
 		DriftEffects.update(dt, nil) -- alte Reifenspuren verblassen trotzdem weiter
+		Toolkit.step({ dt = dt }) -- Baukasten laeuft weiter (z. B. Auto-Strom)
 		return
 	end
 	if not current.base:IsDescendantOf(workspace) then
@@ -786,6 +791,13 @@ RunService.PreSimulation:Connect(function(dt)
 	if not crashed then
 		abilityContext.telemetry = telemetry
 		Abilities.afterStep(abilityContext)
+	end
+	-- Baukasten (Trigger, Spawner, Kraftzonen ...): nach der Fahrphysik, damit zusaetzliche
+	-- Kraefte (ForceZone) in diesem Physik-Schritt gelten. Im Crash kein Wagen (keine Trigger).
+	if crashed then
+		Toolkit.step({ dt = dt })
+	else
+		Toolkit.step({ dt = dt, cart = current.cart, base = current.base, controller = current })
 	end
 	if not crashed then
 		CoinsClient.update(current.base)

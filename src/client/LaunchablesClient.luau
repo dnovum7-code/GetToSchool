@@ -8,7 +8,6 @@
 --   * Kompletter Neustart (T): alle Objekte stehen wieder.
 -- Die Kopie fliegt nur bei uns; andere Spieler sehen das Objekt weiter an seinem Platz.
 
-local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -18,6 +17,7 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 local LaunchMath =
 	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression"):WaitForChild("LaunchMath"))
 local TagList = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("TagList"))
+local LocalClone = require(script.Parent:WaitForChild("LocalClone"))
 local LocalHide = require(script.Parent:WaitForChild("LocalHide"))
 local SoundSystem = require(script.Parent:WaitForChild("SoundSystem"))
 local TrackSensors = require(script.Parent:WaitForChild("TrackSensors"))
@@ -106,21 +106,9 @@ end
 
 -- Kopie zum Fliegen: ohne Tags (sonst waere sie selbst ein Baustein), ohne Kollision
 local function makeGhost(object: Instance): PVInstance?
-	local instance: Instance = object
-	if not (object:IsA("BasePart") or object:IsA("Model")) then
+	local ghost = LocalClone.copy(object)
+	if not ghost then
 		return nil
-	end
-	local wasArchivable = instance.Archivable
-	instance.Archivable = true -- nur Archivable-Objekte lassen sich kopieren
-	local ghost = instance:Clone() :: PVInstance
-	instance.Archivable = wasArchivable
-	for _, item in { ghost :: Instance, table.unpack(ghost:GetDescendants()) } do
-		for _, tag in item:GetTags() do
-			CollectionService:RemoveTag(item, tag)
-		end
-		if item:IsA("Script") or item:IsA("LocalScript") then
-			item:Destroy()
-		end
 	end
 	for _, part in allParts(ghost) do
 		part.Anchored = true

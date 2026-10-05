@@ -236,6 +236,19 @@ Config.Movers = {
 	PendulumDuration = 3, -- Attribut "Duration": Zeit fuer einmal hin und zurueck
 }
 
+-- Erweiterter Baukasten (M2.5): Alle Bausteine darunter laufen auf dem Client des jeweiligen
+-- Spielers (jeder hat seine eigene Version). Dauerbetrieb laeuft ueber die Serveruhr, damit
+-- alle Spieler dasselbe sehen. Vorlagen (Steine, Autos ...) liegen in
+-- ReplicatedStorage/<TemplatesFolder>; Rojo laesst diesen Ordner in Ruhe.
+Config.Toolkit = {
+	TemplatesFolder = "Templates",
+	-- TriggerZone (Tag "TriggerZone", Attribut "Signal" = Name): Faehrt der eigene Wagen hinein,
+	-- wird das Signal ausgeloest. Bausteine mit Attribut "ListenSignal" reagieren darauf.
+	TriggerOnce = false, -- Standard fuer Attribut "Once" (nur einmal pro Lauf)
+	TriggerCooldown = 2, -- Standard fuer Attribut "Cooldown" (s)
+	TriggerMargin = 0.5, -- so viel (Studs) um die Zone herum zaehlt schon als "drin"
+}
+
 -- Zufallsereignisse: Parts/Modelle mit Tag "RandomEvent" sind pro Lauf aktiv oder nicht.
 -- Attribut "Chance" (0..1): Wahrscheinlichkeit, dass es aktiv ist.
 -- Attribut "Group" (Text): aus jeder Gruppe ist pro Lauf genau ein Element aktiv
@@ -338,6 +351,8 @@ Config.Debug = {
 	TrackPieces = false,
 	-- true = alle Upgrades auf hoechster Stufe (nur in Studio), zum Testen ohne Shop
 	AllUpgrades = false,
+	-- true = Baukasten meldet im Output, welche Signale ausgeloest werden und wer reagiert
+	Toolkit = false,
 }
 
 -- Verfolgerkamera

@@ -11,6 +11,7 @@ local SPECS = {
 	"./RunRulesSpec",
 	"./LaunchMathSpec",
 	"./UnlocksSpec",
+	"./ToolkitSpec",
 }
 
 for _, path in SPECS do
