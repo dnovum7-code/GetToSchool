@@ -9,6 +9,7 @@ local SPECS = {
 	"./SaveDataSpec",
 	"./EconomySpec",
 	"./RunRulesSpec",
+	"./LaunchMathSpec",
 }
 
 for _, path in SPECS do

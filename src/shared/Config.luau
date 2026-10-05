@@ -190,6 +190,37 @@ Config.Coins = {
 	GradeBonus = { [6] = 20, [5] = 12, [4] = 7, [3] = 4, [2] = 2, [1] = 0 },
 }
 
+-- Launchables (Baustein "Launchable": Kuh, Muelltonne, Gartenzwerg, Briefkasten ...).
+-- Faehrt man hinein, kostet das ein Leben, aber der Wagen faehrt weiter (kurz abgebremst).
+-- Das Objekt fliegt absurd weit weg; ein Teil bis in den Himmel. Erscheint beim kompletten
+-- Neustart (T) wieder. Attribute am Objekt (alle optional):
+--   LaunchPower (Zahl), SpinPower (Zahl), SkyChance (0..1), Sound (Sound-Id),
+--   DisplayName (Text, z. B. "Kuh"; sonst der Name des Objekts), ComicText (z. B. "MUUH!")
+Config.Launch = {
+	Power = 140, -- Schleuderkraft (Studs/s), Attribut "LaunchPower"
+	SpinPower = 12, -- wilde Drehung (Radiant/s), Attribut "SpinPower"
+	SkyChance = 0.25, -- Anteil, der bis in den Himmel fliegt, Attribut "SkyChance"
+	SpeedCarry = 1, -- Anteil des Wagen-Tempos, den das Objekt mitnimmt
+	UpRatio = 0.8, -- Schwung nach oben = Power * UpRatio
+	Gravity = 50, -- Schwerkraft beim Flug (normal 196; kleiner = fliegt weiter)
+	SkyUpRatio = 1.5, -- Himmelsflug: Schwung nach oben = Power * SkyUpRatio ...
+	SkyAcceleration = 300, -- ... und wird so stark schneller (Studs/s^2)
+	SkyTime = 2.5, -- nach so vielen Sekunden verschwindet es mit einem Stern-Blinken
+	MaxFlightTime = 10, -- laengster normaler Flug (s)
+	LandedTime = 2, -- so lange liegt es nach der Landung noch da (s)
+	-- Treffer-Show
+	HitStop = 0.15, -- Hit-Stop: so lange (s) steht alles kurz still
+	HitSpeedKeep = 0.85, -- mit diesem Anteil des Tempos faehrt der Wagen weiter
+	HitShake = 2.5, -- Kamera-Wackeln (Grad)
+	ComicTexts = { "BONK!", "KAWUMM!", "ZONK!", "PLONK!", "WUMMS!", "KLONK!", "BOING!", "KRACH!" },
+	-- Server-Pruefung: so weit (Studs) darf der Wagen weg sein (plus Groesse des Objekts) ...
+	HitTolerance = 8,
+	LatencyAllowance = 0.3, -- ... plus Tempo * diese Sekunden
+	-- Kleiner Muenzbonus je nach Flugweite
+	BonusPerMeter = 0.02, -- 100 m = 2 Muenzen
+	MaxBonus = 10,
+}
+
 -- Bewegte Hindernisse (Standardwerte; Attribute am Part/Modell gehen vor).
 -- Alle Zeiten in Sekunden, Winkel in Grad. Attribut "Phase" (Sekunden) verschiebt den Takt,
 -- damit nicht alle Hindernisse gleichzeitig loslegen.
@@ -228,6 +259,8 @@ Config.Sounds = {
 	GameOver = { Id = "", Volume = 0.8 },
 	LifeLost = { Id = "", Volume = 0.6 },
 	Shield = { Id = "", Volume = 0.7 }, -- Fahrradhelm faengt einen Crash ab
+	Launch = { Id = "", Volume = 0.8 }, -- Treffer (wenn das Objekt kein eigenes Attribut "Sound" hat)
+	SkyStar = { Id = "", Volume = 0.6 }, -- Stern-Blinken, wenn ein Objekt im Himmel verschwindet
 	Finish = { Id = "", Volume = 0.8 }, -- im Ziel
 }
 
@@ -266,6 +299,13 @@ Config.TuningPanel = {
 	{ label = "BoostPad-Staerke", path = "Track.BoostPadStrength" },
 	{ label = "JumpPad-Staerke", path = "Track.JumpPadStrength" },
 	{ label = "Leben pro Lauf", path = "Lives.PerRun", server = true }, -- gilt ab dem naechsten T
+	{ label = "Schleuderkraft", path = "Launch.Power", server = true },
+	{ label = "Schleuder-Drehung", path = "Launch.SpinPower", server = true },
+	{ label = "Himmel-Chance (0..1)", path = "Launch.SkyChance", server = true, span = 0.25 },
+	{ label = "Flug-Schwerkraft", path = "Launch.Gravity", server = true, min = 5 },
+	{ label = "Hit-Stop (s)", path = "Launch.HitStop" },
+	{ label = "Tempo nach Treffer", path = "Launch.HitSpeedKeep", span = 0.15 },
+	{ label = "Flug-Bonus pro Meter", path = "Launch.BonusPerMeter", server = true },
 	{ label = "Ragdoll-Flug hoch", path = "Crash.RagdollUpSpeed" },
 	{ label = "Ragdoll-Flug vorne", path = "Crash.RagdollForwardBoost" },
 	{ label = "Ragdoll schwebt (0..1)", path = "Crash.RagdollFloat", span = 0.45 },

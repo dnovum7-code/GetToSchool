@@ -8,6 +8,7 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
 local Coins = require(script.Parent:WaitForChild("Coins"))
 local DevTuning = require(script.Parent:WaitForChild("DevTuning"))
+local Launchables = require(script.Parent:WaitForChild("Launchables"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local ProgressSync = require(script.Parent:WaitForChild("ProgressSync"))
 local RaceManager = require(script.Parent:WaitForChild("RaceManager"))
@@ -20,6 +21,7 @@ local requestRestart = remotes:WaitForChild("RequestRestart") :: RemoteEvent
 local requestExit = remotes:WaitForChild("RequestExit") :: RemoteEvent
 local requestEnter = remotes:WaitForChild("RequestEnter") :: RemoteEvent
 local reportCrash = remotes:WaitForChild("ReportCrash") :: RemoteEvent
+local hitLaunchable = remotes:WaitForChild("HitLaunchable") :: RemoteEvent
 
 Players.RespawnTime = Config.Race.RespawnTime
 
@@ -38,6 +40,7 @@ RaceManager.start()
 TrackPieces.init() -- getaggte Streckenbausteine einstellen
 RandomEvents.init() -- Zufallsereignisse durchnummerieren
 Coins.init() -- Muenzen einsammeln (Server prueft)
+Launchables.init() -- Objekte zum Wegschleudern
 DevTuning.init(cartsFolder) -- Tuning-Panel (nur in Studio aktiv)
 
 -- Eingaben vom Client nie blind vertrauen: Der Client darf nur "bitte Neustart" sagen
@@ -55,6 +58,10 @@ end)
 -- Crash-Meldung: wird nur angenommen, wenn der Spieler gerade wirklich faehrt.
 reportCrash.OnServerEvent:Connect(function(player, reason)
 	RaceManager.reportCrash(player, reason)
+end)
+-- Treffer an einem Launchable: Server prueft Abstand und plant den Flug
+hitLaunchable.OnServerEvent:Connect(function(player, object)
+	RaceManager.hitLaunchable(player, object)
 end)
 
 local function onCharacterAdded(player: Player, character: Model)

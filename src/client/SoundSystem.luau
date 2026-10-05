@@ -13,8 +13,19 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 
 local SoundSystem = {}
 
-local ONE_SHOTS =
-	{ "Boost", "Crash", "Checkpoint", "Finish", "Coin", "Ragdoll", "GameOver", "LifeLost", "Shield" }
+local ONE_SHOTS = {
+	"Boost",
+	"Crash",
+	"Checkpoint",
+	"Finish",
+	"Coin",
+	"Ragdoll",
+	"GameOver",
+	"LifeLost",
+	"Shield",
+	"Launch",
+	"SkyStar",
+}
 
 local oneShots: { [string]: Sound } = {}
 local engineSound: Sound? = nil
@@ -67,6 +78,31 @@ function SoundSystem.play(name: string)
 		sound.TimePosition = 0
 		sound:Play()
 	end
+end
+
+-- Sound mit beliebiger Id einmal abspielen (z. B. Attribut "Sound" an einem Objekt).
+-- Ohne gueltige Id: Ersatz-Sound `fallback` aus Config.Sounds (falls angegeben).
+function SoundSystem.playId(id: unknown, volume: number?, fallback: string?)
+	local soundId = toSoundId(id)
+	if not soundId then
+		if fallback then
+			SoundSystem.play(fallback)
+		end
+		return
+	end
+	local sound = Instance.new("Sound")
+	sound.SoundId = soundId
+	sound.Volume = volume or 0.8
+	sound.Parent = SoundService
+	sound.Ended:Once(function()
+		sound:Destroy()
+	end)
+	sound:Play()
+	task.delay(15, function()
+		if sound.Parent then
+			sound:Destroy()
+		end
+	end)
 end
 
 -- Dauer-Sounds an den eigenen Wagen haengen (3D: kommen vom Wagen)

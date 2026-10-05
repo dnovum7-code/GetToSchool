@@ -26,6 +26,7 @@ local RaceTime = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("
 local BestTimes = require(script.Parent:WaitForChild("BestTimes"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
 local Coins = require(script.Parent:WaitForChild("Coins"))
+local Launchables = require(script.Parent:WaitForChild("Launchables"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local RandomEvents = require(script.Parent:WaitForChild("RandomEvents"))
 local Track = require(script.Parent:WaitForChild("Track"))
@@ -55,6 +56,7 @@ type RaceState = {
 	lastRestart: number,
 	life: RunRules.LifeState, -- Leben und Helm-Ladungen in diesem Lauf
 	hits: number, -- getroffene Objekte (Launchables) in diesem Lauf
+	bestFlight: { name: string, meters: number }?, -- weitester Flug in diesem Lauf
 }
 
 -- Ergebnis eines Laufs, so wie es an den Client geht
@@ -69,6 +71,11 @@ export type RunResult = {
 	coinsBase: number, -- davon Grundbetrag
 	coinsGradeBonus: number, -- davon Notenbonus
 	coinsCollected: number, -- in diesem Lauf eingesammelte Muenzen
+	lives: number, -- verbleibende Leben
+	maxLives: number,
+	hits: number, -- getroffene Objekte
+	bestFlightName: string?, -- weitester Flug in diesem Lauf (z. B. "Kuh") ...
+	bestFlightMeters: number?, -- ... und wie weit
 }
 
 local races: { [Player]: RaceState } = {}
@@ -89,6 +96,7 @@ local function getRace(player: Player): RaceState
 			lastRestart = -math.huge,
 			life = RunRules.newRun(Config.Lives.PerRun, 0),
 			hits = 0,
+			bestFlight = nil,
 		}
 		races[player] = race
 	end
@@ -139,6 +147,8 @@ function RaceManager.restart(player: Player)
 	Coins.resetRun(player) -- Muenzen erscheinen wieder (die eingesammelten behaelt man)
 	race.life = RunRules.newRun(Config.Lives.PerRun, maxShieldFor(player)) -- Leben wieder voll
 	race.hits = 0
+	race.bestFlight = nil
+	Launchables.resetRun(player) -- umgeschleuderte Objekte stehen wieder
 	-- Neuer Lauf: Zufallsereignisse neu wuerfeln (vor "Reset", damit die Strecke steht)
 	runState:FireClient(player, "Events", RandomEvents.roll())
 	runState:FireClient(player, "Reset", spawnCFrame, false)
@@ -203,9 +213,26 @@ function RaceManager.applyHit(player: Player): string?
 	return outcome
 end
 
--- Zaehler fuer getroffene Objekte (Ergebnis-Screen)
-function RaceManager.addHitObject(player: Player)
-	getRace(player).hits += 1
+-- Treffer an einem Launchable (vom Client gemeldet). Der Server prueft und plant den Flug,
+-- zieht ein Leben ab (der Wagen faehrt aber weiter) und schickt dem Client den Flug.
+function RaceManager.hitLaunchable(player: Player, object: unknown)
+	local info = Launchables.tryLaunch(player, object)
+	if not info then
+		runState:FireClient(player, "LaunchRejected", object)
+		return
+	end
+	local race = getRace(player)
+	race.hits += 1
+	local best = race.bestFlight
+	if not best or info.meters > best.meters then
+		race.bestFlight = { name = info.name, meters = info.meters }
+	end
+	runState:FireClient(player, "Launch", object, info)
+	local outcome = RaceManager.applyHit(player)
+	-- Letztes Leben weg: Figur fliegt auch noch hinterher
+	if outcome == "GameOver" and CartManager.crash(player) then
+		runState:FireClient(player, "Ragdoll")
+	end
 end
 
 -- Helm-Stufe hat sich geaendert (Kauf): Ladungen neu berechnen
@@ -314,6 +341,11 @@ local function finish(player: Player, race: RaceState, finishZone: BasePart)
 		coinsBase = rewardBase,
 		coinsGradeBonus = gradeBonus,
 		coinsCollected = Coins.getRunTotal(player),
+		lives = race.life.lives,
+		maxLives = race.life.maxLives,
+		hits = race.hits,
+		bestFlightName = if race.bestFlight then race.bestFlight.name else nil,
+		bestFlightMeters = if race.bestFlight then race.bestFlight.meters else nil,
 	}
 	runState:FireClient(player, "Finished", result)
 

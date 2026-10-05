@@ -15,6 +15,7 @@ local CrashDetector = require(script.Parent:WaitForChild("CrashDetector"))
 local DevPanel = require(script.Parent:WaitForChild("DevPanel"))
 local DriftEffects = require(script.Parent:WaitForChild("DriftEffects"))
 local EnterPrompt = require(script.Parent:WaitForChild("EnterPrompt"))
+local LaunchablesClient = require(script.Parent:WaitForChild("LaunchablesClient"))
 local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 local ProgressClient = require(script.Parent:WaitForChild("ProgressClient"))
 local ProgressUI = require(script.Parent:WaitForChild("ProgressUI"))
@@ -81,6 +82,11 @@ type RunResult = {
 	coinsBase: number,
 	coinsGradeBonus: number,
 	coinsCollected: number,
+	lives: number,
+	maxLives: number,
+	hits: number,
+	bestFlightName: string?,
+	bestFlightMeters: number?,
 }
 local GOLD = Color3.fromRGB(255, 215, 80)
 local function showResult(result: RunResult)
@@ -111,6 +117,11 @@ local function showResult(result: RunResult)
 		lines,
 		if result.noCheckpointRestart then "Ohne Checkpoint-Neustart!" else "Mit Checkpoint-Neustart"
 	)
+	table.insert(lines, `Leben uebrig: {result.lives} von {result.maxLives}`)
+	table.insert(lines, `Getroffene Objekte: {result.hits}`)
+	if result.bestFlightName and result.bestFlightMeters then
+		table.insert(lines, `Weitester Flug: {result.bestFlightName} {result.bestFlightMeters} m`)
+	end
 	table.insert(
 		lines,
 		`Muenzen: +{result.coinsReward} im Ziel ({result.coinsBase} + {result.coinsGradeBonus} Notenbonus), `
@@ -138,6 +149,7 @@ local CRASH_TEXTS: { [string]: string } = {
 RaceUI.init()
 ProgressUI.init() -- Muenzzaehler
 CoinsClient.init() -- Muenzen drehen und einsammeln
+LaunchablesClient.init() -- Objekte wegschleudern (Kuh, Muelltonne ...)
 ProgressClient.init() -- Spielstand-Kopie vom Server
 Obstacles.init() -- bewegte Hindernisse (Mover, Spinner, Pendulum)
 RandomEventsClient.init() -- Zufallsereignisse ein-/ausblenden
@@ -525,6 +537,7 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 			RaceUI.hideResult()
 			RaceUI.hideGameOver()
 			CoinsClient.resetAll() -- Muenzen erscheinen wieder
+			LaunchablesClient.resetAll() -- weggeschleuderte Objekte stehen wieder
 		end
 		onReset(spawnCFrame)
 	elseif kind == "Events" then
@@ -549,6 +562,10 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		onRagdoll()
 	elseif kind == "Lives" then
 		onLives(...)
+	elseif kind == "Launch" then
+		LaunchablesClient.onLaunch(...)
+	elseif kind == "LaunchRejected" then
+		LaunchablesClient.onRejected(...)
 	elseif kind == "GameOver" then
 		onGameOver(...)
 	elseif kind == "Shielded" then
@@ -694,6 +711,14 @@ RunService.PreSimulation:Connect(function(dt)
 	local telemetry = current:step(dt, throttle, steer, driftMode, hop, surface)
 	if not crashed then
 		CoinsClient.update(current.base)
+		-- Launchable getroffen: Hit-Stop, Kamera-Wackeln; ein riesiger Tempo-Sprung ist hier
+		-- kein Crash (der Wagen steht kurz still und faehrt dann weiter)
+		LaunchablesClient.update(current.cart, current.base, function()
+			local L = Config.Launch
+			current:hitStop(L.HitStop, L.HitSpeedKeep)
+			crashDetector:relaxImpact(math.huge, L.HitStop + 0.5)
+			ChaseCamera.addShake(L.HitShake)
+		end)
 	end
 
 	-- Bouncy: federt ab, ein harter Aufprall ist hier kein Crash

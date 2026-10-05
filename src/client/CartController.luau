@@ -63,6 +63,8 @@ type ControllerData = {
 	padCooldowns: { [Instance]: number }, -- wann welches Pad zuletzt unter dem Wagen war
 	hopTime: number, -- Sekunden seit dem letzten Hopp
 	settleTime: number, -- Restzeit der Beruhigung nach Einsteigen/Neustart
+	freezeTime: number, -- Hit-Stop: Restzeit, in der der Wagen still steht
+	freezeVelocity: Vector3, -- Tempo nach dem Hit-Stop
 }
 
 export type Controller = typeof(setmetatable({} :: ControllerData, CartController))
@@ -112,6 +114,8 @@ function CartController.new(cart: Model, character: Model): Controller
 		padCooldowns = {},
 		hopTime = math.huge,
 		settleTime = Config.Drive.SettleTime,
+		freezeTime = 0,
+		freezeVelocity = Vector3.zero,
 	}, CartController)
 	return self
 end
@@ -162,6 +166,33 @@ local function addVelocity(cart: Model, delta: Vector3)
 			end
 		end
 	end
+end
+
+-- Ganzen Wagen auf ein Tempo setzen (alle Physik-Koerper) und Drehungen anhalten
+local function setVelocity(cart: Model, velocity: Vector3)
+	local done: { [BasePart]: boolean } = {}
+	for _, part in cart:GetDescendants() do
+		if part:IsA("BasePart") then
+			local root = part.AssemblyRootPart or part
+			if not done[root] then
+				done[root] = true
+				root.AssemblyLinearVelocity = velocity
+				root.AssemblyAngularVelocity = Vector3.zero
+			end
+		end
+	end
+end
+
+-- Hit-Stop: Wagen steht `duration` Sekunden still (schwebt), danach faehrt er mit dem
+-- `keep`-fachen Tempo weiter. Fuer die Treffer-Show (Launchables).
+function CartController.hitStop(self: Controller, duration: number, keep: number)
+	if duration <= 0 then
+		return
+	end
+	if self.freezeTime <= 0 then
+		self.freezeVelocity = self.base.AssemblyLinearVelocity * math.clamp(keep, 0, 1)
+	end
+	self.freezeTime = math.max(self.freezeTime, duration)
 end
 
 -- BoostPad / JumpPad unter den Raedern ausloesen. Gibt "Boost"/"Jump" (oder nil) und den
@@ -245,6 +276,36 @@ function CartController.step(
 	local angular = base.AssemblyAngularVelocity
 	self.time += dt
 	self.settleTime = math.max(0, self.settleTime - dt)
+
+	-- Hit-Stop: stillstehen und schweben (Schwerkraft ausgleichen), danach weiterfahren
+	if self.freezeTime > 0 then
+		self.freezeTime -= dt
+		if self.freezeTime > 0 then
+			setVelocity(self.cart, Vector3.zero)
+			self.driveForce.Force = Vector3.new(0, workspace.Gravity * self.mass, 0)
+			self.steerTorque.Torque = Vector3.zero
+			return {
+				speed = 0,
+				forwardSpeed = 0,
+				grounded = true,
+				driftAmount = self.driftAmount,
+				slipAngle = 0,
+				driftCharging = false,
+				skidding = false,
+				boostLevel = boostLevelFor(self.driftTime),
+				boosting = false,
+				boostStarted = false,
+				onMud = false,
+				onIce = false,
+				padEvent = nil,
+				hopped = false,
+				selfImpulse = Vector3.zero,
+			}
+		end
+		setVelocity(self.cart, self.freezeVelocity)
+		velocity = self.freezeVelocity
+		angular = Vector3.zero
+	end
 	-- Masse regelmaessig neu bestimmen (das Tuning-Panel kann den Ballast verschieben)
 	if self.time >= self.nextMeasure then
 		self.nextMeasure = self.time + 0.5

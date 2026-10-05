@@ -107,7 +107,7 @@ function RaceUI.init()
 	resultPanel.Name = "Result"
 	resultPanel.AnchorPoint = Vector2.new(0.5, 0.5)
 	resultPanel.Position = UDim2.fromScale(0.5, 0.42)
-	resultPanel.Size = UDim2.new(0, 460, 0, 230)
+	resultPanel.Size = UDim2.new(0, 520, 0, 300)
 	resultPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
 	resultPanel.BackgroundTransparency = 0.25
 	resultPanel.Visible = false
@@ -125,10 +125,11 @@ function RaceUI.init()
 	resultLines = makeLabel({
 		Name = "Lines",
 		Position = UDim2.new(0, 20, 0, 66),
-		Size = UDim2.new(1, -150, 0, 150),
+		Size = UDim2.new(1, -150, 0, 220),
 		Font = Enum.Font.Gotham,
 		TextScaled = false,
-		TextSize = 20,
+		TextSize = 18,
+		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
 		Text = "",

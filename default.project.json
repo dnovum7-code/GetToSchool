@@ -32,6 +32,9 @@
         },
         "CollectCoin": {
           "$className": "RemoteEvent"
+        },
+        "HitLaunchable": {
+          "$className": "RemoteEvent"
         }
       }
     },
