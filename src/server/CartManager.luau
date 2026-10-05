@@ -226,11 +226,11 @@ local function watchSeat(player: Player, state: PlayerState, cart: Model)
 	end)
 end
 
-local function createCart(player: Player, state: PlayerState): Model
+local function createCart(player: Player, state: PlayerState, at: CFrame): Model
 	if state.cart then
 		state.cart:Destroy()
 	end
-	local cart = CartBuilder.build(player, spawnResolver(player))
+	local cart = CartBuilder.build(player, at)
 	cart.Parent = cartsFolder
 	state.cart = cart
 	watchSeat(player, state, cart)
@@ -299,7 +299,8 @@ end
 -- Neustart: Wagen samt Fahrer sofort an den Start setzen. Ist der Wagen kaputt
 -- (z. B. ins Nichts gefallen), wird ein neuer gebaut. Gibt die Startposition zurueck,
 -- oder nil, wenn gerade kein Neustart moeglich ist (Figur tot / noch nicht da).
-function CartManager.reset(player: Player): CFrame?
+-- `at`: anderer Ort als der Start (z. B. ein Checkpoint).
+function CartManager.reset(player: Player, at: CFrame?): CFrame?
 	local humanoid = getAliveHumanoid(player)
 	if not humanoid then
 		return nil
@@ -313,13 +314,13 @@ function CartManager.reset(player: Player): CFrame?
 		state.mode = "Riding"
 		setCharacterMode(character, "Riding")
 	end
-	local spawnCFrame = spawnResolver(player)
+	local spawnCFrame = at or spawnResolver(player)
 	local cart = state.cart
 	if cart and isCartIntact(cart) then
 		-- PivotTo verschiebt das ganze Modell; ein angeschweisster Fahrer kommt mit.
 		cart:PivotTo(spawnCFrame)
 	else
-		cart = createCart(player, state)
+		cart = createCart(player, state, spawnCFrame)
 	end
 	local seat = getSeat(cart :: Model)
 	if seat.Occupant ~= humanoid then

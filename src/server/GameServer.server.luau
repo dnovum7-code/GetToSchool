@@ -30,10 +30,10 @@ end)
 RaceManager.start()
 DevTuning.init(cartsFolder) -- Tuning-Panel (nur in Studio aktiv)
 
--- Eingaben vom Client nie blind vertrauen: Der Client darf nur "bitte Neustart" sagen.
--- Argumente werden ignoriert, der Spam-Schutz steckt in RaceManager.requestRestart.
-requestRestart.OnServerEvent:Connect(function(player)
-	RaceManager.requestRestart(player)
+-- Eingaben vom Client nie blind vertrauen: Der Client darf nur "bitte Neustart" sagen
+-- ("Checkpoint" oder "Full"). RaceManager prueft die Art und hat einen Spam-Schutz.
+requestRestart.OnServerEvent:Connect(function(player, kind)
+	RaceManager.requestRestart(player, kind)
 end)
 -- Aus-/Einsteigen: Der Server prueft selbst, ob es erlaubt ist (sitzt er? nah genug?).
 requestExit.OnServerEvent:Connect(function(player)

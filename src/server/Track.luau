@@ -10,6 +10,7 @@ local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local TagList = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("TagList"))
 local CartBuilder = require(script.Parent:WaitForChild("CartBuilder"))
 
 local Track = {}
@@ -39,9 +40,9 @@ local function averageGroundNormal(center: Vector3, params: RaycastParams): Vect
 end
 
 -- Sucht unterhalb von `origin` den Boden und gibt die passende Position fuer die
--- Mitte des Korbbodens zurueck. Blickrichtung: bergab (Config.Race.StartFacing) oder,
--- bei flachem Boden, der LookVector von `origin` (waagerecht).
-function Track.placeOnGround(origin: CFrame, ignore: { Instance }): CFrame
+-- Mitte des Korbbodens zurueck. Blickrichtung: der LookVector von `origin` (waagerecht),
+-- mit `allowDownhill` und Config.Race.StartFacing = "Downhill" stattdessen bergab.
+function Track.placeOnGround(origin: CFrame, ignore: { Instance }, allowDownhill: boolean?): CFrame
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	local exclude = table.clone(ignore)
@@ -64,7 +65,7 @@ function Track.placeOnGround(origin: CFrame, ignore: { Instance }): CFrame
 	if look.Magnitude < 0.01 then
 		look = -Vector3.zAxis
 	end
-	if Config.Race.StartFacing == "Downhill" then
+	if allowDownhill and Config.Race.StartFacing == "Downhill" then
 		-- Die Bodennormale kippt in Richtung bergab; ihr waagerechter Anteil zeigt dorthin.
 		local normal = averageGroundNormal(start, params)
 		local minSlope = math.sin(math.rad(Config.Race.DownhillMinSlope))
@@ -145,7 +146,7 @@ function Track.getSpawn(): CFrame
 	if startZone then
 		-- von der Oberseite der Zone aus nach unten den Boden suchen
 		local top = startZone.CFrame * CFrame.new(0, startZone.Size.Y / 2, 0)
-		return Track.placeOnGround(top, { startZone })
+		return Track.placeOnGround(top, { startZone }, true)
 	end
 	return Track.getFallbackSpawn()
 end
@@ -155,9 +156,20 @@ function Track.getFallbackSpawn(): CFrame
 	local spawnLocation = workspace:FindFirstChildWhichIsA("SpawnLocation", true)
 	if spawnLocation then
 		local origin = (spawnLocation :: BasePart).CFrame * CFrame.new(0, 0, -10)
-		return Track.placeOnGround(origin, { spawnLocation })
+		return Track.placeOnGround(origin, { spawnLocation }, true)
 	end
-	return Track.placeOnGround(CFrame.new(0, 10, 0), {})
+	return Track.placeOnGround(CFrame.new(0, 10, 0), {}, true)
+end
+
+-- Checkpoints: Parts mit Tag "Checkpoint". Wie Zonen nur Messbereiche ohne Kollision.
+TagList.watch("Checkpoint", function(instance)
+	if instance:IsA("BasePart") then
+		prepareZone(instance)
+	end
+end)
+
+function Track.getCheckpoints(): { Instance }
+	return TagList.get("Checkpoint")
 end
 
 return Track

@@ -66,6 +66,7 @@ type RunResult = {
 	bestArrival: number,
 	isNewBest: boolean,
 	realTime: number,
+	noCheckpointRestart: boolean,
 }
 local function showResult(result: RunResult)
 	local title, color
@@ -88,6 +89,7 @@ local function showResult(result: RunResult)
 			then "  - Neue Bestzeit!"
 			else ""),
 		string.format("Fahrzeit: %.2f s", result.realTime),
+		if result.noCheckpointRestart then "Ohne Checkpoint-Neustart!" else "Mit Checkpoint-Neustart",
 	}
 	RaceUI.showResult(title, color, lines, result.grade, Config.UI.ResultDisplayTime)
 end
@@ -192,7 +194,8 @@ end
 
 -- Neustart beim Server anfragen. Der Server entscheidet und antwortet mit "Reset".
 local lastRestartRequest = 0
-local function requestRestartNow()
+-- kind: "Checkpoint" (R, nach Crash) oder "Full" (T, kompletter Neustart am Start)
+local function requestRestartNow(kind: "Checkpoint" | "Full")
 	-- funktioniert im Wagen und zu Fuss; der Server entscheidet
 	if os.clock() - lastRestartRequest < Config.Race.MinRestartInterval then
 		return
@@ -204,7 +207,7 @@ local function requestRestartNow()
 	if humanoid and humanoid:GetState() == Enum.HumanoidStateType.Physics then
 		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 	end
-	requestRestart:FireServer()
+	requestRestart:FireServer(kind)
 end
 
 local function onCrash(reason: string, base: BasePart)
@@ -233,7 +236,7 @@ local function onCrash(reason: string, base: BasePart)
 	-- Crash eine Weile zeigen, dann automatisch neu starten. R ueberspringt das.
 	task.delay(C.RestartDelay, function()
 		if crashed then
-			requestRestartNow()
+			requestRestartNow("Checkpoint")
 		end
 	end)
 end
@@ -303,9 +306,17 @@ end
 
 runState.OnClientEvent:Connect(function(kind: string, ...)
 	if kind == "Reset" then
-		runPhase = "Ready"
-		RaceUI.hideResult()
-		onReset(...)
+		local spawnCFrame: CFrame, keepRunning: boolean = ...
+		if not keepRunning then
+			-- kompletter Neustart: neuer Lauf. Beim Checkpoint-Neustart laeuft die Uhr weiter.
+			runPhase = "Ready"
+			RaceUI.hideResult()
+		end
+		onReset(spawnCFrame)
+	elseif kind == "Checkpoint" then
+		RaceUI.showToast("Checkpoint!")
+	elseif kind == "WrongCheckpoint" then
+		RaceUI.showToast("Falscher Checkpoint - falsche Reihenfolge!", 2)
 	elseif kind == "Ragdoll" then
 		onRagdoll()
 	elseif kind == "Exited" then
@@ -327,14 +338,24 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 	end
 end)
 
--- Taste R (Gamepad: Y). Auf Touch-Geraeten erscheint automatisch ein Button.
+-- Taste R (Gamepad: Y): zurueck zum letzten Checkpoint (ohne Checkpoint: zum Start).
+-- Auf Touch-Geraeten erscheint automatisch ein Button.
 ContextActionService:BindAction("GetToSchoolRestart", function(_, inputState)
 	if inputState == Enum.UserInputState.Begin then
-		requestRestartNow()
+		requestRestartNow("Checkpoint")
 	end
 	return Enum.ContextActionResult.Sink
 end, true, Enum.KeyCode.R, Enum.KeyCode.ButtonY)
 ContextActionService:SetTitle("GetToSchoolRestart", "R")
+
+-- Taste T (Gamepad: Steuerkreuz hoch): kompletter Neustart am Start, Uhr wieder 7:45
+ContextActionService:BindAction("GetToSchoolFullRestart", function(_, inputState)
+	if inputState == Enum.UserInputState.Begin then
+		requestRestartNow("Full")
+	end
+	return Enum.ContextActionResult.Sink
+end, true, Enum.KeyCode.T, Enum.KeyCode.DPadUp)
+ContextActionService:SetTitle("GetToSchoolFullRestart", "Start")
 
 -- Prueft jeden Frame, ob wir (noch) im eigenen Wagen sitzen. Das ist robuster als nur
 -- auf Events zu hoeren, z. B. nach einem Respawn.
@@ -416,7 +437,7 @@ RunService.PreSimulation:Connect(function(dt)
 	-- Sicherheitsnetz: falls die Neustart-Anfrage nach einem Crash verloren ging, nochmal fragen
 	if crashed and os.clock() - crashedAt > Config.Crash.RestartDelay + 1 then
 		crashedAt = os.clock()
-		requestRestartNow()
+		requestRestartNow("Checkpoint")
 	end
 
 	local current = controller

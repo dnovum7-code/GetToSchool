@@ -5,6 +5,10 @@
 --   Finished Ergebnis wird angezeigt, danach automatischer Neustart.
 --   Aborted  Spieler ist waehrend des Laufs ausgestiegen: Zeit ungueltig, weiter mit R.
 --
+-- Checkpoints: Faehrt der Wagen waehrend des Laufs durch ein Part mit Tag "Checkpoint",
+-- merken wir uns Position und Richtung. Neustart nach Crash und Taste R gehen dorthin
+-- zurueck (Spielzeit laeuft weiter), Taste T startet komplett neu.
+--
 -- Der Server misst die Zeit selbst (os.clock) und schaut sich jeden Frame die Position
 -- des Wagens an. Der Client kann also keine Zeit "melden", er bekommt sie nur gesagt.
 
@@ -23,8 +27,17 @@ local RaceManager = {}
 
 type Phase = "Ready" | "Running" | "Finished" | "Aborted"
 
+type Checkpoint = {
+	part: BasePart,
+	cframe: CFrame, -- hier wird der Wagen beim Checkpoint-Neustart abgesetzt
+	order: number?, -- Attribut "Order" (fuer die Reihenfolge), nil = beliebig
+}
+
 type RaceState = {
 	phase: Phase,
+	checkpoint: Checkpoint?,
+	usedCheckpointRestart: boolean,
+	wrongCheckpoint: Instance?, -- zuletzt gemeldeter Checkpoint in falscher Reihenfolge
 	spawnPosition: Vector3,
 	startTime: number, -- os.clock() beim Verlassen der Startzone
 	timeScale: number, -- Spielsekunden pro echter Sekunde in diesem Lauf
@@ -42,6 +55,7 @@ export type RunResult = {
 	bestArrival: number,
 	isNewBest: boolean,
 	realTime: number, -- echte Sekunden
+	noCheckpointRestart: boolean, -- ohne einen einzigen Checkpoint-Neustart geschafft
 }
 
 local races: { [Player]: RaceState } = {}
@@ -51,6 +65,9 @@ local function getRace(player: Player): RaceState
 	if not race then
 		race = {
 			phase = "Ready",
+			checkpoint = nil,
+			usedCheckpointRestart = false,
+			wrongCheckpoint = nil,
 			spawnPosition = Vector3.zero,
 			startTime = 0,
 			timeScale = Config.Clock.TimeScale,
@@ -63,7 +80,7 @@ local function getRace(player: Player): RaceState
 	return race
 end
 
--- Wagen an den Start, Lauf zuruecksetzen, Client informieren.
+-- Kompletter Neustart (Taste T): Wagen an den Start, neuer Lauf, Uhr wieder auf 7:45.
 function RaceManager.restart(player: Player)
 	local spawnCFrame = CartManager.reset(player)
 	if not spawnCFrame then
@@ -71,19 +88,85 @@ function RaceManager.restart(player: Player)
 	end
 	local race = getRace(player)
 	race.phase = "Ready"
+	race.checkpoint = nil
+	race.usedCheckpointRestart = false
+	race.wrongCheckpoint = nil
 	race.spawnPosition = spawnCFrame.Position
 	race.runId += 1
 	race.lastRestart = os.clock()
-	runState:FireClient(player, "Reset", spawnCFrame)
+	runState:FireClient(player, "Reset", spawnCFrame, false)
 end
 
--- Neustart-Wunsch vom Client: nur mit Spam-Schutz erlauben.
-function RaceManager.requestRestart(player: Player)
+-- Zurueck zum letzten Checkpoint (Taste R, nach Crash). Die Spielzeit laeuft weiter.
+-- Ohne Checkpoint (oder wenn gerade kein Lauf laeuft) = kompletter Neustart.
+function RaceManager.restartAtCheckpoint(player: Player)
+	local race = getRace(player)
+	local checkpoint = race.checkpoint
+	if race.phase ~= "Running" or not checkpoint then
+		RaceManager.restart(player)
+		return
+	end
+	local cframe = CartManager.reset(player, checkpoint.cframe)
+	if not cframe then
+		return
+	end
+	race.usedCheckpointRestart = true
+	race.lastRestart = os.clock()
+	runState:FireClient(player, "Reset", cframe, true)
+end
+
+-- Neustart-Wunsch vom Client: "Checkpoint" (R, Crash) oder "Full" (T). Mit Spam-Schutz.
+function RaceManager.requestRestart(player: Player, kind: unknown)
 	local race = getRace(player)
 	if os.clock() - race.lastRestart < Config.Race.MinRestartInterval then
 		return
 	end
-	RaceManager.restart(player)
+	if kind == "Full" then
+		RaceManager.restart(player)
+	else
+		RaceManager.restartAtCheckpoint(player)
+	end
+end
+
+-- Faehrt der Wagen gerade durch einen Checkpoint? Dann Position und Richtung merken.
+local function checkCheckpoints(player: Player, race: RaceState, base: BasePart)
+	local position = base.Position
+	local current = race.checkpoint
+	for _, instance in Track.getCheckpoints() do
+		if
+			not instance:IsA("BasePart")
+			or not instance:IsDescendantOf(workspace)
+			or (current and current.part == instance)
+			or not Track.isInZone(instance, position)
+		then
+			continue
+		end
+		local orderAttribute = instance:GetAttribute("Order")
+		local order = if type(orderAttribute) == "number" then orderAttribute else nil
+		local lastOrder = current and current.order
+		if order and lastOrder and order < lastOrder then
+			-- falsche Reihenfolge: einmal melden, nicht speichern
+			if race.wrongCheckpoint ~= instance then
+				race.wrongCheckpoint = instance
+				runState:FireClient(player, "WrongCheckpoint")
+			end
+			continue
+		end
+		-- Richtung: dorthin, wohin der Wagen faehrt (beim Driften nicht quer abgesetzt werden)
+		local velocity = base.AssemblyLinearVelocity
+		local direction = Vector3.new(velocity.X, 0, velocity.Z)
+		if direction.Magnitude < 5 then
+			direction = Vector3.new(base.CFrame.LookVector.X, 0, base.CFrame.LookVector.Z)
+		end
+		if direction.Magnitude < 0.01 then
+			direction = instance.CFrame.LookVector
+		end
+		local cframe = Track.placeOnGround(CFrame.lookAt(position, position + direction), { instance })
+		race.checkpoint = { part = instance, cframe = cframe, order = order or lastOrder }
+		race.wrongCheckpoint = nil
+		runState:FireClient(player, "Checkpoint")
+		return
+	end
 end
 
 local function finish(player: Player, race: RaceState, finishZone: BasePart)
@@ -103,6 +186,7 @@ local function finish(player: Player, race: RaceState, finishZone: BasePart)
 		bestArrival = race.bestArrival :: number,
 		isNewBest = isNewBest,
 		realTime = realTime,
+		noCheckpointRestart = not race.usedCheckpointRestart,
 	}
 	runState:FireClient(player, "Finished", result)
 
@@ -150,7 +234,7 @@ local function updatePlayer(player: Player, race: RaceState)
 	-- des Clients verloren), startet der Server selbst neu.
 	local ragdollTime = CartManager.getRagdollTime(player)
 	if ragdollTime and ragdollTime > Config.Crash.ServerRestartTimeout then
-		RaceManager.restart(player)
+		RaceManager.restartAtCheckpoint(player)
 		return
 	end
 
@@ -159,7 +243,7 @@ local function updatePlayer(player: Player, race: RaceState)
 	if not base or not base:IsA("BasePart") or not base:IsDescendantOf(workspace) then
 		-- Wagen ist weg (z. B. ins Nichts gefallen und von Roblox geloescht)
 		if cart and os.clock() - race.lastRestart > 1 then
-			RaceManager.restart(player)
+			RaceManager.restartAtCheckpoint(player)
 		end
 		return
 	end
@@ -188,6 +272,7 @@ local function updatePlayer(player: Player, race: RaceState)
 			runState:FireClient(player, "Started", race.timeScale)
 		end
 	elseif race.phase == "Running" then
+		checkCheckpoints(player, race, base)
 		local finishZone = Track.findZone(Config.Race.FinishZoneTag)
 		if finishZone and Track.isInZone(finishZone, position) then
 			finish(player, race, finishZone)

@@ -156,7 +156,7 @@ Config.Race = {
 	-- Vorderseite der Startzone), "ZoneFront" = immer zur Vorderseite der Startzone.
 	StartFacing = "Downhill",
 	DownhillMinSlope = 5, -- Grad; flacher gilt als eben
-	MinRestartInterval = 0.3, -- Schutz gegen Spam der Neustart-Taste
+	MinRestartInterval = 0.3, -- Schutz gegen Spam der Neustart-Tasten (R / T)
 	StartGrace = 0.3, -- nach einem Neustart so lange keine Zonen pruefen
 	AutoRestartAfterFinish = 5, -- Sekunden nach dem Ziel bis zum Neustart (0 = aus)
 	StartDistanceWithoutZone = 4, -- ohne Startzone: Zeit laeuft ab dieser Strecke
