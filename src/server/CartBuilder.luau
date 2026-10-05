@@ -69,6 +69,8 @@ function CartBuilder.build(owner: Player, cframe: CFrame): Model
 	model.Name = "Cart_" .. owner.Name
 	model:SetAttribute("IsCart", true)
 	model:SetAttribute("OwnerUserId", owner.UserId)
+	-- Bei StreamingEnabled kommt der Wagen immer komplett beim Client an (nie nur halb).
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 
 	-- Korbboden: Wurzel der Assembly
 	local base = makePart({
