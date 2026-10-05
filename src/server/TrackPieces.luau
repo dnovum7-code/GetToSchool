@@ -100,16 +100,18 @@ function TrackPieces.init()
 		end)
 	end
 
-	-- Unsichtbare Bereiche (TriggerZone): nur Messbereich, im Spiel unsichtbar
-	TagList.watch("TriggerZone", function(instance)
-		forEachPart(instance, function(part)
-			part.Anchored = true
-			part.CanCollide = false
-			part.CanQuery = false
-			part.CanTouch = false
-			part.Transparency = 1
+	-- Unsichtbare Bereiche (TriggerZone, Spawner): nur Messbereich, im Spiel unsichtbar
+	for _, tag in { "TriggerZone", "Spawner" } do
+		TagList.watch(tag, function(instance)
+			forEachPart(instance, function(part)
+				part.Anchored = true
+				part.CanCollide = false
+				part.CanQuery = false
+				part.CanTouch = false
+				part.Transparency = 1
+			end)
 		end)
-	end)
+	end
 
 	-- Hazard: standardmaessig nicht fest (Wasser, Grube), mit Attribut Solid = true fest
 	TagList.watch("Hazard", function(instance)

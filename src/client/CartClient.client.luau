@@ -815,6 +815,10 @@ RunService.PreSimulation:Connect(function(dt)
 	if TrackSensors.touching(current.cart, "Bouncy") then
 		crashDetector:relaxImpact(math.huge, Config.Track.BouncyCrashGrace)
 	end
+	-- Baukasten-Objekte ohne Hazard (Steine, Autos, Props, Hund) schubsen nur
+	if TrackSensors.touching(current.cart, "SoftHit") then
+		crashDetector:relaxImpact(math.huge, Config.Toolkit.SoftHitGrace)
+	end
 	-- Nach einem JumpPad: Landung darf haerter sein (bis zur Landung plus etwas Puffer)
 	if telemetry.padEvent == "Jump" then
 		local airTime = 2 * Config.Track.JumpPadStrength / math.max(workspace.Gravity, 1) + 1

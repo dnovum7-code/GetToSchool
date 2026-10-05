@@ -1,6 +1,7 @@
 --!strict
 local TestLib = require("./TestLib")
 local Rng = require("../src/shared/Toolkit/Rng")
+local SpawnSchedule = require("../src/shared/Toolkit/SpawnSchedule")
 local TriggerRules = require("../src/shared/Toolkit/TriggerRules")
 
 local describe, it, expect = TestLib.describe, TestLib.it, TestLib.expect
@@ -71,6 +72,59 @@ describe("TriggerRules", function()
 		TriggerRules.update(state, true, 1, false, 0)
 		TriggerRules.rearm(state)
 		expect(state.inside).toBe(false)
+	end)
+end)
+
+describe("SpawnSchedule", function()
+	local function random(k: number): number
+		return Rng.at(99, k, 1)
+	end
+
+	it("Ereignisse kommen im Abstand Interval (ohne Zufall exakt)", function()
+		local noRandom = function(_k: number): number
+			return 0.5
+		end
+		local due, lastK = SpawnSchedule.due(SpawnSchedule.startIndex(10, 2), 10, 2, 0, noRandom)
+		expect(due).toEqual({ 5 })
+		expect(lastK).toBe(5)
+		local later, lastK2 = SpawnSchedule.due(lastK, 15.9, 2, 0, noRandom)
+		expect(later).toEqual({ 6, 7 })
+		expect(lastK2).toBe(7)
+	end)
+
+	it("Zufallsversatz bleibt im Intervall, Reihenfolge stimmt", function()
+		local previous = -math.huge
+		for k = 1, 200 do
+			local t = SpawnSchedule.timeOf(k, 3, 10, random)
+			expect(t >= k * 3).toBe(true)
+			expect(t < (k + 1) * 3).toBe(true)
+			expect(t > previous).toBe(true)
+			previous = t
+		end
+	end)
+
+	it("zwei Clients berechnen denselben Plan", function()
+		local a = SpawnSchedule.due(100, 260, 3, 1, random)
+		local b = SpawnSchedule.due(100, 260, 3, 1, random)
+		expect(a).toEqual(b)
+	end)
+
+	it("kein riesiger Rueckstand nach langer Pause", function()
+		local due = SpawnSchedule.due(0, 100000, 1, 0, random)
+		expect(#due <= 51).toBe(true)
+	end)
+
+	it("maxCount begrenzt", function()
+		local due = SpawnSchedule.due(0, 100, 1, 0, random, 3)
+		expect(#due).toBe(3)
+	end)
+
+	it("Namensliste und Auswahl", function()
+		local names = SpawnSchedule.splitNames(" Stein1, Stein2 ,,Auto ")
+		expect(names).toEqual({ "Stein1", "Stein2", "Auto" })
+		expect(SpawnSchedule.pick(names, 0)).toBe("Stein1")
+		expect(SpawnSchedule.pick(names, 0.999)).toBe("Auto")
+		expect(SpawnSchedule.pick({}, 0.5)).toBeNil()
 	end)
 end)
 

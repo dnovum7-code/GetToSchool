@@ -247,6 +247,32 @@ Config.Toolkit = {
 	TriggerOnce = false, -- Standard fuer Attribut "Once" (nur einmal pro Lauf)
 	TriggerCooldown = 2, -- Standard fuer Attribut "Cooldown" (s)
 	TriggerMargin = 0.5, -- so viel (Studs) um die Zone herum zaehlt schon als "drin"
+	-- Objekte ohne Hazard (Steine, Autos, Props, Hund) schubsen nur: so lange (s) nach der
+	-- Beruehrung zaehlt ein harter Stoss nicht als Crash
+	SoftHitGrace = 0.3,
+}
+
+-- Spawner (Tag "Spawner", Part): Objekte erscheinen an zufaelligen Stellen innerhalb des
+-- Parts und bekommen Schwung in Richtung seiner Vorderseite. Standardwerte der Attribute:
+Config.Spawner = {
+	Template = "", -- Name der Vorlage in ReplicatedStorage/Templates, mehrere durch Komma
+	Interval = 3, -- Sekunden zwischen zwei Ausloesungen (Dauerbetrieb)
+	IntervalRandom = 1, -- zufaellig bis zu so viel spaeter
+	Burst = 1, -- Anzahl Objekte pro Ausloesung
+	Speed = 30, -- Schwung (Studs/s) in Richtung der Vorderseite
+	SpeedRandom = 5, -- +/- so viel
+	SpreadAngle = 10, -- Streuung der Richtung (Grad)
+	Spin = 0, -- zufaellige Drehung (Radiant/s), z. B. 4 fuer Steine
+	ScaleMin = 1, -- Attribut "ScaleRandom" (NumberRange, z. B. 0.8 - 1.3) ...
+	ScaleMax = 1, -- ... oder Zahl x = 1-x .. 1+x
+	Lifetime = 12, -- Sekunden, dann verschwindet das Objekt
+	DespawnY = -100, -- unter dieser Hoehe verschwindet es auch
+	MaxActive = 12, -- hoechstens so viele gleichzeitig (pro Spawner)
+	ActiveRadius = 400, -- laeuft nur, wenn dein Wagen naeher ist (Dauerbetrieb)
+	Hazard = false, -- true = Beruehrung ist ein Crash, false = nur Schubs
+	HazardMessage = "Getroffen!", -- Attribut "Message"
+	Kinematic = false, -- true = faehrt stur geradeaus, ohne Schwerkraft (z. B. Auto-Strom)
+	PlaceholderSize = 3, -- Ersatz-Kugel, wenn die Vorlage fehlt
 }
 
 -- Zufallsereignisse: Parts/Modelle mit Tag "RandomEvent" sind pro Lauf aktiv oder nicht.

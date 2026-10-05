@@ -11,6 +11,7 @@
 --                            Trigger scharf, Verfolger nach Hause, Signal-Tore zu.
 --                            Props bleiben liegen (Chaos-Zaehler bleibt).
 
+local Spawners = require(script:WaitForChild("Spawners"))
 local ToolkitTypes = require(script:WaitForChild("ToolkitTypes"))
 local TriggerZones = require(script:WaitForChild("TriggerZones"))
 
@@ -18,6 +19,7 @@ local Toolkit = {}
 
 local MODULES: { ToolkitTypes.Piece } = {
 	TriggerZones,
+	Spawners,
 }
 
 function Toolkit.init()
