@@ -33,10 +33,12 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
 - Commits nach jedem funktionierenden Schritt.
 
 ## Aktueller Meilenstein
-M1.5 – Fahrgefühl ausbauen: Aus-/Einsteigen, Drift mit Boost, lustiger
-Ragdoll-Crash, Tacho und Kamera-Wackeln, Tuning-Panel (nur Studio).
-(Erledigt: M1 – Wagen fährt den Test-Hügel runter, steuerbar, Crash-Erkennung,
-sofortiger Neustart, Ziel beendet den Lauf mit Zeit.)
+M2 – Erster Track: Baukasten aus getaggten Bausteinen (siehe README „Baukasten“),
+Schulglocke als Timer (7:45 → 8:00) mit Schulnote 1–6, Checkpoints (R/T),
+Streckenbausteine, bewegte Hindernisse, Zufallsereignisse, Sound-Grundlage.
+Bausteine lesen Parameter aus Attributen, Standardwerte aus der Config.
+(Erledigt: M1 – Fahrgefühl-Grundlage. M1.5 – Aus-/Einsteigen, Drift mit Boost,
+Ragdoll-Crash, Tacho, Kamera-Wackeln, Tuning-Panel; M1.5 noch nicht getestet/getunt.)
 
 ## Steuerung
 | Aktion | Tastatur | Gamepad | Touch |
@@ -45,7 +47,8 @@ sofortiger Neustart, Ziel beendet den Lauf mit Zeit.)
 | Lenken | A / D (Pfeil links/rechts) | – | – |
 | Aussteigen (im Wagen) | E | X | Button „Raus“ |
 | Einsteigen (am eigenen leeren Wagen) | E | X | Hinweis antippen |
-| Neustart (auch nach Crash, überspringt Wartezeit) | R | Y | Button „R“ |
+| Zurück zum letzten Checkpoint (auch nach Crash, überspringt Wartezeit; ohne Checkpoint: Start) | R | Y | Button „R“ |
+| Kompletter Neustart am Start (Uhr wieder 7:45) | T | Steuerkreuz hoch | Button „Start“ |
 | Tuning-Panel (nur Studio) | F2 | – | – |
 | Drift / Handbremse (halten, loslassen = Boost) | Shift | B | Button „Drift“ |
 | Sprung / Doublejump | Leertaste (reserviert, kommt später) | A | – |

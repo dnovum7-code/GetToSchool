@@ -48,7 +48,7 @@ stylua src        # formatiert den Code
 selene src        # Linter (findet typische Fehler)
 ```
 
-## Code-Überblick (Meilenstein M1)
+## Code-Überblick
 
 | Datei | Läuft auf | Aufgabe |
 |---|---|---|
@@ -69,6 +69,14 @@ selene src        # Linter (findet typische Fehler)
 | `src/client/DriftEffects.luau` | Client | Funken und Reifenspuren beim Drift (nur lokal) |
 | `src/shared/TuningSliders.luau` | beiden | Welche Werte das Tuning-Panel zeigt |
 | `src/server/DevTuning.luau` | Server | Tuning-Werte, die der Server braucht (nur Studio) |
+| `src/shared/SchoolClock.luau` | beiden | Spielzeit (7:45 → 8:00), Uhrzeiten, Schulnote |
+| `src/shared/TagList.luau` | beiden | Aktuelle Liste aller Objekte pro Tag |
+| `src/server/TrackPieces.luau` | Server | Stellt getaggte Bausteine ein (Anchored, Kollision, Material) |
+| `src/server/RandomEvents.luau` | Server | Würfelt pro Lauf die Zufallsereignisse |
+| `src/client/TrackSensors.luau` | Client | Erkennt Bausteine unter/um den Wagen (Raycast, Overlap) |
+| `src/client/Obstacles.luau` | Client | Bewegt Mover, Spinner, Pendulum |
+| `src/client/RandomEventsClient.luau` | Client | Blendet inaktive Zufallsereignisse aus |
+| `src/client/SoundSystem.luau` | Client | Sounds (IDs in `Config.Sounds`) |
 
 Unity-Vergleich: `*.server.luau` / `*.client.luau` sind wie MonoBehaviours, die von selbst
 starten. Alle anderen `.luau`-Dateien sind ModuleScripts, also normale Klassen/Bibliotheken,
@@ -93,7 +101,62 @@ die per `require` geladen werden.
 6. Die Zeit läuft los, sobald der Wagen die Startzone verlässt, und stoppt, sobald er in die
    Zielzone fährt. Ohne Startzone startet der Wagen 10 Studs vor dem *SpawnLocation*.
 
+## Baukasten: Track bauen
+
+Du baust die Strecke aus normalen Parts (oder Modellen) und gibst ihnen einen **Tag**.
+Die Skripte stellen Anchored, CanCollide usw. selbst richtig ein. Einzelne Werte setzt du
+als **Attribut** am Part (*Properties* → ganz unten *Attributes* → `+`). Fehlt ein Attribut,
+gilt der Standardwert aus `src/shared/Config.luau`.
+
+**Tag setzen:** Part auswählen → *Properties* → *Tags* → `+` → Name eintippen (genau so
+geschrieben wie in der Tabelle). Mehrere Tags pro Part sind erlaubt (z. B. `Mover` + `Hazard`).
+
+| Tag | Wirkung | Attribute (Typ) – Standardwert |
+|---|---|---|
+| `StartZone` | Start: Wagen steht in der Mitte, schaut bergab. Zeit läuft beim Verlassen | `TimeScale` (Zahl) – `Clock.TimeScale` = 15 Spielsekunden pro Sekunde |
+| `FinishZone` | Ziel: beendet den Lauf, Ergebnis mit Note | `Grade6` … `Grade2` (Text „7:53“) – 7:53 / 7:56 / 8:00 / 8:02 / 8:05; später = Note 1 |
+| `Checkpoint` | Durchfahren speichert Position + Richtung. R / Crash → hierher | `Order` (Zahl) – keine. Mit Order zählt ein Checkpoint mit kleinerer Zahl als der letzte nicht |
+| `BoostPad` | Schub in Blickrichtung (Vorderseite) des Parts, beim Drauffahren | `Strength` (Zahl, Studs/s) – 40 |
+| `JumpPad` | Schleudert entlang der Oberseite des Parts nach oben | `Strength` (Zahl, Studs/s) – 70 (≈ 12 Studs hoch) |
+| `Mud` | Bremst stark, Drift-Ladung pausiert | `Drag` (Zahl, pro Sekunde) – 3 |
+| `Ice` | Kaum Seitenhalt und Lenkhilfe, alles rutscht | `Grip` (Zahl, 0–1) – 0.1 |
+| `Bouncy` | Federt ab statt Crash | `Bounciness` (Zahl, 0–1) – 0.9 |
+| `Hazard` | Sofortiger Crash bei Berührung (Wasser, Baugrube …) | `Message` (Text) – „Gefahrenzone!“; `Solid` (Bool) – false (= man fährt hinein) |
+| `Mover` | Fährt zwischen Startposition und Startposition + Offset hin und her | `Offset` (Vector3, relativ zum Part, −Z = vorne) – (0, 0, −30); `Duration` (s) – 3; `Pause` (s) – 1; `Phase` (s) – 0 |
+| `Spinner` | Dreht sich um die eigene Hochachse | `Speed` (Grad/s, negativ = andersrum) – 90; `Phase` (s) – 0 |
+| `Pendulum` | Schwingt um die Oberkante des Parts (Modell: um den Pivot), Achse X | `Angle` (Grad) – 45; `Duration` (s, hin und zurück) – 3; `Phase` (s) – 0 |
+| `RandomEvent` | Pro Lauf aktiv oder ausgeblendet | `Chance` (0–1) – 0.5; `Group` (Text) – keine. Aus jeder Gruppe ist genau eins aktiv (`Chance` = Gewicht) |
+
+Hinweise:
+- **Ausrichtung:** „Vorderseite“ ist die *Front*-Seite des Parts (−Z). BoostPad und Mover
+  richten sich danach. Im Zweifel ausprobieren und das Part drehen.
+- **Bodenbausteine** (BoostPad, JumpPad, Mud, Ice) werden per Raycast unter den Rädern
+  erkannt: Sie müssen befahrbar sein, also die Oberfläche der Straße bilden (oder knapp
+  darüber liegen).
+- **Bewegte Hindernisse** dürfen Modelle sein (z. B. ein Auto aus mehreren Parts). Bei
+  Modellen bestimmt der *Pivot* (Studio: *Edit Pivot*) den Dreh- bzw. Schwingpunkt.
+  Mach schnelle Hindernisse nicht zu dünn, sonst kann der Wagen hindurchrutschen.
+- **Zufallsereignisse:** Ausgeblendete Objekte sind für dich unsichtbar und ohne Wirkung.
+  Lege **keine Checkpoints** in ein RandomEvent (der Server sieht die Auswahl der Spieler
+  nicht). Jeder Spieler bekommt seine eigene Auswahl.
+
+**So baust du einen Track:**
+1. Hügel und Straße bauen. `StartZone` oben, `FinishZone` vor der Schule (große, durchsichtige
+   Quader über die ganze Straße).
+2. Alle paar Abschnitte einen `Checkpoint`-Quader über die Straße legen, bei Abzweigungen mit
+   `Order` (1, 2, 3 …; alternative Wege bekommen dieselbe Zahl).
+3. Bausteine verteilen: BoostPads auf Geraden, JumpPads vor Lücken, Schlamm/Eis in Kurven,
+   Hazards in Gruben/Wasser, Bouncy an Wänden, wo man nicht crashen soll.
+4. Hindernisse (Mover/Spinner/Pendulum) setzen, mit `Phase` gegeneinander versetzen.
+5. Abkürzungen mit `RandomEvent` mal offen, mal versperrt bauen (z. B. eine Sperre mit
+   `Chance` 0.5, oder drei Baustellen mit `Group` = „Baustelle“).
+6. Zeit testen und `TimeScale` (StartZone) sowie die Noten-Grenzen (FinishZone) so setzen,
+   dass eine gute Fahrt knapp vor 8:00 ankommt.
+
 ## M1 testen
+
+Seit M2 gilt: **R** = zurück zum letzten Checkpoint (ohne Checkpoint: zum Start), **T** =
+kompletter Neustart; die Zeit wird als Schuluhr angezeigt.
 
 `rojo serve` läuft, Studio ist verbunden. Dann **Play** (F5) drücken. Die *Output*-Ansicht
 (*View → Output*) zeigt Warnungen und Fehler.
@@ -128,6 +191,28 @@ die per `require` geladen werden.
 | Kamera-Wackeln | Schnell fahren (über ~60 Studs/s) / von einer Rampe springen | Leichtes Zittern bei Tempo, kurzes stärkeres Wackeln bei harter Landung |
 | Tuning-Panel | In Studio **F2** | Panel links mit Schiebereglern; Änderungen wirken sofort. „Kipp-Ballast“ verschiebt das Gewicht im Wagen (höher = kippeliger). Drift-Regler: Seitenhalt hinten, Rückstell-Winkel/-Stärke, Boost-Schwellen |
 | Werte kopieren | Im Panel auf „Werte kopieren“ klicken | Im Output-Fenster stehen die Werte als Config-Code zum Übernehmen |
+
+## M2 testen
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| Schuluhr | Play, losfahren | Oben steht 7:45, ab Verlassen der Startzone läuft sie (15 Spielminuten in 60 s). Ab 7:57 gelb → rot und pulsierend, ab 8:00 rot mit „zu spät!“ |
+| Pünktlich | Vor 8:00 in die Zielzone | Ergebnis-Screen: „PUENKTLICH!“, Ankunftszeit, Bestzeit, Fahrzeit, Note (6 = beste) |
+| Zu spät | Nach 8:00 ankommen (oder `TimeScale` an der StartZone auf 60 setzen) | Zufälliger Titel wie „Ab zum Rektor!“, Verspätung in Min:Sek, schlechtere Note |
+| Eigene Noten | Attribut `Grade6` = „7:50“ an der FinishZone | Note 6 nur noch bis 7:50 |
+| Checkpoint | Durch einen `Checkpoint` fahren | Hinweis „Checkpoint!“ unter der Uhr |
+| Zurück zum CP | Nach dem Checkpoint crashen oder R | Wagen steht am Checkpoint in Fahrtrichtung, Uhr läuft weiter. Ergebnis: „Mit Checkpoint-Neustart“ |
+| Komplett neu | T (Gamepad: Steuerkreuz hoch, Touch: „Start“) | Wagen am Start, Uhr 7:45, neue Zufallsereignisse |
+| Reihenfolge | Checkpoints mit `Order` 1 und 2; erst 2, dann 1 durchfahren | Bei 1: „Falscher Checkpoint“, R bringt dich zu 2 |
+| BoostPad / JumpPad | Drüberfahren | Schub nach vorne bzw. Sprung; Landung nach JumpPad ist kein Crash (außer extrem hart) |
+| Mud / Ice | Hineinfahren | Schlamm bremst stark, Drift-Funken stoppen. Eis: Wagen rutscht, lenkt kaum |
+| Bouncy | Mit Tempo gegen eine Bouncy-Wand | Wagen prallt ab, kein Crash |
+| Hazard | In einen Hazard fahren | Sofort „CRASH!“ mit dem Text aus `Message` |
+| Mover / Spinner / Pendulum | Hinfahren und anfahren lassen | Bewegung ist flüssig, der Wagen wird weggeschoben (oder crasht bei hartem Treffer), fährt nicht hindurch |
+| RandomEvent | Part mit `Chance` 0.5; mehrmals T | Mal da, mal weg (unsichtbar und durchfahrbar) |
+| Gruppe | 3 Parts mit `Group` = „A“; mehrmals T | Immer genau eins sichtbar |
+| Sounds | IDs in `Config.Sounds` eintragen | Rollen (Tonhöhe nach Tempo), Drift-Quietschen, Boost, Crash, Checkpoint, Glocke um 8:00, Ziel. Leere IDs: kein Ton, kein Fehler im Output |
+| Tuning-Panel | F2 | Neue Regler: Schlamm-Bremse, Eis-Seitenhalt, BoostPad-/JumpPad-Stärke, Spielzeit-Tempo (gilt ab dem nächsten Start); Panel scrollt |
 
 Das Tuning-Panel gibt es nur in Studio (`RunService:IsStudio()`). Im veröffentlichten Spiel
 erscheint es nicht, und der Server ignoriert dort Tuning-Anfragen.
