@@ -8,12 +8,24 @@ local UserInputService = game:GetService("UserInputService")
 
 local CartController = require(script.Parent:WaitForChild("CartController"))
 local ChaseCamera = require(script.Parent:WaitForChild("ChaseCamera"))
+local CrashDetector = require(script.Parent:WaitForChild("CrashDetector"))
+local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
 
 local player = Players.LocalPlayer
 
 local controller: CartController.Controller? = nil
 local activeSeat: BasePart? = nil
 local activeHumanoid: Humanoid? = nil
+local crashDetector = CrashDetector.new()
+local crashed = false
+
+local CRASH_TEXTS: { [CrashDetector.CrashReason]: string } = {
+	Tipped = "Umgekippt",
+	Impact = "Harter Aufprall",
+	Fell = "Abgestuerzt",
+}
+
+RaceUI.init()
 
 -- Diese Zustaende wuerden die Figur aus dem Sitz werfen
 local BLOCKED_STATES = {
@@ -57,6 +69,18 @@ local function activate(seat: BasePart, humanoid: Humanoid)
 		humanoid:SetStateEnabled(state, false)
 	end
 	ChaseCamera.start(cart:WaitForChild("Base") :: BasePart, { cart, character })
+	crashDetector:reset()
+	crashed = false
+end
+
+local function onCrash(reason: CrashDetector.CrashReason)
+	crashed = true
+	RaceUI.showMessage("CRASH!", Color3.fromRGB(255, 80, 60), CRASH_TEXTS[reason], 2)
+	-- Schritt d: nur anzeigen. Nach der Meldung wieder scharf schalten.
+	task.delay(2, function()
+		crashDetector:reset()
+		crashed = false
+	end)
 end
 
 -- Prueft jeden Frame, ob wir (noch) im eigenen Wagen sitzen. Das ist robuster als nur
@@ -119,4 +143,11 @@ RunService.PreSimulation:Connect(function(dt)
 	end
 	local throttle, steer = readInput()
 	current:step(dt, throttle, steer)
+
+	if not crashed then
+		local reason = crashDetector:update(dt, current.base)
+		if reason then
+			onCrash(reason)
+		end
+	end
 end)
