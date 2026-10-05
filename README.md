@@ -41,12 +41,18 @@ Du brauchst: **git**, **Rokit** (Werkzeug-Manager), darüber **Rojo**, und **Rob
 Unity-Vergleich: Rojo ist wie ein "Live-Import" deiner Skripte aus dem Dateisystem in die
 Szene. Bearbeite Skripte nur in den Dateien, nicht in Studio, sonst überschreibt Rojo sie.
 
-## Optional: Code-Qualität
+## Optional: Code-Qualität und automatische Tests
 
 ```bash
 stylua src        # formatiert den Code
 selene src        # Linter (findet typische Fehler)
+lune run tests/run   # automatische Tests (ohne Studio), Lune kommt mit "rokit install"
 ```
+
+Die Tests (`tests/`) prüfen die reine Spiel-Logik in `src/shared/Progression`: Speicherformat
+und Migration, Münzen und Preise, Leben/Helm, Flugweiten, Freischalt-Bedingungen. Am Ende
+steht „X von X Tests bestanden“; bei einem Fehler steht `FEHLER` mit Grund davor.
+Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 
 ## Code-Überblick
 
@@ -56,7 +62,7 @@ selene src        # Linter (findet typische Fehler)
 | `src/server/GameServer.server.luau` | Server | Einstieg: verbindet Spieler, Wagen, Rennen |
 | `src/server/CartBuilder.luau` | Server | baut den Einkaufswagen aus Parts |
 | `src/server/CartManager.luau` | Server | Wagen pro Spieler, hineinsetzen, Physik an Client geben, Zurücksetzen |
-| `src/server/Track.luau` | Server | Start-/Zielzone finden, Startposition, „ist in Zone?“ |
+| `src/server/Track.luau` | Server | Strecken finden, Start-/Zielzone pro Strecke, Startposition, „ist in Zone?“ |
 | `src/server/RaceManager.luau` | Server | Rennablauf und Zeitmessung (autoritativ) |
 | `src/client/CartClient.client.luau` | Client | Einstieg: Eingabe, Neustart-Taste, Ereignisse vom Server |
 | `src/client/CartController.luau` | Client | Fahrphysik (Kraft + Drehmoment) |
@@ -70,7 +76,7 @@ selene src        # Linter (findet typische Fehler)
 | `src/server/DevTuning.luau` | Server | Tuning-Werte, die der Server braucht (nur Studio) |
 | `src/shared/RaceTime.luau` | beiden | Zeit-Anzeige (1:23.45), Abstand (+0.45), Schulnote |
 | `src/shared/Attributes.luau` | beiden | Attribute sicher lesen (falscher Typ → Standardwert + Warnung) |
-| `src/server/BestTimes.luau` | Server | Bestzeiten pro Spieler und Track speichern (DataStore) |
+| `src/server/BestTimes.luau` | Server | Bestzeiten pro Spieler und Track (im Spielstand) |
 | `src/shared/TagList.luau` | beiden | Aktuelle Liste aller Objekte pro Tag |
 | `src/server/TrackPieces.luau` | Server | Stellt getaggte Bausteine ein (Anchored, Kollision, Material) |
 | `src/server/RandomEvents.luau` | Server | Würfelt pro Lauf die Zufallsereignisse |
@@ -78,6 +84,21 @@ selene src        # Linter (findet typische Fehler)
 | `src/client/Obstacles.luau` | Client | Bewegt Mover, Spinner, Pendulum |
 | `src/client/RandomEventsClient.luau` | Client | Blendet inaktive Zufallsereignisse aus |
 | `src/client/SoundSystem.luau` | Client | Sounds (IDs in `Config.Sounds`) |
+| `src/shared/Progression/*.luau` | beiden | Reine Logik (getestet): `SaveData` (Speicherformat), `Economy` (Münzen, Preise), `RunRules` (Leben, Helm), `LaunchMath` (Flugbahn), `Unlocks` (Strecken freischalten) |
+| `src/server/Profiles.luau` | Server | Spielstand laden/speichern (DataStore, Wiederholen bei Fehlern, Ersatz im Arbeitsspeicher) |
+| `src/server/ProgressSync.luau` | Server | Schickt dem Client eine Kopie des Spielstands (Anzeige) |
+| `src/server/Coins.luau` | Server | Münzen prüfen und gutschreiben |
+| `src/server/Launchables.luau` | Server | Treffer an Launchables prüfen, Flug planen, Rekorde, Bonus |
+| `src/server/Shop.luau` | Server | Käufe prüfen (Upgrades) |
+| `src/server/TrackUnlocks.luau` | Server | Strecken freischalten und wählen |
+| `src/client/ProgressClient.luau` | Client | Empfängt die Spielstand-Kopie, verteilt sie an UI und Abilities |
+| `src/client/ProgressUI.luau` | Client | Münzzähler, Leben (Schulranzen), Helm-Ladungen |
+| `src/client/CoinsClient.luau` | Client | Münzen drehen, einsammeln, Animation |
+| `src/client/LaunchablesClient.luau` | Client | Treffer-Show: Comic-Text, Flug, Flugweite, Stern-Blinken |
+| `src/client/Abilities/` | Client | Ein Modul pro Ability (`SpringJump`, `Helmet`, `TurboSnack`, `Glider`), `init.luau` = Manager, `AbilityTypes` = gemeinsame Schnittstelle |
+| `src/client/AbilityHud.luau` | Client | Ability-Anzeige unten links |
+| `src/client/ShopUI.luau` | Client | Menü „Pausen-Kiosk“ (B): Upgrades, Strecken, Rekorde |
+| `src/client/LocalHide.luau` | Client | Objekte nur für diesen Spieler aus-/einblenden |
 
 Unity-Vergleich: `*.server.luau` / `*.client.luau` sind wie MonoBehaviours, die von selbst
 starten. Alle anderen `.luau`-Dateien sind ModuleScripts, also normale Klassen/Bibliotheken,
@@ -114,7 +135,7 @@ geschrieben wie in der Tabelle). Mehrere Tags pro Part sind erlaubt (z. B. `Move
 
 | Tag | Wirkung | Attribute (Typ) – Standardwert |
 |---|---|---|
-| `StartZone` | Start: Wagen steht in der Mitte, schaut bergab. Zeit läuft beim Verlassen | `TrackId` (Text) – „Track1“. Bestzeiten werden pro TrackId gespeichert |
+| `StartZone` | Start: Wagen steht in der Mitte, schaut bergab. Zeit läuft beim Verlassen | `TrackId` (Text) – „Track1“, nur für Zonen außerhalb eines Track-Models (siehe „Zweiten Track anlegen“) |
 | `FinishZone` | Ziel: beendet den Lauf, Ergebnis mit Note | `Grade6` … `Grade2` (Zahl, Sekunden) – 60 / 75 / 90 / 110 / 130; langsamer = Note 1 |
 | `Checkpoint` | Durchfahren speichert Position + Richtung. R / Crash → hierher | `Order` (Zahl) – keine. Mit Order zählt ein Checkpoint mit kleinerer Zahl als der letzte nicht |
 | `BoostPad` | Schub in Blickrichtung (Vorderseite) des Parts, beim Drauffahren | `Strength` (Zahl, Studs/s) – 40 |
@@ -127,6 +148,8 @@ geschrieben wie in der Tabelle). Mehrere Tags pro Part sind erlaubt (z. B. `Move
 | `Spinner` | Dreht sich um die eigene Hochachse | `Speed` (Grad/s, negativ = andersrum) – 90; `Phase` (s) – 0 |
 | `Pendulum` | Schwingt um die Oberkante des Parts (Modell: um den Pivot), Achse X | `Angle` (Grad) – 45; `Duration` (s, hin und zurück) – 3; `Phase` (s) – 0 |
 | `RandomEvent` | Pro Lauf aktiv oder ausgeblendet | `Chance` (0–1) – 0.5; `Group` (Text) – keine. Aus jeder Gruppe ist genau eins aktiv (`Chance` = Gewicht) |
+| `Coin` | Münze: dreht sich, Durchfahren sammelt sie ein (bleibt dir auch nach Crash). Erscheint bei T wieder | `Value` (Zahl) – 1 |
+| `Launchable` | Kuh, Mülltonne, Gartenzwerg …: Hineinfahren kostet ein Leben, der Wagen fährt aber weiter, das Objekt fliegt absurd weit. Erscheint bei T wieder | `LaunchPower` (Zahl) – 140; `SpinPower` (Zahl) – 12; `SkyChance` (0–1) – 0.25 (fliegt in den Himmel); `Sound` (Sound-Id, z. B. „Muh“) – keiner; `DisplayName` (Text, für Rekorde) – Name des Objekts; `ComicText` (Text, z. B. „MUUH!“) – zufällig |
 
 Hinweise:
 - **Ausrichtung:** „Vorderseite“ ist die *Front*-Seite des Parts (−Z). BoostPad und Mover
@@ -137,6 +160,11 @@ Hinweise:
 - **Bewegte Hindernisse** dürfen Modelle sein (z. B. ein Auto aus mehreren Parts). Bei
   Modellen bestimmt der *Pivot* (Studio: *Edit Pivot*) den Dreh- bzw. Schwingpunkt.
   Mach schnelle Hindernisse nicht zu dünn, sonst kann der Wagen hindurchrutschen.
+- **Münzen** dürfen Parts oder Modelle sein. Ein graues Plastik-Part wird automatisch golden.
+  Die Münze dreht sich um die Hochachse; leg sie etwa auf Wagenhöhe (ca. 2 Studs über die Straße).
+- **Launchables** dürfen Modelle sein (z. B. eine Kuh aus mehreren Parts). Sie sind nicht fest:
+  Der Wagen fährt hindurch, das Objekt fliegt. Gib ihnen einen `DisplayName` („Kuh“), dann
+  heißt der Rekord „Weitester Kuh-Wurf“.
 - **Zufallsereignisse:** Ausgeblendete Objekte sind für dich unsichtbar und ohne Wirkung.
   Lege **keine Checkpoints** in ein RandomEvent (der Server sieht die Auswahl der Spieler
   nicht). Jeder Spieler bekommt seine eigene Auswahl.
@@ -152,8 +180,57 @@ Hinweise:
 5. Abkürzungen mit `RandomEvent` mal offen, mal versperrt bauen (z. B. eine Sperre mit
    `Chance` 0.5, oder drei Baustellen mit `Group` = „Baustelle“).
 6. Zeit testen und die Noten-Grenzen (`Grade6` … `Grade2` an der FinishZone, in Sekunden)
-   so setzen, dass eine sehr gute Fahrt knapp eine 6 schafft. Jeder Track bekommt an der
-   StartZone eine eigene `TrackId`, damit die Bestzeiten getrennt bleiben.
+   so setzen, dass eine sehr gute Fahrt knapp eine 6 schafft.
+7. Münzen (`Coin`) auf schwierige Wege legen, damit sich Risiko lohnt, und ein paar
+   `Launchable`-Objekte (Kühe!) dorthin stellen, wo man sie gerne umfährt.
+
+## Zweiten Track anlegen
+
+Mehrere Strecken liegen im selben Place. Jede Strecke ist ein **Model** mit dem Attribut
+`TrackId`; alles, was zu ihr gehört, liegt darin.
+
+1. **Bestehenden Track einpacken** (einmalig): Alle Teile deiner ersten Strecke (StartZone,
+   FinishZone, Checkpoints, Bausteine, Straße) markieren → Rechtsklick → *Group* (Strg+G).
+   Das Model z. B. `Track1` nennen und das Attribut `TrackId` (Text) = `Track1` setzen.
+   Das Attribut `TrackId` an der StartZone wird dann nicht mehr gebraucht. (Ohne diesen
+   Schritt funktioniert der alte Track weiter als „lose“ Strecke, solange kein Model die
+   gleiche TrackId hat.)
+2. **Neuen Track bauen**: neues Model, z. B. `Track2`, Attribut `TrackId` = `Track2`. Darin
+   eine eigene `StartZone`, `FinishZone` (mit `Grade6` … `Grade2`) und eigene `Checkpoint`s
+   (Tag oder Name, wie gewohnt). Bausteine (Pads, Münzen, Kühe, Hindernisse) gehen überall.
+3. **Name und Bedingung** in `src/shared/Config.luau` unter `Config.Tracks` eintragen:
+   ```lua
+   { id = "Track2", name = "Die Abkuerzung", unlock = { track = "Track1", grade = 4, price = 250 } },
+   ```
+   - kein `unlock` = von Anfang an frei
+   - `track` + `grade` = frei, sobald man auf dieser Strecke mindestens diese Note hat
+   - `price` = im Menü für Münzen freischaltbar
+   - beides = was zuerst erfüllt ist
+   Strecken ohne Eintrag sind frei (Name: Attribut `TrackName` am Model oder die TrackId).
+4. **Testen**: Play → **B** → Reiter *Strecken* → *Fahren*. Der Wagen wird an den Start des
+   Tracks gesetzt. Bestzeiten, Noten und Checkpoints gelten pro Strecke.
+
+Tipp: Die Strecken dürfen weit auseinander liegen (bei StreamingEnabled lädt der Server die
+neue Startgegend vor dem Wechsel). Neue Spieler starten auf der ersten freien Strecke aus
+`Config.Tracks`.
+
+## Speichern (Spielstand)
+
+Gespeichert wird pro Spieler in einem DataStore (`Config.Save.StoreName`): Münzen, gekaufte
+Upgrades mit Stufe, Bestzeiten und beste Noten pro Strecke, freigeschaltete Strecken und
+Fahrzeuge, Flug-Rekorde. Das Format hat eine Versionsnummer (`SaveData.VERSION`); alte
+Spielstände werden beim Laden automatisch umgestellt (die Bestzeiten von vor M3 werden
+einmalig übernommen).
+
+- **In Studio**: Damit wirklich gespeichert wird: *Game Settings → Security → „Enable Studio
+  Access to API Services“*. Ohne das (oder bei einem unveröffentlichten Place) wird
+  automatisch ein Speicher im Arbeitsspeicher benutzt: Alles funktioniert, ist aber nach
+  Stop weg. Im Output steht dann eine Warnung, oben erscheint ein kurzer Hinweis.
+- **Fehler**: Laden und Speichern werden bei Fehlern wiederholt (`Config.Save.Retries`).
+  Klappt das Laden gar nicht, wird für diesen Spieler in dieser Sitzung **nicht** gespeichert,
+  damit der echte Spielstand nicht überschrieben wird.
+- Gespeichert wird alle 60 s (wenn sich etwas geändert hat), nach Käufen, beim Verlassen und
+  beim Herunterfahren des Servers.
 
 ## M1 testen
 
@@ -266,6 +343,58 @@ kompletter Neustart; der Timer zeigt Minuten, Sekunden und Hundertstel.
 
 Zurück zum alten Verhalten (Shift = Drift, Loslassen = Boost): `Config.Drift.DriftByDefault = false`.
 
+## M3 testen (Progression)
+
+**Schnelltest ohne Shop:** `Config.Debug.AllUpgrades = true` (nur Studio) gibt dir alle
+Upgrades auf höchster Stufe. Für den echten Ablauf wieder auf `false`.
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| Münze | Part mit Tag `Coin` auf die Straße, durchfahren | Münze dreht/wippt, verschwindet mit kleinem Aufsteigen, oben rechts „+1“ und der Zähler hüpft |
+| Münzen bleiben | Münze einsammeln, dann crashen bzw. R | Zähler bleibt, Münze bleibt weg |
+| Münzen zurück | T | Alle Münzen sind wieder da, Zähler bleibt (man kann sie nochmal sammeln) |
+| Zielbelohnung | Ins Ziel fahren | Ergebnis: „Münzen: +X im Ziel (10 + Notenbonus)“, Zähler zählt hoch |
+| Speichern | Studio-API-Zugriff an, Münzen sammeln, Stop, Play | Münzen sind noch da |
+| Ohne API-Zugriff | API-Zugriff aus, Play | Warnung im Output „nur im Arbeitsspeicher“, kurzer Hinweis oben; alles funktioniert |
+| Leben | Oben rechts | 5 rote Schulranzen |
+| Crash kostet Leben | Umkippen/Hazard | Ein Ranzen wird grau und wackelt, „-1 Leben“, Figur fliegt weit mit Luftspur |
+| Game Over | 5x crashen | „NACHSITZEN!“ o. ä. wackelt, lustiger Text, Zahlen; nach ~4.5 s Neustart, T sofort; R tut nichts |
+| Leben auffüllen | T | Wieder 5 Ranzen |
+| Ohne Checkpoint | Vor dem ersten Checkpoint crashen | Zurück zum Start, Zeit und Leben laufen weiter (kein kompletter Neustart) |
+| Launchable | Kuh (Tag `Launchable`) umfahren | „BONK!“ am Treffpunkt, kurzer Stillstand (~0.15 s), Kamera wackelt, Wagen fährt weiter, Kuh fliegt drehend mit Luftspur, oben „Kuh: … m“ zählt hoch, ein Leben weg |
+| Himmelsflug | `SkyChance` = 1 an der Kuh | Kuh schießt nach oben, verschwindet mit Stern-Blinken, „Ab ins All!“ |
+| Rekord | Gleiche Kuh weiter wegschleudern | „NEUER REKORD!“, Menü B → Rekorde zeigt den Wert |
+| Ergebnis | Mit Treffern ins Ziel | Leben übrig, getroffene Objekte, weitester Flug |
+| Shop | Am Start **B** | Menü „Pausen-Kiosk“, Upgrades mit Stufe, Beschreibung, Preis |
+| Shop gesperrt | Losfahren, dann B | Hinweis „nur vor oder nach einem Lauf“; das Menü schließt beim Losfahren |
+| Kaufen | Genug Münzen, *Kaufen* | „Gekauft: …“, Münzen weniger, Stufe +1; bei zu wenig Münzen Hinweis |
+| Sprungfeder 1 | Leertaste | Deutlich höherer Sprung (ca. 9 Studs) statt Hopp |
+| Sprungfeder 2 | In der Luft nochmal Leertaste | Doppelsprung mit Ring-Effekt, einmal pro Sprung |
+| Fahrradhelm | Mit Helm crashen | „HELM!“, kein Leben weg, Helm-Symbol wird grau. Umgekippt: Wagen steht wieder; Aufprall: weiterfahren; Hazard: zum Checkpoint |
+| Helm laden | Nach Rettung durch einen neuen Checkpoint | Helm-Symbol wieder blau |
+| Turbo | **F** (Gamepad RB) | Schub, Krümel-Wolke, Sichtfeld zieht auf; unten links Abklingzeit, erneut F: „noch nicht verdaut“ |
+| Fallschirm | Springen, Leertaste halten | Schirm über dem Wagen, langsames Fallen, gleitet weiter, A/D lenkt |
+| Ability-Anzeige | Unten links | Pro gekaufter Ability: Name, Taste, Zustand, Balken |
+| Zweiter Track | Siehe „Zweiten Track anlegen“; B → Strecken | Gesperrte Strecke zeigt Bedingung; nach Note 4 auf Track1: Meldung „Neue Strecke freigeschaltet“; *Fahren* setzt dich an deren Start |
+| Tests | `lune run tests/run` | „45 von 45 Tests bestanden“ |
+
+### Wichtigste Studio-Tests (nach Wichtigkeit)
+
+1. **Spiel startet ohne Fehler**: Play, Output auf rote Fehler prüfen; Wagen steht am Start,
+   Münzzähler, 5 Schulranzen, Shop-Knopf sind sichtbar.
+2. **Fahren wie vorher**: Drift, Hopp, Crash, R/T funktionieren unverändert.
+3. **Crash und Leben**: Crash kostet genau ein Leben, Ragdoll fliegt, danach Checkpoint;
+   bei 0 Leben Game Over und Neustart.
+4. **Münzen**: einsammeln, nach Crash behalten, bei T wieder da, Ziel-Belohnung.
+5. **Speichern**: mit API-Zugriff Münzen sammeln → Stop → Play → noch da. Ohne API-Zugriff:
+   Warnung, aber keine Fehler.
+6. **Launchable**: Kuh umfahren – Wagen fährt weiter (kein Crash!), Kuh fliegt, Leben weg.
+7. **Shop**: kaufen, Münzen werden abgezogen, nur außerhalb eines Laufs.
+8. **Abilities** (mit `Debug.AllUpgrades`): Sprung, Doppelsprung, Helm-Rettung (alle vier
+   Crash-Arten), Turbo, Fallschirm.
+9. **Zweiter Track**: anlegen, freischalten, wählen, Checkpoints und Ziel funktionieren dort.
+10. **Zwei Spieler** (*Test → 2 Players*): Münzen und Kühe verschwinden nur beim Sammler.
+
 ## Tuning-Ablauf
 
 1. In Studio Play, **F2** öffnet das Panel. Jeder Regler startet in der Mitte = aktueller
@@ -298,6 +427,13 @@ Typische Stellschrauben:
 - Boost zu stark/zu schwach → `Drift.Level1Boost` / `Drift.Level2Boost` (Anteil von
   `Drive.MaxPushSpeed`), `Drift.BoostDuration`; Kamera-Effekt: `Camera.BoostFovKick`.
 - Boost kommt zu früh/zu spät nach dem Drift → `Drift.ReleaseDelay`.
+- Ragdoll fliegt zu wenig/zu viel → `Crash.RagdollUpSpeed`, `Crash.RagdollForwardBoost`,
+  `Crash.RagdollFloat` (Schwerkraft beim Flug).
+- Kühe fliegen zu weit/zu kurz → `Launch.Power`, `Launch.Gravity`; Himmel zu oft →
+  `Launch.SkyChance`; Hit-Stop zu lang → `Launch.HitStop`.
+- Zu viele/wenige Münzen → `Coins.FinishBase`, `Coins.GradeBonus`, `Launch.BonusPerMeter`;
+  Preise in `Config.Upgrades`.
+- Leben → `Lives.PerRun`. Abilities → `Config.Abilities` (alle im Tuning-Panel).
 - Ragdoll zu wild/zu lahm → `Crash.RagdollUpSpeed`, `Crash.RagdollCarry`, `Crash.RagdollSpin`.
 - Kamera wackelt zu viel → `Camera.ShakeAtFullSpeed`, `Camera.LandingShakePerSpeed`, `Camera.ShakeMaxAngle`.
 - Hügel liegt tiefer als −100 → `Crash.KillY` anpassen.

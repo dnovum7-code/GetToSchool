@@ -40,18 +40,26 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
   Config.TuningPanel. Fehlersuche bei Bodenbausteinen: Config.Debug.TrackPieces.
 
 ## Aktueller Meilenstein
-M2 – Erster Track: Baukasten aus getaggten Bausteinen (siehe README „Baukasten“),
-Timer (0:00.00) mit Bestzeit pro Track (DataStore), Zwischenzeiten an Checkpoints und
-Schulnote 1–6 (Grenzen in Sekunden an der FinishZone), Checkpoints (R/T),
-Streckenbausteine, bewegte Hindernisse, Zufallsereignisse, Sound-Grundlage.
-Bausteine lesen Parameter aus Attributen, Standardwerte aus der Config.
-Nach dem ersten Test überarbeitet: Drift (Front zieht, Heck schwingt, kein Dreher),
-Hopp, schwächere normale Lenkung, mehr Tempo auf flachem Boden, kein Bremsen bergab.
-Dritte Runde: Drift ist der Standard-Fahrmodus (Shift = normal fahren), Drift-Boost
-stärker und beim Drift-Ende, Reifenspuren nur in Kurven, Wackelrad-Drall schwächer.
+M3 – Progression (gebaut, noch nicht in Studio getestet):
+- Münzen: Baustein `Coin`, Server prüft das Einsammeln (Abstand), Zielbelohnung
+  (Grundbetrag + Notenbonus), Münzen bleiben nach Crash/Abbruch, Münzen erscheinen bei T wieder.
+- Speichern: versionierter Spielstand (src/shared/Progression/SaveData), Retry, kein
+  Überschreiben nach Ladefehler, Ersatz im Arbeitsspeicher in Studio ohne API-Zugriff.
+- Leben: 5 pro Lauf (Schulranzen), Crash/Treffer kostet eins, Game Over → Neustart.
+  R/Crash ohne Checkpoint: zurück zum Start, Lauf (Zeit, Leben) läuft weiter.
+- Launchables (Kuh & Co.): Treffer kostet Leben, Wagen fährt weiter, Objekt fliegt
+  (Server plant den Flug), Comic-Text, Hit-Stop, Flugweite, Rekorde, kleiner Bonus.
+- Abilities (src/client/Abilities, ein Modul pro Ability): Trampolin-Sprungfeder (Sprung,
+  Doppelsprung), Fahrradhelm (Ladungen, lädt am Checkpoint), Turbo-Pausenbrot (F),
+  Rucksack-Fallschirm (Leertaste in der Luft halten).
+- Shop „Pausen-Kiosk“ (B): Upgrades mit Stufen (Config.Upgrades), Strecken, Rekorde.
+- Mehrere Tracks: Model mit Attribut TrackId, Bedingungen in Config.Tracks.
+- Automatische Tests mit Lune: `lune run tests/run` (reine Logik in src/shared/Progression).
 Geplant (M2.5): erweiterter Baukasten, wartet auf OK zum Vorschlag Client/Server.
-(Erledigt: M1 – Fahrgefühl-Grundlage. M1.5 – Aus-/Einsteigen, Drift mit Boost,
-Ragdoll-Crash, Tacho, Kamera-Wackeln, Tuning-Panel; M1.5 noch nicht getestet/getunt.)
+(Erledigt: M1 – Fahrgefühl. M1.5 – Aus-/Einsteigen, Drift mit Boost, Ragdoll, Tacho,
+Kamera-Wackeln, Tuning-Panel. M2 – Erster Track: Baukasten, Timer mit Bestzeit, Noten,
+Checkpoints, Hindernisse, Zufallsereignisse, Sound; drei Feedback-Runden: Drift ist der
+Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 
 ## Steuerung
 | Aktion | Tastatur | Gamepad | Touch |
@@ -60,8 +68,11 @@ Ragdoll-Crash, Tacho, Kamera-Wackeln, Tuning-Panel; M1.5 noch nicht getestet/get
 | Lenken | A / D (Pfeil links/rechts) | – | – |
 | Aussteigen (im Wagen) | E | X | Button „Raus“ |
 | Einsteigen (am eigenen leeren Wagen) | E | X | Hinweis antippen |
-| Zurück zum letzten Checkpoint (auch nach Crash, überspringt Wartezeit; ohne Checkpoint: Start) | R | Y | Button „R“ |
-| Kompletter Neustart am Start (Zeit wieder 0) | T | Steuerkreuz hoch | Button „Start“ |
+| Zurück zum letzten Checkpoint (auch nach Crash, überspringt Wartezeit; ohne Checkpoint: Start, Lauf läuft weiter) | R | Y | Button „R“ |
+| Kompletter Neustart am Start (Zeit 0, Leben voll, Münzen/Objekte wieder da; auch während Game Over) | T | Steuerkreuz hoch | Button „Start“ |
 | Tuning-Panel (nur Studio) | F2 | – | – |
 | Normal fahren (halten; Standard ist Drift, Boost kommt am Drift-Ende oder beim Drücken) | Shift | B | Button „Normal“ |
-| Hopp (kleiner Sprung, schneller Richtungswechsel) | Leertaste | A | Button „Hopp“ |
+| Hopp (kleiner Sprung, schneller Richtungswechsel); mit Sprungfeder: Sprung, in der Luft nochmal = Doppelsprung | Leertaste | A | Button „Hopp“ |
+| Fallschirm (Upgrade): in der Luft halten | Leertaste halten | A halten | Button „Hopp“ halten |
+| Turbo-Pausenbrot (Upgrade) | F | RB | Button „Turbo“ |
+| Menü „Pausen-Kiosk“ (Shop, Strecken, Rekorde; nur außerhalb eines Laufs) | B | Select | Button „Shop“ |
