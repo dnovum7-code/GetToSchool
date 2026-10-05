@@ -86,27 +86,28 @@ function CartBuilder.build(owner: Player, cframe: CFrame): Model
 
 	-- Feste Teile: Name, Groesse, Position relativ zur Bodenmitte (-Z ist vorne)
 	local wallY = t / 2 + h / 2
-	local fixedParts = {
-		{ "WallLeft", Vector3.new(0.2, h, l), Vector3.new(-(w / 2 - 0.1), wallY, 0) },
-		{ "WallRight", Vector3.new(0.2, h, l), Vector3.new(w / 2 - 0.1, wallY, 0) },
-		{ "WallFront", Vector3.new(w, h, 0.2), Vector3.new(0, wallY, -(l / 2 - 0.1)) },
-		{ "WallBack", Vector3.new(w, h, 0.2), Vector3.new(0, wallY, l / 2 - 0.1) },
+	local postY = t / 2 + h + 0.45
+	local fixedParts: { { name: string, size: Vector3, offset: Vector3 } } = {
+		{ name = "WallLeft", size = Vector3.new(0.2, h, l), offset = Vector3.new(-(w / 2 - 0.1), wallY, 0) },
+		{ name = "WallRight", size = Vector3.new(0.2, h, l), offset = Vector3.new(w / 2 - 0.1, wallY, 0) },
+		{ name = "WallFront", size = Vector3.new(w, h, 0.2), offset = Vector3.new(0, wallY, -(l / 2 - 0.1)) },
+		{ name = "WallBack", size = Vector3.new(w, h, 0.2), offset = Vector3.new(0, wallY, l / 2 - 0.1) },
 		{
-			"HandlePostLeft",
-			Vector3.new(0.2, 0.9, 0.2),
-			Vector3.new(-(w / 2 - 0.1), t / 2 + h + 0.45, l / 2 + 0.1),
+			name = "HandlePostLeft",
+			size = Vector3.new(0.2, 0.9, 0.2),
+			offset = Vector3.new(-(w / 2 - 0.1), postY, l / 2 + 0.1),
 		},
 		{
-			"HandlePostRight",
-			Vector3.new(0.2, 0.9, 0.2),
-			Vector3.new(w / 2 - 0.1, t / 2 + h + 0.45, l / 2 + 0.1),
+			name = "HandlePostRight",
+			size = Vector3.new(0.2, 0.9, 0.2),
+			offset = Vector3.new(w / 2 - 0.1, postY, l / 2 + 0.1),
 		},
 	}
 	for _, def in fixedParts do
 		local part = makePart({
-			Name = def[1],
-			Size = def[2],
-			CFrame = cframe * CFrame.new(def[3]),
+			Name = def.name,
+			Size = def.size,
+			CFrame = cframe * CFrame.new(def.offset),
 			Color = metal,
 			Material = Enum.Material.Metal,
 			Transparency = 0.35, -- "Gitter"-Optik, man sieht den Fahrer
@@ -183,7 +184,7 @@ function CartBuilder.build(owner: Player, cframe: CFrame): Model
 	local wheelY = -(t / 2 + c.WheelGap + r)
 	local wheelX = w / 2 - r - 0.1
 	local wheelZ = l / 2 - r - 0.1
-	local wheelOffsets = {
+	local wheelOffsets: { [string]: Vector3 } = {
 		WheelFL = Vector3.new(-wheelX, wheelY, -wheelZ),
 		WheelFR = Vector3.new(wheelX, wheelY, -wheelZ),
 		WheelBL = Vector3.new(-wheelX, wheelY, wheelZ),

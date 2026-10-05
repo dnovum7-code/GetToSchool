@@ -33,7 +33,7 @@ local crashedAt = 0
 local runPhase: "Ready" | "Running" | "Finished" = "Ready"
 local runStartedAt = 0
 
-local CRASH_TEXTS: { [CrashDetector.CrashReason]: string } = {
+local CRASH_TEXTS: { [string]: string } = {
 	Tipped = "Umgekippt",
 	Impact = "Harter Aufprall",
 	Fell = "Abgestuerzt",
@@ -97,7 +97,7 @@ local function requestRestartNow()
 	requestRestart:FireServer()
 end
 
-local function onCrash(reason: CrashDetector.CrashReason)
+local function onCrash(reason: string)
 	crashed = true
 	crashedAt = os.clock()
 	RaceUI.showMessage("CRASH!", Color3.fromRGB(255, 80, 60), CRASH_TEXTS[reason])
@@ -118,9 +118,13 @@ local function onReset(spawnCFrame: CFrame)
 	-- Wir rechnen die Physik des Wagens, also setzen wir Position und Tempo auch hier
 	-- zurueck (Geschwindigkeiten vom Server wuerden bei uns nicht ankommen).
 	current.cart:PivotTo(spawnCFrame)
+	local models: { Instance } = { current.cart }
 	local character = activeHumanoid and activeHumanoid.Parent
-	for _, model in { current.cart, character } do
-		for _, part in (model :: Instance):GetDescendants() do
+	if character then
+		table.insert(models, character)
+	end
+	for _, model in models do
+		for _, part in model:GetDescendants() do
 			if part:IsA("BasePart") then
 				part.AssemblyLinearVelocity = Vector3.zero
 				part.AssemblyAngularVelocity = Vector3.zero

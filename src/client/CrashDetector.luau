@@ -9,10 +9,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 
+export type CrashReason = "Tipped" | "Impact" | "Fell"
+
 local CrashDetector = {}
 CrashDetector.__index = CrashDetector
-
-export type CrashReason = "Tipped" | "Impact" | "Fell"
 
 type DetectorData = {
 	tiltTime: number,
