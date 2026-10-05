@@ -577,7 +577,6 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 			gameOver = false
 			RaceUI.hideResult()
 			RaceUI.hideGameOver()
-			CoinsClient.resetAll() -- Muenzen erscheinen wieder
 			Abilities.reset("Full")
 			LaunchablesClient.resetAll() -- weggeschleuderte Objekte stehen wieder
 		end

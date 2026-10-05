@@ -201,6 +201,12 @@ local function looseTrackId(): string?
 	return nil
 end
 
+-- Gehoert `instance` (z. B. eine Muenze) zur Strecke `trackId`? Objekte in einem Track-Model
+-- gehoeren zu diesem, lose Objekte zur losen Strecke.
+function Track.belongsTo(instance: Instance, trackId: string): boolean
+	return belongsTo(instance, trackId)
+end
+
 -- Alle Strecken, die es in der Welt gibt (Ids)
 function Track.list(): { string }
 	local ids = {}

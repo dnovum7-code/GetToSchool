@@ -72,6 +72,8 @@ function ProgressClient.init()
 			onData(...)
 		elseif kind == "CoinRejected" then
 			CoinsClient.onRejected(...)
+		elseif kind == "CoinsRestored" then
+			CoinsClient.restore(...)
 		elseif kind == "Notice" then
 			local text: string, color: Color3? = ...
 			RaceUI.showToast(text, 3, color)

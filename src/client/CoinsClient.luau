@@ -4,7 +4,8 @@
 --   * merkt, wenn der eigene Wagen eine Muenze beruehrt: Muenze sofort ausblenden, kleine
 --     Animation, "+1" im UI, und dem Server melden. Der Server prueft und schreibt gut.
 --   * Lehnt der Server ab (z. B. zu weit weg), erscheint die Muenze wieder.
---   * Kompletter Neustart (T): alle Muenzen erscheinen wieder.
+--   * Eingesammelte Muenzen erscheinen erst wieder, wenn man das Ziel ihrer Strecke erreicht
+--     (der Server meldet dann, welche). Nicht bei T - sonst koennte man sie "farmen".
 -- Wiedererkannt werden Muenzen ueber das Attribut "CoinId" (vom Server vergeben).
 
 local CollectionService = game:GetService("CollectionService")
@@ -32,7 +33,7 @@ type Coin = {
 }
 
 local coins: { [Instance]: Coin } = {}
-local collectedIds: { [string]: boolean } = {} -- in diesem Lauf eingesammelt
+local collectedIds: { [string]: boolean } = {} -- eingesammelt (bis zum Ziel der Strecke)
 local retryAfter: { [string]: number } = {} -- nach Ablehnung kurz nicht erneut melden
 local effectsFolder: Folder? = nil
 
@@ -171,12 +172,18 @@ function CoinsClient.onRejected(instance: Instance, reason: string)
 	end
 end
 
--- Kompletter Neustart: alle Muenzen wieder da
-function CoinsClient.resetAll()
-	table.clear(collectedIds)
-	table.clear(retryAfter)
-	for instance in coins do
-		LocalHide.set(instance, "Collected", false)
+-- Ziel erreicht: diese Muenzen (CoinIds) erscheinen wieder
+function CoinsClient.restore(ids: { string })
+	local restore: { [string]: boolean } = {}
+	for _, id in ids do
+		restore[id] = true
+		collectedIds[id] = nil
+		retryAfter[id] = nil
+	end
+	for instance, coin in coins do
+		if restore[coin.id] then
+			LocalHide.set(instance, "Collected", false)
+		end
 	end
 end
 

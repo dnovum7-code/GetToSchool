@@ -4,7 +4,9 @@
 --   * Ist es wirklich eine Muenze, und hat dieser Spieler sie in diesem Lauf noch nicht?
 --   * Sitzt der Spieler im Wagen, und ist der Wagen nah genug (Plausibilitaetspruefung)?
 -- Erst dann gibt es die Muenzen, und zwar sofort in den Spielstand: Sie bleiben auch nach
--- einem Crash oder Abbruch erhalten. Die Muenze erscheint beim kompletten Neustart (T) wieder.
+-- einem Crash oder Abbruch erhalten.
+-- Gegen "Farmen": Eine eingesammelte Muenze erscheint erst wieder, wenn der Spieler das Ziel
+-- ihrer Strecke erreicht (nicht bei T). Gilt fuer die laufende Server-Sitzung.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -15,6 +17,7 @@ local Economy = require(Shared:WaitForChild("Progression"):WaitForChild("Economy
 local TagList = require(Shared:WaitForChild("TagList"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
+local Track = require(script.Parent:WaitForChild("Track"))
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local collectRemote = remotes:WaitForChild("CollectCoin") :: RemoteEvent
@@ -22,7 +25,7 @@ local progressRemote = remotes:WaitForChild("Progress") :: RemoteEvent
 
 local Coins = {}
 
-local collected: { [Player]: { [Instance]: boolean } } = {} -- in diesem Lauf eingesammelt
+local collected: { [Player]: { [Instance]: boolean } } = {} -- eingesammelt, bis zum Ziel der Strecke
 local runTotals: { [Player]: number } = {}
 local nextId = 0
 
@@ -109,10 +112,30 @@ function Coins.collect(player: Player, coin: unknown)
 	Profiles.addCoins(player, value)
 end
 
--- Kompletter Neustart (T): Muenzen gibt es wieder, Lauf-Summe auf 0
+-- Neuer Lauf (T): nur die Lauf-Summe auf 0. Eingesammelte Muenzen bleiben weg.
 function Coins.resetRun(player: Player)
-	collected[player] = {}
 	runTotals[player] = 0
+end
+
+-- Ziel der Strecke erreicht: deren eingesammelte Muenzen erscheinen wieder (beim Client)
+function Coins.restoreTrack(player: Player, trackId: string)
+	local set = collected[player]
+	if not set then
+		return
+	end
+	local ids = {}
+	for coin in set do
+		if not coin:IsDescendantOf(workspace) or Track.belongsTo(coin, trackId) then
+			set[coin] = nil
+			local id = coin:GetAttribute("CoinId")
+			if type(id) == "string" then
+				table.insert(ids, id)
+			end
+		end
+	end
+	if #ids > 0 then
+		progressRemote:FireClient(player, "CoinsRestored", ids)
+	end
 end
 
 -- In diesem Lauf eingesammelt (fuer den Ergebnis-Screen)

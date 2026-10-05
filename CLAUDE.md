@@ -42,7 +42,9 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
 ## Aktueller Meilenstein
 M3 – Progression (gebaut, noch nicht in Studio getestet):
 - Münzen: Baustein `Coin`, Server prüft das Einsammeln (Abstand), Zielbelohnung
-  (Grundbetrag + Notenbonus), Münzen bleiben nach Crash/Abbruch, Münzen erscheinen bei T wieder.
+  (Grundbetrag + Notenbonus), Münzen bleiben nach Crash/Abbruch. Eingesammelte Münzen erscheinen
+  erst wieder, wenn das Ziel der Strecke erreicht ist (nicht bei T, gegen Farmen).
+- Debug-Schalter (Config.Debug) wirken nur in Studio, live automatisch aus.
 - Speichern: versionierter Spielstand (src/shared/Progression/SaveData), Retry, kein
   Überschreiben nach Ladefehler, Ersatz im Arbeitsspeicher in Studio ohne API-Zugriff.
 - Leben: 5 pro Lauf (Schulranzen), Crash/Treffer kostet eins, Game Over → Neustart.
@@ -69,7 +71,7 @@ Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 | Aussteigen (im Wagen) | E | X | Button „Raus“ |
 | Einsteigen (am eigenen leeren Wagen) | E | X | Hinweis antippen |
 | Zurück zum letzten Checkpoint (auch nach Crash, überspringt Wartezeit; ohne Checkpoint: Start, Lauf läuft weiter) | R | Y | Button „R“ |
-| Kompletter Neustart am Start (Zeit 0, Leben voll, Münzen/Objekte wieder da; auch während Game Over) | T | Steuerkreuz hoch | Button „Start“ |
+| Kompletter Neustart am Start (Zeit 0, Leben voll, Objekte wieder da – Münzen erst nach dem Ziel; auch während Game Over) | T | Steuerkreuz hoch | Button „Start“ |
 | Tuning-Panel (nur Studio) | F2 | – | – |
 | Normal fahren (halten; Standard ist Drift, Boost kommt am Drift-Ende oder beim Drücken) | Shift | B | Button „Normal“ |
 | Hopp (kleiner Sprung, schneller Richtungswechsel); mit Sprungfeder: Sprung, in der Luft nochmal = Doppelsprung | Leertaste | A | Button „Hopp“ |

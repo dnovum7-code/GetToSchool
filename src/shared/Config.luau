@@ -174,7 +174,7 @@ Config.Track = {
 
 -- Muenzen (Baustein "Coin": Part oder Modell mit Tag "Coin", Attribut "Value" = Wert).
 -- Eingesammelte Muenzen gehoeren sofort dem Spieler, auch nach Crash oder Abbruch. Die Muenze
--- selbst erscheint erst beim kompletten Neustart (T) wieder.
+-- selbst erscheint erst wieder, wenn der Spieler das Ziel ihrer Strecke erreicht (nicht bei T).
 Config.Coins = {
 	DefaultValue = 1, -- Wert einer Muenze ohne Attribut "Value"
 	MaxValue = 100, -- Obergrenze fuer "Value" (Schutz vor Tippfehlern)
@@ -331,7 +331,7 @@ Config.TuningPanel = {
 	{ label = "Ragdoll schwebt (0..1)", path = "Crash.RagdollFloat", span = 0.45 },
 }
 
--- Fehlersuche (nur in Studio wirksam)
+-- Fehlersuche (nur in Studio wirksam; im veroeffentlichten Spiel automatisch aus, siehe unten)
 Config.Debug = {
 	-- true = im Output melden, wenn ein Rad einen Bodenbaustein erkennt und welcher
 	-- Effekt (BoostPad, JumpPad) ausgeloest wird
@@ -568,5 +568,15 @@ Config.UI = {
 	StudsToMeters = 0.28,
 	SpeedometerMaxKmh = 150, -- bei diesem Tempo ist der Tacho-Balken voll
 }
+
+-- Sicherheit: Debug-Schalter wirken nur in Studio. Im veroeffentlichten Spiel werden sie hier
+-- automatisch ausgeschaltet, egal was oben steht - so geht nichts versehentlich live.
+-- ((game :: any) ~= nil: ausserhalb von Roblox, z. B. in automatischen Tests, gibt es kein game)
+if (game :: any) ~= nil and not game:GetService("RunService"):IsStudio() then
+	local debugFlags: any = Config.Debug
+	for key in debugFlags do
+		debugFlags[key] = false
+	end
+end
 
 return Config

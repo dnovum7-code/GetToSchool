@@ -151,7 +151,7 @@ function RaceManager.restart(player: Player)
 	race.splits = {}
 	race.runId += 1
 	race.lastRestart = os.clock()
-	Coins.resetRun(player) -- Muenzen erscheinen wieder (die eingesammelten behaelt man)
+	Coins.resetRun(player) -- Lauf-Summe auf 0 (Muenzen erscheinen erst nach dem Ziel wieder)
 	race.life = RunRules.newRun(Config.Lives.PerRun, maxShieldFor(player)) -- Leben wieder voll
 	race.hits = 0
 	race.bestFlight = nil
@@ -379,6 +379,8 @@ local function finish(player: Player, race: RaceState, finishZone: BasePart)
 		bestFlightMeters = if race.bestFlight then race.bestFlight.meters else nil,
 	}
 	runState:FireClient(player, "Finished", result)
+	-- Ziel erreicht: die eingesammelten Muenzen dieser Strecke erscheinen wieder
+	Coins.restoreTrack(player, race.trackId)
 
 	local delay = Config.Race.AutoRestartAfterFinish
 	if delay > 0 then

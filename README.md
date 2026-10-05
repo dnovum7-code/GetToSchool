@@ -148,7 +148,7 @@ geschrieben wie in der Tabelle). Mehrere Tags pro Part sind erlaubt (z. B. `Move
 | `Spinner` | Dreht sich um die eigene Hochachse | `Speed` (Grad/s, negativ = andersrum) – 90; `Phase` (s) – 0 |
 | `Pendulum` | Schwingt um die Oberkante des Parts (Modell: um den Pivot), Achse X | `Angle` (Grad) – 45; `Duration` (s, hin und zurück) – 3; `Phase` (s) – 0 |
 | `RandomEvent` | Pro Lauf aktiv oder ausgeblendet | `Chance` (0–1) – 0.5; `Group` (Text) – keine. Aus jeder Gruppe ist genau eins aktiv (`Chance` = Gewicht) |
-| `Coin` | Münze: dreht sich, Durchfahren sammelt sie ein (bleibt dir auch nach Crash). Erscheint bei T wieder | `Value` (Zahl) – 1 |
+| `Coin` | Münze: dreht sich, Durchfahren sammelt sie ein (bleibt dir auch nach Crash). Erscheint erst wieder, wenn du das Ziel dieser Strecke erreichst (nicht bei T, gegen „Farmen“) | `Value` (Zahl) – 1 |
 | `Launchable` | Kuh, Mülltonne, Gartenzwerg …: Hineinfahren kostet ein Leben, der Wagen fährt aber weiter, das Objekt fliegt absurd weit. Erscheint bei T wieder | `LaunchPower` (Zahl) – 140; `SpinPower` (Zahl) – 12; `SkyChance` (0–1) – 0.25 (fliegt in den Himmel); `Sound` (Sound-Id, z. B. „Muh“) – keiner; `DisplayName` (Text, für Rekorde) – Name des Objekts; `ComicText` (Text, z. B. „MUUH!“) – zufällig |
 
 Hinweise:
@@ -348,14 +348,16 @@ Zurück zum alten Verhalten (Shift = Drift, Loslassen = Boost): `Config.Drift.Dr
 
 ## M3 testen (Progression)
 
-**Schnelltest ohne Shop:** `Config.Debug.AllUpgrades = true` (nur Studio) gibt dir alle
-Upgrades auf höchster Stufe. Für den echten Ablauf wieder auf `false`.
+**Schnelltest ohne Shop:** `Config.Debug.AllUpgrades = true` gibt dir alle Upgrades auf
+höchster Stufe. Debug-Schalter wirken nur in Studio; im veröffentlichten Spiel schaltet
+`Config.luau` sie automatisch aus. Für den echten Ablauf trotzdem wieder auf `false`.
 
 | Funktion | Was du tun kannst | Was passieren sollte |
 |---|---|---|
 | Münze | Part mit Tag `Coin` auf die Straße, durchfahren | Münze dreht/wippt, verschwindet mit kleinem Aufsteigen, oben rechts „+1“ und der Zähler hüpft |
 | Münzen bleiben | Münze einsammeln, dann crashen bzw. R | Zähler bleibt, Münze bleibt weg |
-| Münzen zurück | T | Alle Münzen sind wieder da, Zähler bleibt (man kann sie nochmal sammeln) |
+| Keine Münzen bei T | Münze sammeln, T | Münze bleibt weg (kein „Farmen“ am Start) |
+| Münzen zurück | Ins Ziel fahren | Die eingesammelten Münzen dieser Strecke sind wieder da, Zähler bleibt |
 | Zielbelohnung | Ins Ziel fahren | Ergebnis: „Münzen: +X im Ziel (10 + Notenbonus)“, Zähler zählt hoch |
 | Speichern | Studio-API-Zugriff an, Münzen sammeln, Stop, Play | Münzen sind noch da |
 | Ohne API-Zugriff | API-Zugriff aus, Play | Warnung im Output „nur im Arbeitsspeicher“, kurzer Hinweis oben; alles funktioniert |
@@ -388,7 +390,8 @@ Upgrades auf höchster Stufe. Für den echten Ablauf wieder auf `false`.
 2. **Fahren wie vorher**: Drift, Hopp, Crash, R/T funktionieren unverändert.
 3. **Crash und Leben**: Crash kostet genau ein Leben, Ragdoll fliegt, danach Checkpoint;
    bei 0 Leben Game Over und Neustart.
-4. **Münzen**: einsammeln, nach Crash behalten, bei T wieder da, Ziel-Belohnung.
+4. **Münzen**: einsammeln, nach Crash behalten, bei T weiter weg, nach dem Ziel wieder da,
+   Ziel-Belohnung.
 5. **Speichern**: mit API-Zugriff Münzen sammeln → Stop → Play → noch da. Ohne API-Zugriff:
    Warnung, aber keine Fehler.
 6. **Launchable**: Kuh umfahren – Wagen fährt weiter (kein Crash!), Kuh fliegt, Leben weg.
