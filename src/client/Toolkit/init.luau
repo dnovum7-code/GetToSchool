@@ -11,6 +11,7 @@
 --                            Trigger scharf, Verfolger nach Hause, Signal-Tore zu.
 --                            Props bleiben liegen (Chaos-Zaehler bleibt).
 
+local Chasers = require(script:WaitForChild("Chasers"))
 local Collapses = require(script:WaitForChild("Collapses"))
 local ForceZones = require(script:WaitForChild("ForceZones"))
 local Gates = require(script:WaitForChild("Gates"))
@@ -30,6 +31,7 @@ local MODULES: { ToolkitTypes.Piece } = {
 	Collapses,
 	Props :: any,
 	ForceZones,
+	Chasers,
 }
 
 function Toolkit.init()

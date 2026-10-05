@@ -80,7 +80,7 @@ function TrackPieces.init()
 
 	-- Bewegte Hindernisse: verankert, die Bewegung rechnet jeder Client selbst
 	-- (siehe src/client/Obstacles.luau und src/client/Toolkit)
-	for _, tag in { "Mover", "Spinner", "Pendulum", "PathMover", "Gate" } do
+	for _, tag in { "Mover", "Spinner", "Pendulum", "PathMover", "Gate", "Chaser" } do
 		TagList.watch(tag, function(instance)
 			forEachPart(instance, function(part)
 				part.Anchored = true

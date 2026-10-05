@@ -1,5 +1,6 @@
 --!strict
 local TestLib = require("./TestLib")
+local ChaserLogic = require("../src/shared/Toolkit/ChaserLogic")
 local PathMath = require("../src/shared/Toolkit/PathMath")
 local Rng = require("../src/shared/Toolkit/Rng")
 local SpawnSchedule = require("../src/shared/Toolkit/SpawnSchedule")
@@ -192,6 +193,67 @@ describe("PathMath", function()
 		expect(PathMath.gateSignal(3, 2, 5)).toBe(1)
 		expect(PathMath.gateSignal(8, 2, 5)).toBeNear(0.5)
 		expect(PathMath.gateSignal(20, 2, 5)).toBe(0)
+	end)
+end)
+
+describe("ChaserLogic (Hund)", function()
+	local settings = {
+		radius = 40,
+		maxSpeed = 30,
+		acceleration = 60,
+		giveUpTime = 5,
+		returnSpeed = 15,
+		cooldown = 3,
+	}
+
+	it("startet erst, wenn der Wagen im Radius ist", function()
+		local state = ChaserLogic.new()
+		ChaserLogic.step(state, 0.1, 100, 0, false, settings)
+		expect(state.mode).toBe("Idle")
+		ChaserLogic.step(state, 0.1, 30, 0, false, settings)
+		expect(state.mode).toBe("Chase")
+	end)
+
+	it("Signal startet auch ausserhalb des Radius, aber nicht ohne Wagen", function()
+		local state = ChaserLogic.new()
+		ChaserLogic.step(state, 0.1, nil, 0, true, settings)
+		expect(state.mode).toBe("Idle")
+		ChaserLogic.step(state, 0.1, 500, 0, true, settings)
+		expect(state.mode).toBe("Chase")
+	end)
+
+	it("wird bis MaxSpeed schneller und gibt nach GiveUpTime auf", function()
+		local state = ChaserLogic.new()
+		ChaserLogic.step(state, 0.1, 10, 0, false, settings)
+		local speed = 0
+		for _ = 1, 10 do
+			speed = ChaserLogic.step(state, 0.1, 10, 5, false, settings)
+		end
+		expect(speed).toBe(30)
+		for _ = 1, 50 do
+			ChaserLogic.step(state, 0.1, 10, 5, false, settings)
+		end
+		expect(state.mode).toBe("Return")
+	end)
+
+	it("zu Hause angekommen: Pause, dann wieder bereit", function()
+		local state = ChaserLogic.new()
+		state.mode = "Return"
+		local speed = ChaserLogic.step(state, 0.1, 10, 20, false, settings)
+		expect(speed).toBe(15)
+		ChaserLogic.step(state, 0.1, 10, 0.5, false, settings)
+		expect(state.mode).toBe("Idle")
+		ChaserLogic.step(state, 1, 10, 0, false, settings)
+		expect(state.mode).toBe("Idle") -- Pause laeuft noch
+		ChaserLogic.step(state, 2.5, 10, 0, false, settings)
+		expect(state.mode).toBe("Chase")
+	end)
+
+	it("Wagen weg (Crash): zurueck nach Hause", function()
+		local state = ChaserLogic.new()
+		ChaserLogic.step(state, 0.1, 10, 0, false, settings)
+		ChaserLogic.step(state, 0.1, nil, 3, false, settings)
+		expect(state.mode).toBe("Return")
 	end)
 end)
 

@@ -328,6 +328,21 @@ Config.ForceZone = {
 	ActiveTime = 3, -- mit ListenSignal: so lange (s) an nach dem Signal
 }
 
+-- Chaser (Tag "Chaser", Modell oder Part, z. B. ein Hund): rennt dir am Boden nach, sobald du
+-- naeher als Radius kommst, gibt nach GiveUpTime auf und laeuft nach Hause. Jeder Spieler hat
+-- seinen eigenen Hund. Pivot-Vorderseite = Laufrichtung.
+Config.Chaser = {
+	Radius = 40, -- ab diesem Abstand (Studs) geht die Jagd los
+	MaxSpeed = 32, -- Hoechsttempo (Studs/s)
+	Acceleration = 50, -- wie schnell er losrennt
+	GiveUpTime = 6, -- Sekunden Jagd, dann gibt er auf
+	ReturnSpeed = 14, -- Tempo auf dem Heimweg
+	Cooldown = 3, -- Pause zu Hause, bevor er wieder jagt
+	TurnSpeed = 8, -- wie schnell er sich in Laufrichtung dreht
+	Hazard = false, -- true = Beruehrung ist ein Crash, false = nur Schubs
+	HazardMessage = "Vom Hund erwischt!", -- Attribut "Message"
+}
+
 -- Zufallsereignisse: Parts/Modelle mit Tag "RandomEvent" sind pro Lauf aktiv oder nicht.
 -- Attribut "Chance" (0..1): Wahrscheinlichkeit, dass es aktiv ist.
 -- Attribut "Group" (Text): aus jeder Gruppe ist pro Lauf genau ein Element aktiv
