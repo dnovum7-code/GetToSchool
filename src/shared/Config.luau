@@ -326,11 +326,19 @@ Config.Race = {
 		[2] = 130,
 	},
 
-	-- Bestzeiten: pro Spieler und Track dauerhaft gespeichert (DataStore).
+	-- Bestzeiten: pro Spieler und Track im Spielstand (siehe Config.Save).
 	-- Welcher Track: Attribut "TrackId" (Text) an der StartZone, sonst DefaultTrackId.
 	DefaultTrackId = "Track1",
-	BestTimesStore = "BestTimes_v1", -- Name des DataStores (aendern = alle Bestzeiten neu)
-	SaveBestTimes = true, -- false = Bestzeiten nur fuer die laufende Sitzung
+}
+
+-- Spielstand (DataStore): Muenzen, Upgrades, Bestzeiten, freigeschaltete Tracks ...
+Config.Save = {
+	Enabled = true, -- false = nur im Arbeitsspeicher (nichts wird dauerhaft gespeichert)
+	StoreName = "PlayerData_v1", -- Name des DataStores (aendern = alle Spielstaende neu)
+	LegacyBestTimesStore = "BestTimes_v1", -- alte Bestzeiten (vor M3) werden einmalig uebernommen
+	Retries = 4, -- so oft wird Laden/Speichern bei Fehlern versucht
+	RetryDelay = 1, -- Wartezeit (s) vor dem 2. Versuch, verdoppelt sich jedes Mal
+	AutosaveInterval = 60, -- alle x Sekunden speichern, was sich geaendert hat
 }
 
 -- Aus- und Einsteigen (Taste E / Gamepad X)

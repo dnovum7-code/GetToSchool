@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
 local DevTuning = require(script.Parent:WaitForChild("DevTuning"))
+local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local RaceManager = require(script.Parent:WaitForChild("RaceManager"))
 local RandomEvents = require(script.Parent:WaitForChild("RandomEvents"))
 local Track = require(script.Parent:WaitForChild("Track"))
@@ -24,6 +25,7 @@ local cartsFolder = Instance.new("Folder")
 cartsFolder.Name = "Carts"
 cartsFolder.Parent = workspace
 
+Profiles.init() -- Spielstaende laden/speichern (zuerst, damit beim Beitreten geladen wird)
 Track.init(cartsFolder)
 CartManager.init(cartsFolder)
 CartManager.setSpawnResolver(function(_player)

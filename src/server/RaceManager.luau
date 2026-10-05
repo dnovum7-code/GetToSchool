@@ -21,6 +21,7 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 local RaceTime = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RaceTime"))
 local BestTimes = require(script.Parent:WaitForChild("BestTimes"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
+local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local RandomEvents = require(script.Parent:WaitForChild("RandomEvents"))
 local Track = require(script.Parent:WaitForChild("Track"))
 
@@ -314,19 +315,13 @@ function RaceManager.start()
 	Players.PlayerRemoving:Connect(function(player)
 		races[player] = nil
 	end)
-	-- Bestzeiten laden, sobald ein Spieler beitritt, und dann gleich anzeigen
-	local function load(player: Player)
-		BestTimes.load(player, function()
-			local race = races[player]
-			if race then
-				sendBest(player, race)
-			end
-		end)
-	end
-	Players.PlayerAdded:Connect(load)
-	for _, player in Players:GetPlayers() do
-		load(player)
-	end
+	-- Sobald der Spielstand geladen ist, die Bestzeit anzeigen
+	Profiles.onLoaded(function(player)
+		local race = races[player]
+		if race then
+			sendBest(player, race)
+		end
+	end)
 end
 
 return RaceManager
