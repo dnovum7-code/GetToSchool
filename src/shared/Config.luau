@@ -69,6 +69,43 @@ Config.Drive = {
 	GroundCheckExtra = 0.6, -- wie weit unter den Raedern noch "Boden" erkannt wird
 }
 
+-- Drift mit Handbremse (Shift / Gamepad B). Laeuft auf dem Client des Fahrers.
+-- Mit gezogener Handbremse wird der Seitenhalt auf Vorder- und Hinterachse aufgeteilt.
+-- Hinten haelt der Wagen kaum noch, also bricht das Heck aus. Die Vorderraeder zeigen im
+-- Drift in Lenkrichtung: Gegenlenken stellt sie in Rutschrichtung und faengt den Wagen ab.
+Config.Drift = {
+	RearGrip = 0.15, -- Seitenhalt hinten mit Handbremse (Anteil von Drive.LateralGrip)
+	EngageTime = 0.1, -- so schnell (s) greift die Handbremse
+	GripRecoverTime = 0.2, -- so schnell (s) kommt der Halt nach dem Loslassen zurueck
+	HandbrakeDeceleration = 8, -- leichtes Abbremsen durch die Handbremse
+	SteerAngle = 30, -- Lenkeinschlag der Vorderraeder im Drift (Grad)
+	SteerRate = 2.6, -- Drehgeschwindigkeit der Lenkhilfe im Drift (Radiant/s)
+	SteerResponseFactor = 0.35, -- Staerke der Lenkhilfe im Drift (Anteil von Drive.SteerResponse)
+
+	-- Schutz gegen ungewollte 180er: ab diesem Driftwinkel dreht eine Kraft zurueck
+	RecoverAngle = 55, -- Grad zwischen Blick- und Fahrtrichtung
+	RecoverStrength = 12, -- Staerke der Rueckstellkraft (0 = aus)
+
+	-- Boost: Driftzeit zaehlt nur am Boden, ab Mindesttempo und Mindest-Driftwinkel
+	MinSpeed = 25, -- Studs/s
+	MinAngle = 12, -- Grad
+	Level1Time = 1.0, -- Sekunden Driftzeit fuer Stufe 1
+	Level2Time = 2.0, -- Sekunden Driftzeit fuer Stufe 2
+	Level1Boost = 0.15, -- Schub beim Loslassen: Anteil von Drive.MaxSpeed (0.15 = +15 %)
+	Level2Boost = 0.25,
+	BoostDuration = 0.4, -- so lange (s) wird geschoben
+	BoostFadeTime = 1.0, -- so lange (s) darf man danach noch schneller als MaxSpeed sein
+
+	-- Effekte (nur lokal sichtbar)
+	SparkColor = Color3.fromRGB(255, 240, 200), -- Funken ohne Boost-Ladung
+	Level1Color = Color3.fromRGB(80, 170, 255), -- Stufe 1: blau
+	Level2Color = Color3.fromRGB(255, 140, 40), -- Stufe 2: orange
+	SkidMarkInterval = 0.05, -- alle x Sekunden ein Stueck Reifenspur pro Hinterrad
+	SkidMarkLifetime = 3, -- so lange (s) bis eine Spur verschwunden ist
+	MaxSkidMarks = 150, -- Obergrenze (Performance); die aeltesten werden wiederverwendet
+	SkidMarkWidth = 0.35,
+}
+
 -- Verfolgerkamera
 Config.Camera = {
 	Distance = 14,

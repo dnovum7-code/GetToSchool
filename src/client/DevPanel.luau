@@ -14,7 +14,7 @@ local TuningSliders = require(ReplicatedStorage:WaitForChild("Shared"):WaitForCh
 
 local DevPanel = {}
 
-local ROW_HEIGHT = 46
+local ROW_HEIGHT = 40 -- kompakt, damit alle Regler auf den Bildschirm passen
 local PANEL_WIDTH = 300
 
 type Row = {
@@ -136,7 +136,7 @@ function DevPanel.init()
 			TextXAlignment = Enum.TextXAlignment.Right,
 		})
 		local bar = Instance.new("Frame")
-		bar.Position = UDim2.new(0, 12, 0, y + 24)
+		bar.Position = UDim2.new(0, 12, 0, y + 21)
 		bar.Size = UDim2.new(1, -24, 0, 10)
 		bar.BackgroundColor3 = Color3.fromRGB(70, 70, 85)
 		bar.BorderSizePixel = 0

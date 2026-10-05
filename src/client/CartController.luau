@@ -5,6 +5,12 @@
 --
 -- Unity-Vergleich: wie AddForce/AddTorque in FixedUpdate, nur dass hier die Werte an
 -- Constraint-Objekten gesetzt werden, die bis zum naechsten Frame wirken.
+--
+-- Drift (Handbremse): Statt eines Seitenhalts im Schwerpunkt gibt es dann zwei Achsen.
+-- Jede Achse misst ihr eigenes seitliches Rutschen und drueckt dagegen. Hinten ist der
+-- Halt stark reduziert, also schwenkt das Heck aus. Die Kraefte der Achsen werden in eine
+-- Kraft im Schwerpunkt plus ein Drehmoment umgerechnet (das ist physikalisch dasselbe wie
+-- zwei Kraefte an den Achsen).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -17,6 +23,11 @@ export type Telemetry = {
 	speed: number,
 	forwardSpeed: number,
 	grounded: boolean,
+	driftAmount: number, -- 0 = normal, 1 = Handbremse voll
+	slipAngle: number, -- Grad zwischen Blick- und Fahrtrichtung
+	driftCharging: boolean, -- Driftzeit zaehlt gerade (fuer Funken)
+	boostLevel: number, -- 0, 1 oder 2 (aktuelle Ladung)
+	boosting: boolean,
 }
 
 type ControllerData = {
@@ -30,6 +41,13 @@ type ControllerData = {
 	time: number,
 	nextMeasure: number,
 	wobbleSeed: number,
+	-- Drift und Boost
+	driftAmount: number,
+	driftTime: number,
+	wasHandbrake: boolean,
+	boostTime: number, -- Restzeit des laufenden Schubs
+	boostAcceleration: number,
+	boostSpeedExtra: number, -- so viel darf man gerade ueber MaxSpeed fahren
 }
 
 export type Controller = typeof(setmetatable({} :: ControllerData, CartController))
@@ -70,6 +88,12 @@ function CartController.new(cart: Model, character: Model): Controller
 		time = 0,
 		nextMeasure = 0.5,
 		wobbleSeed = math.random() * 100,
+		driftAmount = 0,
+		driftTime = 0,
+		wasHandbrake = false,
+		boostTime = 0,
+		boostAcceleration = 0,
+		boostSpeedExtra = 0,
 	}, CartController)
 	return self
 end
@@ -81,9 +105,36 @@ function CartController.isGrounded(self: Controller): boolean
 	return workspace:Raycast(cf.Position, -cf.UpVector * length, self.rayParams) ~= nil
 end
 
--- throttle: -1 (S) .. 1 (W), steer: -1 (A) .. 1 (D)
-function CartController.step(self: Controller, dt: number, throttle: number, steer: number): Telemetry
+-- Aktuelle Boost-Stufe aus der gesammelten Driftzeit
+local function boostLevelFor(driftTime: number): number
+	if driftTime >= Config.Drift.Level2Time then
+		return 2
+	elseif driftTime >= Config.Drift.Level1Time then
+		return 1
+	end
+	return 0
+end
+
+-- Drift-Ladung und laufenden Boost verwerfen (Crash, Neustart, Aussteigen).
+function CartController.resetDrift(self: Controller)
+	self.driftAmount = 0
+	self.driftTime = 0
+	self.wasHandbrake = false
+	self.boostTime = 0
+	self.boostAcceleration = 0
+	self.boostSpeedExtra = 0
+end
+
+-- throttle: -1 (S) .. 1 (W), steer: -1 (A) .. 1 (D), handbrake: Shift gedrueckt
+function CartController.step(
+	self: Controller,
+	dt: number,
+	throttle: number,
+	steer: number,
+	handbrake: boolean
+): Telemetry
 	local D = Config.Drive
+	local DR = Config.Drift
 	local base = self.base
 	local cf = base.CFrame
 	local up, forward, right = cf.UpVector, cf.LookVector, cf.RightVector
@@ -99,13 +150,62 @@ function CartController.step(self: Controller, dt: number, throttle: number, ste
 
 	local speed = velocity.Magnitude
 	local forwardSpeed = velocity:Dot(forward)
+	local lateralSpeed = velocity:Dot(right)
 	local grounded = self:isGrounded()
+
+	-- Driftwinkel: positiv, wenn die Fahrtrichtung rechts von der Blickrichtung liegt
+	local slipAngle = if speed > 1 then math.deg(math.atan2(lateralSpeed, math.abs(forwardSpeed))) else 0
+
+	-- Handbremse weich ein- und ausblenden (0 = normal, 1 = voller Drift)
+	if handbrake then
+		self.driftAmount = math.min(1, self.driftAmount + dt / math.max(DR.EngageTime, 0.01))
+	else
+		self.driftAmount = math.max(0, self.driftAmount - dt / math.max(DR.GripRecoverTime, 0.01))
+	end
+	local drift = self.driftAmount
+
+	-- Driftzeit zaehlt nur am Boden, ab Mindesttempo und Mindest-Driftwinkel
+	-- (sonst koennte man den Boost im Stand "farmen").
+	local driftCharging = handbrake
+		and grounded
+		and speed >= DR.MinSpeed
+		and math.abs(slipAngle) >= DR.MinAngle
+	if driftCharging then
+		self.driftTime += dt
+	end
+
+	-- Handbremse losgelassen: Boost je nach Ladung, dann Ladung leeren
+	if self.wasHandbrake and not handbrake then
+		local level = boostLevelFor(self.driftTime)
+		if level > 0 then
+			local share = if level == 2 then DR.Level2Boost else DR.Level1Boost
+			local gain = share * D.MaxSpeed -- Tempo-Zuwachs in Studs/s
+			self.boostTime = DR.BoostDuration
+			self.boostAcceleration = gain / math.max(DR.BoostDuration, 0.05)
+			self.boostSpeedExtra = gain
+		end
+		self.driftTime = 0
+	end
+	self.wasHandbrake = handbrake
+
+	-- Hoechsttempo, waehrend und kurz nach einem Boost etwas hoeher
+	local boosting = self.boostTime > 0
+	if boosting then
+		self.boostTime -= dt
+	elseif self.boostSpeedExtra > 0 then
+		local fadePerSecond = (DR.Level2Boost * D.MaxSpeed) / math.max(DR.BoostFadeTime, 0.05)
+		self.boostSpeedExtra = math.max(0, self.boostSpeedExtra - fadePerSecond * dt)
+	end
+	local maxSpeed = D.MaxSpeed + self.boostSpeedExtra
 
 	-- Luftwiderstand wirkt immer (begrenzt das Tempo bergab)
 	local force = -velocity * speed * D.AirDrag * m
 	-- Hoechsttempo: alles darueber wird kraeftig abgebremst
-	if speed > D.MaxSpeed then
-		force -= velocity.Unit * math.min((speed - D.MaxSpeed) * D.OverSpeedBrake, 200) * m
+	if speed > maxSpeed then
+		force -= velocity.Unit * math.min((speed - maxSpeed) * D.OverSpeedBrake, 200) * m
+	end
+	if boosting then
+		force += forward * self.boostAcceleration * m
 	end
 	local torque = Vector3.zero
 
@@ -128,12 +228,46 @@ function CartController.step(self: Controller, dt: number, throttle: number, ste
 			end
 		end
 
-		-- Seitenhalt: seitliches Rutschen abbremsen, aber nur bis zur Grip-Grenze (Drift)
-		local lateralSpeed = velocity:Dot(right)
-		local grip = math.clamp(-lateralSpeed * D.LateralGrip, -D.MaxGripAcceleration, D.MaxGripAcceleration)
-		force += right * grip * m
+		-- Handbremse bremst leicht
+		if drift > 0 and math.abs(forwardSpeed) > 1 then
+			force -= forward * math.sign(forwardSpeed) * DR.HandbrakeDeceleration * drift * m
+		end
 
-		-- Lenkung: Ziel-Drehgeschwindigkeit um die Hochachse, abhaengig vom Tempo
+		-- Seitenhalt, Variante 1 (normal): ein Halt im Schwerpunkt, bis zur Grip-Grenze
+		local maxGrip = D.MaxGripAcceleration
+		local comGrip = right * math.clamp(-lateralSpeed * D.LateralGrip, -maxGrip, maxGrip) * m
+
+		-- Seitenhalt, Variante 2 (Drift): je eine Kraft an Vorder- und Hinterachse
+		local axleForce = Vector3.zero
+		local axleTorque = Vector3.zero
+		if drift > 0 then
+			local com = base.AssemblyCenterOfMass
+			local axleZ = Config.Cart.Length / 2 - Config.Cart.WheelDiameter / 2 - 0.1
+			local frontPoint = cf:PointToWorldSpace(Vector3.new(0, 0, -axleZ))
+			local rearPoint = cf:PointToWorldSpace(Vector3.new(0, 0, axleZ))
+			-- Tempo eines Punkts = Tempo des Schwerpunkts + Drehung * Hebelarm
+			local function pointVelocity(point: Vector3): Vector3
+				return velocity + angular:Cross(point - com)
+			end
+			-- Vorderraeder zeigen in Lenkrichtung (Drehung um die Hochachse, D = rechts)
+			local wheelAngle = -steer * math.rad(DR.SteerAngle)
+			local frontRight = CFrame.fromAxisAngle(up, wheelAngle):VectorToWorldSpace(right)
+			local halfMass = m / 2
+			local frontAccel =
+				math.clamp(-pointVelocity(frontPoint):Dot(frontRight) * D.LateralGrip, -maxGrip, maxGrip)
+			local rearGrip = D.LateralGrip * (1 + (DR.RearGrip - 1) * drift)
+			local rearAccel = math.clamp(-pointVelocity(rearPoint):Dot(right) * rearGrip, -maxGrip, maxGrip)
+			local frontForce = frontRight * frontAccel * halfMass
+			local rearForce = right * rearAccel * halfMass
+			axleForce = frontForce + rearForce
+			local rawTorque = (frontPoint - com):Cross(frontForce) + (rearPoint - com):Cross(rearForce)
+			-- nur die Drehung um die Hochachse verwenden (sonst kippt der Wagen seitlich)
+			axleTorque = up * rawTorque:Dot(up)
+		end
+		force += comGrip:Lerp(axleForce, drift)
+		torque += axleTorque * drift
+
+		-- Lenkhilfe: Ziel-Drehgeschwindigkeit um die Hochachse, abhaengig vom Tempo
 		local absSpeed = math.abs(forwardSpeed)
 		local factor = math.clamp(absSpeed / D.SteerFullSpeed, D.SteerMinFactor, 1)
 		local highSpeed =
@@ -141,14 +275,23 @@ function CartController.step(self: Controller, dt: number, throttle: number, ste
 		factor *= 1 + (D.SteerHighSpeedFactor - 1) * highSpeed
 		local direction = if forwardSpeed < -1 then -1 else 1 -- rueckwaerts: Lenkung umgekehrt
 		-- Positive Drehung um Y ist in Roblox eine Linksdrehung, deshalb das Minus.
-		local targetYawRate = -steer * D.SteerRate * factor * direction
+		local steerRate = D.SteerRate + (DR.SteerRate - D.SteerRate) * drift
+		local targetYawRate = -steer * steerRate * factor * direction
 
 		-- Wackelrad: langsames, zufaelliges Ziehen zur Seite
 		local wobble = math.clamp(math.noise(self.time * D.WobbleFrequency, self.wobbleSeed) * 2, -1, 1)
 		targetYawRate += wobble * D.WobbleStrength * math.clamp(absSpeed / D.WobbleFullSpeed, 0, 1)
 
 		local yawRate = angular:Dot(up)
-		torque += up * (targetYawRate - yawRate) * D.SteerResponse * self.inertia
+		local response = D.SteerResponse * (1 + (DR.SteerResponseFactor - 1) * drift)
+		torque += up * (targetYawRate - yawRate) * response * self.inertia
+
+		-- Schutz gegen 180er: Ist der Driftwinkel zu gross, Blickrichtung zur Fahrtrichtung
+		-- zurueckdrehen. Positiver Winkel = Fahrtrichtung liegt rechts = nach rechts drehen.
+		local excess = math.abs(slipAngle) - DR.RecoverAngle
+		if drift > 0 and excess > 0 and speed > 5 then
+			torque -= up * math.sign(slipAngle) * math.rad(excess) * DR.RecoverStrength * self.inertia
+		end
 
 		-- Kipp- und Nickbewegungen etwas daempfen (nicht verhindern!)
 		local otherRotation = angular - up * yawRate
@@ -162,6 +305,11 @@ function CartController.step(self: Controller, dt: number, throttle: number, ste
 		speed = speed,
 		forwardSpeed = forwardSpeed,
 		grounded = grounded,
+		driftAmount = drift,
+		slipAngle = slipAngle,
+		driftCharging = driftCharging,
+		boostLevel = boostLevelFor(self.driftTime),
+		boosting = boosting,
 	}
 end
 

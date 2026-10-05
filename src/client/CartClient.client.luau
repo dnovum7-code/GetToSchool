@@ -12,6 +12,7 @@ local CartController = require(script.Parent:WaitForChild("CartController"))
 local ChaseCamera = require(script.Parent:WaitForChild("ChaseCamera"))
 local CrashDetector = require(script.Parent:WaitForChild("CrashDetector"))
 local DevPanel = require(script.Parent:WaitForChild("DevPanel"))
+local DriftEffects = require(script.Parent:WaitForChild("DriftEffects"))
 local EnterPrompt = require(script.Parent:WaitForChild("EnterPrompt"))
 local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
@@ -55,6 +56,8 @@ EnterPrompt.init(function()
 end)
 
 local EXIT_ACTION = "GetToSchoolExit"
+local HANDBRAKE_ACTION = "GetToSchoolHandbrake"
+local handbrakeHeld = false
 
 -- Diese Zustaende wuerden die Figur aus dem Sitz werfen
 local BLOCKED_STATES = {
@@ -80,6 +83,9 @@ local function deactivate()
 	controller = nil
 	activeSeat = nil
 	ContextActionService:UnbindAction(EXIT_ACTION)
+	ContextActionService:UnbindAction(HANDBRAKE_ACTION)
+	handbrakeHeld = false
+	DriftEffects.detach()
 	local humanoid = activeHumanoid
 	if humanoid then
 		for _, state in BLOCKED_STATES do
@@ -111,6 +117,28 @@ local function activate(seat: BasePart, humanoid: Humanoid)
 		return Enum.ContextActionResult.Sink
 	end, true, Enum.KeyCode.E, Enum.KeyCode.ButtonX)
 	ContextActionService:SetTitle(EXIT_ACTION, "Raus")
+
+	-- Handbremse / Drift: Shift (Gamepad B), Touch-Button "Drift". Hohe Prioritaet und
+	-- "Sink", damit Shift nicht nebenbei Roblox' ShiftLock umschaltet.
+	ContextActionService:BindActionAtPriority(
+		HANDBRAKE_ACTION,
+		function(_, inputState)
+			if inputState == Enum.UserInputState.Begin then
+				handbrakeHeld = true
+			elseif inputState == Enum.UserInputState.End or inputState == Enum.UserInputState.Cancel then
+				handbrakeHeld = false
+			end
+			return Enum.ContextActionResult.Sink
+		end,
+		true,
+		Enum.ContextActionPriority.High.Value,
+		Enum.KeyCode.LeftShift,
+		Enum.KeyCode.RightShift,
+		Enum.KeyCode.ButtonB
+	)
+	ContextActionService:SetTitle(HANDBRAKE_ACTION, "Drift")
+
+	DriftEffects.attach(cart, character)
 end
 
 -- Neustart beim Server anfragen. Der Server entscheidet und antwortet mit "Reset".
@@ -132,6 +160,9 @@ end
 
 local function onCrash(reason: string, base: BasePart)
 	crashed = true
+	if controller then
+		controller:resetDrift() -- Boost-Ladung geht beim Crash verloren
+	end
 	crashedAt = os.clock()
 	RaceUI.showMessage("CRASH!", Color3.fromRGB(255, 80, 60), CRASH_TEXTS[reason])
 
@@ -183,6 +214,9 @@ local function onReset(spawnCFrame: CFrame)
 	crashed = false
 	previousVelocity = Vector3.zero
 	RaceUI.hideMessage()
+	if controller then
+		controller:resetDrift() -- Neustart: Boost-Ladung leeren
+	end
 
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -336,6 +370,7 @@ RunService.PreSimulation:Connect(function(dt)
 
 	local current = controller
 	if not current then
+		DriftEffects.update(dt, nil) -- alte Reifenspuren verblassen trotzdem weiter
 		return
 	end
 	if not current.base:IsDescendantOf(workspace) then
@@ -343,7 +378,10 @@ RunService.PreSimulation:Connect(function(dt)
 		return
 	end
 	local throttle, steer = readInput()
-	local telemetry = current:step(dt, throttle, steer)
+	-- Handbremse nur, wenn nicht gerade im Chat getippt wird
+	local handbrake = handbrakeHeld and UserInputService:GetFocusedTextBox() == nil
+	local telemetry = current:step(dt, throttle, steer, handbrake)
+	DriftEffects.update(dt, telemetry)
 	RaceUI.setSpeed(telemetry.speed)
 
 	-- Harte Landung: Fallgeschwindigkeit kurz vor dem Aufsetzen bestimmt das Wackeln

@@ -31,6 +31,32 @@ local sliders: { Slider } = {
 		server = true,
 	},
 	{ label = "Luftwiderstand", section = "Drive", key = "AirDrag", min = 0, max = 0.03, step = 0.0005 },
+	{
+		label = "Drift-Seitenhalt (hinten)",
+		section = "Drift",
+		key = "RearGrip",
+		min = 0,
+		max = 1,
+		step = 0.01,
+	},
+	{
+		label = "Rueckstell-Winkel (Grad)",
+		section = "Drift",
+		key = "RecoverAngle",
+		min = 20,
+		max = 120,
+		step = 1,
+	},
+	{
+		label = "Rueckstell-Staerke",
+		section = "Drift",
+		key = "RecoverStrength",
+		min = 0,
+		max = 40,
+		step = 0.5,
+	},
+	{ label = "Boost-Schwelle 1 (s)", section = "Drift", key = "Level1Time", min = 0.2, max = 3, step = 0.1 },
+	{ label = "Boost-Schwelle 2 (s)", section = "Drift", key = "Level2Time", min = 0.5, max = 5, step = 0.1 },
 }
 
 return sliders
