@@ -6,11 +6,11 @@
 -- Unity-Vergleich: wie AddForce/AddTorque in FixedUpdate, nur dass hier die Werte an
 -- Constraint-Objekten gesetzt werden, die bis zum naechsten Frame wirken.
 --
--- Drift (Handbremse): Statt eines Seitenhalts im Schwerpunkt gibt es dann zwei Achsen.
--- Jede Achse misst ihr eigenes seitliches Rutschen und drueckt dagegen. Hinten ist der
--- Halt stark reduziert, also schwenkt das Heck aus. Die Kraefte der Achsen werden in eine
--- Kraft im Schwerpunkt plus ein Drehmoment umgerechnet (das ist physikalisch dasselbe wie
--- zwei Kraefte an den Achsen).
+-- Drift (Handbremse): Die Lenkung bestimmt weiter, wie schnell sich der Wagen dreht (die
+-- Front "zieht"), nur staerker als normal. Der Seitenhalt wird weicher, also laeuft die
+-- Fahrtrichtung der Drehung hinterher und das Heck schwingt aus. Ueber der Winkelgrenze
+-- dreht der Wagen zurueck und haelt fester. Weil die Drehung immer geregelt bleibt, kann
+-- sich der Wagen nicht von selbst aufschaukeln (kein Dreher).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -310,42 +310,19 @@ function CartController.step(
 			force -= forward * math.sign(forwardSpeed) * DR.HandbrakeDeceleration * drift * m
 		end
 
-		-- Seitenhalt, Variante 1 (normal): ein Halt im Schwerpunkt, bis zur Grip-Grenze
+		-- Driftwinkel ueber der Grenze? (0 = nein; 1 = 15 Grad oder mehr darueber)
+		local excess = math.abs(slipAngle) - DR.RecoverAngle
+		local overLimit = if drift > 0 and speed > 5 then math.clamp(excess / 15, 0, 1) else 0
+
+		-- Seitenhalt im Schwerpunkt: im Drift weicher (Heck schwingt aus), ueber der
+		-- Winkelgrenze wieder fester (Heck kommt zurueck, bricht nie ganz aus).
+		local lateralGrip = (D.LateralGrip + (DR.LateralGrip - D.LateralGrip) * drift) * gripScale
+		lateralGrip *= 1 + 2 * overLimit
 		local maxGrip = D.MaxGripAcceleration * gripScale
-		local lateralGrip = D.LateralGrip * gripScale
-		local comGrip = right * math.clamp(-lateralSpeed * lateralGrip, -maxGrip, maxGrip) * m
+		force += right * math.clamp(-lateralSpeed * lateralGrip, -maxGrip, maxGrip) * m
 
-		-- Seitenhalt, Variante 2 (Drift): je eine Kraft an Vorder- und Hinterachse
-		local axleForce = Vector3.zero
-		local axleTorque = Vector3.zero
-		if drift > 0 then
-			local com = base.AssemblyCenterOfMass
-			local axleZ = Config.Cart.Length / 2 - Config.Cart.WheelDiameter / 2 - 0.1
-			local frontPoint = cf:PointToWorldSpace(Vector3.new(0, 0, -axleZ))
-			local rearPoint = cf:PointToWorldSpace(Vector3.new(0, 0, axleZ))
-			-- Tempo eines Punkts = Tempo des Schwerpunkts + Drehung * Hebelarm
-			local function pointVelocity(point: Vector3): Vector3
-				return velocity + angular:Cross(point - com)
-			end
-			-- Vorderraeder zeigen in Lenkrichtung (Drehung um die Hochachse, D = rechts)
-			local wheelAngle = -steer * math.rad(DR.SteerAngle)
-			local frontRight = CFrame.fromAxisAngle(up, wheelAngle):VectorToWorldSpace(right)
-			local halfMass = m / 2
-			local frontAccel =
-				math.clamp(-pointVelocity(frontPoint):Dot(frontRight) * lateralGrip, -maxGrip, maxGrip)
-			local rearGrip = lateralGrip * (1 + (DR.RearGrip - 1) * drift)
-			local rearAccel = math.clamp(-pointVelocity(rearPoint):Dot(right) * rearGrip, -maxGrip, maxGrip)
-			local frontForce = frontRight * frontAccel * halfMass
-			local rearForce = right * rearAccel * halfMass
-			axleForce = frontForce + rearForce
-			local rawTorque = (frontPoint - com):Cross(frontForce) + (rearPoint - com):Cross(rearForce)
-			-- nur die Drehung um die Hochachse verwenden (sonst kippt der Wagen seitlich)
-			axleTorque = up * rawTorque:Dot(up)
-		end
-		force += comGrip:Lerp(axleForce, drift)
-		torque += axleTorque * drift
-
-		-- Lenkhilfe: Ziel-Drehgeschwindigkeit um die Hochachse, abhaengig vom Tempo
+		-- Lenkung: Ziel-Drehgeschwindigkeit um die Hochachse, abhaengig vom Tempo.
+		-- Im Drift staerker: Die Front "zieht" den Wagen durch die Kurve.
 		local absSpeed = math.abs(forwardSpeed)
 		local factor = math.clamp(absSpeed / D.SteerFullSpeed, D.SteerMinFactor, 1)
 		local highSpeed =
@@ -360,16 +337,20 @@ function CartController.step(
 		local wobble = math.clamp(math.noise(self.time * D.WobbleFrequency, self.wobbleSeed) * 2, -1, 1)
 		targetYawRate += wobble * D.WobbleStrength * math.clamp(absSpeed / D.WobbleFullSpeed, 0, 1)
 
+		-- Wirres Heck: im Drift kleines, unregelmaessiges Pendeln
+		local tail =
+			math.clamp(math.noise(self.time * DR.TailWobbleFrequency, self.wobbleSeed + 17) * 2, -1, 1)
+		targetYawRate += tail * DR.TailWobble * drift * math.clamp(absSpeed / D.SteerFullSpeed, 0, 1)
+
+		-- Winkelgrenze: zu weit ausgeschwungen -> Blickrichtung zur Fahrtrichtung zurueckdrehen.
+		-- Positiver Winkel = Fahrtrichtung liegt rechts = nach rechts drehen (negatives Y).
+		if overLimit > 0 then
+			targetYawRate -= math.sign(slipAngle) * math.rad(excess) * DR.RecoverStrength
+		end
+
 		local yawRate = angular:Dot(up)
 		local response = D.SteerResponse * (1 + (DR.SteerResponseFactor - 1) * drift) * steerScale
 		torque += up * (targetYawRate - yawRate) * response * self.inertia
-
-		-- Schutz gegen 180er: Ist der Driftwinkel zu gross, Blickrichtung zur Fahrtrichtung
-		-- zurueckdrehen. Positiver Winkel = Fahrtrichtung liegt rechts = nach rechts drehen.
-		local excess = math.abs(slipAngle) - DR.RecoverAngle
-		if drift > 0 and excess > 0 and speed > 5 then
-			torque -= up * math.sign(slipAngle) * math.rad(excess) * DR.RecoverStrength * self.inertia
-		end
 
 		-- Kipp- und Nickbewegungen etwas daempfen (nicht verhindern!)
 		local otherRotation = angular - up * yawRate

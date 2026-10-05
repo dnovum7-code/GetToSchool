@@ -56,7 +56,8 @@ Config.Drive = {
 	MaxGripAcceleration = 120,
 
 	-- Lenkung (A/D)
-	SteerRate = 1.8, -- maximale Drehgeschwindigkeit in Radiant/Sekunde
+	-- Normale Lenkung nur fuer leichte Korrekturen; die Hauptarbeit macht der Drift.
+	SteerRate = 1.1, -- maximale Drehgeschwindigkeit in Radiant/Sekunde
 	SteerResponse = 8, -- wie schnell die Drehung der Eingabe folgt
 	SteerMinFactor = 0.4, -- Lenkwirkung im Stand (0..1)
 	SteerFullSpeed = 15, -- ab diesem Tempo volle Lenkwirkung
@@ -73,21 +74,26 @@ Config.Drive = {
 }
 
 -- Drift mit Handbremse (Shift / Gamepad B). Laeuft auf dem Client des Fahrers.
--- Mit gezogener Handbremse wird der Seitenhalt auf Vorder- und Hinterachse aufgeteilt.
--- Hinten haelt der Wagen kaum noch, also bricht das Heck aus. Die Vorderraeder zeigen im
--- Drift in Lenkrichtung: Gegenlenken stellt sie in Rutschrichtung und faengt den Wagen ab.
+-- Gefuehl: Einkaufswagen mit lenkenden Vorderraedern und "wirren" Hinterraedern. Die Front
+-- zieht den Wagen durch die Kurve (die Lenkung bestimmt, wie schnell er sich dreht), der
+-- Seitenhalt wird weicher, also schwingt das Heck aus. Ab MaxAngle drehen Lenkung und
+-- zusaetzlicher Halt zurueck: kein Dreher, auch nicht bei langem Driften.
 Config.Drift = {
-	RearGrip = 0.15, -- Seitenhalt hinten mit Handbremse (Anteil von Drive.LateralGrip)
-	EngageTime = 0.1, -- so schnell (s) greift die Handbremse
-	GripRecoverTime = 0.2, -- so schnell (s) kommt der Halt nach dem Loslassen zurueck
-	HandbrakeDeceleration = 8, -- leichtes Abbremsen durch die Handbremse
-	SteerAngle = 30, -- Lenkeinschlag der Vorderraeder im Drift (Grad)
-	SteerRate = 2.6, -- Drehgeschwindigkeit der Lenkhilfe im Drift (Radiant/s)
-	SteerResponseFactor = 0.35, -- Staerke der Lenkhilfe im Drift (Anteil von Drive.SteerResponse)
+	EngageTime = 0.15, -- so schnell (s) greift die Handbremse
+	GripRecoverTime = 0.3, -- so schnell (s) kommt der volle Halt nach dem Loslassen zurueck
+	HandbrakeDeceleration = 4, -- leichtes Abbremsen durch die Handbremse
+	LateralGrip = 3.5, -- Seitenhalt im Drift (normal: Drive.LateralGrip = 8). Kleiner = weiter ausschwingen
+	SteerRate = 2.4, -- Drehgeschwindigkeit im Drift (Radiant/s) - staerker als normal
+	SteerResponseFactor = 0.6, -- wie direkt die Drehung folgt (Anteil von Drive.SteerResponse); kleiner = weicher
 
-	-- Schutz gegen ungewollte 180er: ab diesem Driftwinkel dreht eine Kraft zurueck
-	RecoverAngle = 55, -- Grad zwischen Blick- und Fahrtrichtung
-	RecoverStrength = 12, -- Staerke der Rueckstellkraft (0 = aus)
+	-- Grenze fuer den Driftwinkel (Grad zwischen Blick- und Fahrtrichtung). Darueber dreht
+	-- der Wagen zurueck und haelt seitlich staerker. Die Namen bleiben fuers Tuning-Panel.
+	RecoverAngle = 30, -- maximaler Driftwinkel (Grad)
+	RecoverStrength = 25, -- wie hart die Grenze zurueckdreht (0 = aus)
+
+	-- "Wirres Heck": kleines, unregelmaessiges Pendeln im Drift
+	TailWobble = 0.5, -- Staerke (Radiant/s); 0 = aus
+	TailWobbleFrequency = 2.5, -- wie schnell es pendelt
 
 	-- Boost: Driftzeit zaehlt nur am Boden, ab Mindesttempo und Mindest-Driftwinkel
 	MinSpeed = 25, -- Studs/s
