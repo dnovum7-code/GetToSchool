@@ -1,10 +1,10 @@
 --!strict
--- Alles rund um die Strecke: Start- und Zielzone finden, Startposition berechnen,
--- pruefen, ob der Wagen in einer Zone ist.
+-- Alles rund um die Strecken: Strecken finden, Start- und Zielzone pro Strecke,
+-- Startposition berechnen, pruefen, ob der Wagen in einer Zone ist.
 --
 -- Zonen baust du in Studio als normale Parts (Quader). Gefunden werden sie ueber
 -- einen Tag ("StartZone" / "FinishZone", siehe Config.Race) oder, falls kein Tag
--- gesetzt ist, ueber den gleichen Namen irgendwo im Workspace.
+-- gesetzt ist, ueber den gleichen Namen. Mehrere Strecken: siehe "Strecken" unten.
 
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -79,6 +79,77 @@ function Track.placeOnGround(origin: CFrame, ignore: { Instance }, allowDownhill
 	return CFrame.fromMatrix(position, right, up)
 end
 
+-- Strecken ------------------------------------------------------------------------------
+-- Jede Strecke ist ein Model mit Attribut "TrackId" (Text); StartZone, FinishZone und
+-- Checkpoints liegen darin. Zonen, die in keinem solchen Model liegen, bilden die
+-- "lose" Strecke (so wie vor M3): ihre Id ist das Attribut "TrackId" der StartZone oder
+-- Config.Race.DefaultTrackId.
+
+local trackModels: { [string]: Model } = {}
+local warnedDuplicate: { [string]: boolean } = {}
+
+local function readTrackId(instance: Instance): string?
+	if not instance:IsA("Model") then
+		return nil
+	end
+	local id = instance:GetAttribute("TrackId")
+	return if type(id) == "string" and id ~= "" then id else nil
+end
+
+local function addTrackModel(instance: Instance)
+	local id = readTrackId(instance)
+	if not id then
+		return
+	end
+	local existing = trackModels[id]
+	if existing and existing ~= instance and existing:IsDescendantOf(workspace) then
+		if not warnedDuplicate[id] then
+			warnedDuplicate[id] = true
+			warn(`[Track] Zwei Strecken mit TrackId "{id}" - nur eine wird benutzt.`)
+		end
+		return
+	end
+	trackModels[id] = instance :: Model
+end
+
+for _, descendant in workspace:GetDescendants() do
+	addTrackModel(descendant)
+end
+workspace.DescendantAdded:Connect(addTrackModel)
+workspace.DescendantRemoving:Connect(function(instance)
+	local id = readTrackId(instance)
+	if id and trackModels[id] == instance then
+		trackModels[id] = nil
+	end
+end)
+
+-- Zu welcher Strecke (Model) gehoert dieses Objekt? nil = lose (in keinem Track-Model)
+local function ownerModel(instance: Instance): Model?
+	local current = instance.Parent
+	while current and current ~= workspace do
+		if readTrackId(current) then
+			return current :: Model
+		end
+		current = current.Parent
+	end
+	return nil
+end
+
+-- Gehoert `instance` zur Strecke `trackId`?
+local function belongsTo(instance: Instance, trackId: string): boolean
+	local owner = ownerModel(instance)
+	if owner then
+		local model: Model? = trackModels[trackId]
+		if not model then
+			return false
+		end
+		return rawequal(owner, model)
+	end
+	-- lose Objekte gehoeren zur losen Strecke (wenn kein Model diese Id hat)
+	local model: Model? = trackModels[trackId]
+	return not model
+end
+
 local zoneCache: { [string]: BasePart } = {}
 local lastSearch: { [string]: number } = {}
 local warned: { [string]: boolean } = {}
@@ -93,37 +164,107 @@ local function prepareZone(zone: BasePart)
 	zone.CanQuery = false
 end
 
--- Sucht die Zone mit diesem Tag (oder Namen). nil, wenn es keine gibt.
-function Track.findZone(tag: string): BasePart?
-	local cached = zoneCache[tag]
-	if cached and cached:IsDescendantOf(workspace) then
+-- Sucht ohne Cache: erst per Tag, dann per Name (im Track-Model bzw. lose im Workspace)
+local function searchZone(trackId: string, tag: string): BasePart?
+	for _, instance in CollectionService:GetTagged(tag) do
+		if
+			instance:IsA("BasePart")
+			and instance:IsDescendantOf(workspace)
+			and belongsTo(instance, trackId)
+		then
+			return instance
+		end
+	end
+	local model = trackModels[trackId]
+	local root: Instance = model or workspace
+	for _, instance in root:GetDescendants() do
+		if instance.Name == tag and instance:IsA("BasePart") and belongsTo(instance, trackId) then
+			return instance
+		end
+	end
+	return nil
+end
+
+-- Id der losen Strecke (Zonen ausserhalb von Track-Models), nil wenn es keine gibt
+local function looseTrackId(): string?
+	for _, instance in CollectionService:GetTagged(Config.Race.StartZoneTag) do
+		if instance:IsA("BasePart") and instance:IsDescendantOf(workspace) and not ownerModel(instance) then
+			local id = instance:GetAttribute("TrackId")
+			return if type(id) == "string" and id ~= "" then id else Config.Race.DefaultTrackId
+		end
+	end
+	local byName = workspace:FindFirstChild(Config.Race.StartZoneTag, true)
+	if byName and byName:IsA("BasePart") and not ownerModel(byName) then
+		local id = byName:GetAttribute("TrackId")
+		return if type(id) == "string" and id ~= "" then id else Config.Race.DefaultTrackId
+	end
+	return nil
+end
+
+-- Alle Strecken, die es in der Welt gibt (Ids)
+function Track.list(): { string }
+	local ids = {}
+	for id, model in trackModels do
+		if model:IsDescendantOf(workspace) then
+			table.insert(ids, id)
+		end
+	end
+	local loose = looseTrackId()
+	if loose and not trackModels[loose] then
+		table.insert(ids, loose)
+	end
+	table.sort(ids)
+	return ids
+end
+
+function Track.exists(trackId: string): boolean
+	return table.find(Track.list(), trackId) ~= nil
+end
+
+-- Name zum Anzeigen: aus Config.Tracks, sonst Attribut "TrackName" am Model, sonst die Id
+function Track.displayName(trackId: string): string
+	for _, def in Config.Tracks do
+		if def.id == trackId then
+			return def.name
+		end
+	end
+	local model = trackModels[trackId]
+	local name = model and model:GetAttribute("TrackName")
+	return if type(name) == "string" and name ~= "" then name else trackId
+end
+
+-- Strecke fuer neue Spieler: die erste aus Config.Tracks, die es gibt und die frei ist
+-- (ohne Bedingung), sonst die erste vorhandene, sonst Config.Race.DefaultTrackId.
+function Track.defaultTrackId(): string
+	local existing = Track.list()
+	for _, def in Config.Tracks do
+		if def.unlock == nil and table.find(existing, def.id) then
+			return def.id
+		end
+	end
+	return existing[1] or Config.Race.DefaultTrackId
+end
+
+-- Sucht die Zone mit diesem Tag (oder Namen) auf der Strecke. nil, wenn es keine gibt.
+function Track.findZone(trackId: string, tag: string): BasePart?
+	local cacheKey = trackId .. "|" .. tag
+	local cached = zoneCache[cacheKey]
+	if cached and cached:IsDescendantOf(workspace) and belongsTo(cached, trackId) then
 		return cached
 	end
-	-- Fehlt die Zone, nicht jeden Frame den ganzen Workspace durchsuchen
-	local last = lastSearch[tag]
+	-- Fehlt die Zone, nicht jeden Frame die ganze Welt durchsuchen
+	local last = lastSearch[cacheKey]
 	if last and os.clock() - last < SEARCH_INTERVAL then
 		return nil
 	end
-	lastSearch[tag] = os.clock()
-	local found: BasePart? = nil
-	for _, instance in CollectionService:GetTagged(tag) do
-		if instance:IsA("BasePart") and instance:IsDescendantOf(workspace) then
-			found = instance
-			break
-		end
-	end
-	if not found then
-		local byName = workspace:FindFirstChild(tag, true)
-		if byName and byName:IsA("BasePart") then
-			found = byName
-		end
-	end
+	lastSearch[cacheKey] = os.clock()
+	local found = searchZone(trackId, tag)
 	if found then
 		prepareZone(found)
-		zoneCache[tag] = found
-	elseif not warned[tag] then
-		warned[tag] = true
-		warn(`[Track] Keine Zone "{tag}" gefunden (Part mit Tag oder Name "{tag}").`)
+		zoneCache[cacheKey] = found
+	elseif not warned[cacheKey] then
+		warned[cacheKey] = true
+		warn(`[Track] Strecke "{trackId}": keine Zone "{tag}" gefunden (Part mit Tag oder Name "{tag}").`)
 	end
 	return found
 end
@@ -141,8 +282,8 @@ end
 
 -- Startposition: Mitte der Startzone, auf dem Boden, Blick in Richtung der
 -- Vorderseite (Front) der Zone. Ohne Startzone: vor dem SpawnLocation.
-function Track.getSpawn(): CFrame
-	local startZone = Track.findZone(Config.Race.StartZoneTag)
+function Track.getSpawn(trackId: string): CFrame
+	local startZone = Track.findZone(trackId, Config.Race.StartZoneTag)
 	if startZone then
 		-- von der Oberseite der Zone aus nach unten den Boden suchen
 		local top = startZone.CFrame * CFrame.new(0, startZone.Size.Y / 2, 0)
@@ -168,8 +309,15 @@ TagList.watch("Checkpoint", function(instance)
 	end
 end)
 
-function Track.getCheckpoints(): { Instance }
-	return TagList.get("Checkpoint")
+-- Checkpoints dieser Strecke
+function Track.getCheckpoints(trackId: string): { Instance }
+	local result = {}
+	for _, instance in TagList.get("Checkpoint") do
+		if belongsTo(instance, trackId) then
+			table.insert(result, instance)
+		end
+	end
+	return result
 end
 
 return Track

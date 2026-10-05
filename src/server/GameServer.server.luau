@@ -16,6 +16,7 @@ local RandomEvents = require(script.Parent:WaitForChild("RandomEvents"))
 local Shop = require(script.Parent:WaitForChild("Shop"))
 local Track = require(script.Parent:WaitForChild("Track"))
 local TrackPieces = require(script.Parent:WaitForChild("TrackPieces"))
+local TrackUnlocks = require(script.Parent:WaitForChild("TrackUnlocks"))
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local requestRestart = remotes:WaitForChild("RequestRestart") :: RemoteEvent
@@ -34,8 +35,8 @@ Profiles.init() -- Spielstaende laden/speichern (zuerst, damit beim Beitreten ge
 ProgressSync.init() -- Kopie des Spielstands an den Client (fuer die Anzeige)
 Track.init(cartsFolder)
 CartManager.init(cartsFolder)
-CartManager.setSpawnResolver(function(_player)
-	return Track.getSpawn()
+CartManager.setSpawnResolver(function(player)
+	return Track.getSpawn(RaceManager.getTrackId(player)) -- Start der gewaehlten Strecke
 end)
 RaceManager.start()
 TrackPieces.init() -- getaggte Streckenbausteine einstellen
@@ -43,6 +44,7 @@ RandomEvents.init() -- Zufallsereignisse durchnummerieren
 Coins.init() -- Muenzen einsammeln (Server prueft)
 Launchables.init() -- Objekte zum Wegschleudern
 Shop.init() -- Kaeufe pruefen
+TrackUnlocks.init() -- Strecken freischalten und waehlen
 DevTuning.init(cartsFolder) -- Tuning-Panel (nur in Studio aktiv)
 
 -- Eingaben vom Client nie blind vertrauen: Der Client darf nur "bitte Neustart" sagen
@@ -73,7 +75,7 @@ local function onCharacterAdded(player: Player, character: Model)
 	-- sonst faellt der Wagen durch noch nicht geladenen Boden.
 	if workspace.StreamingEnabled then
 		local ok, err = pcall(function()
-			player:RequestStreamAroundAsync(Track.getSpawn().Position, 3)
+			player:RequestStreamAroundAsync(Track.getSpawn(RaceManager.getTrackId(player)).Position, 3)
 		end)
 		if not ok then
 			warn("[GameServer] RequestStreamAroundAsync fehlgeschlagen:", err)

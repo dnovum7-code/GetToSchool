@@ -90,7 +90,7 @@ local function getRace(player: Player): RaceState
 			wrongCheckpoint = nil,
 			spawnPosition = Vector3.zero,
 			startTime = 0,
-			trackId = Config.Race.DefaultTrackId,
+			trackId = Track.defaultTrackId(),
 			splits = {},
 			runId = 0,
 			lastRestart = -math.huge,
@@ -103,11 +103,9 @@ local function getRace(player: Player): RaceState
 	return race
 end
 
--- Welcher Track? Attribut "TrackId" an der StartZone, sonst Config.Race.DefaultTrackId
-local function currentTrackId(): string
-	local startZone = Track.findZone(Config.Race.StartZoneTag)
-	local id = startZone and startZone:GetAttribute("TrackId")
-	return if type(id) == "string" and id ~= "" then id else Config.Race.DefaultTrackId
+-- Gewaehlte Strecke des Spielers (fuer Startposition, Zonen, Bestzeit)
+function RaceManager.getTrackId(player: Player): string
+	return getRace(player).trackId
 end
 
 -- Bestzeit des Spielers fuer seinen aktuellen Track an den Client schicken (fuer die Anzeige)
@@ -136,17 +134,20 @@ end
 
 -- Kompletter Neustart (Taste T): Wagen an den Start, neuer Lauf, Zeit wieder auf 0.
 function RaceManager.restart(player: Player)
+	local race = getRace(player)
+	-- Gewaehlte Strecke gibt es nicht (mehr)? Dann die Standard-Strecke
+	if not Track.exists(race.trackId) then
+		race.trackId = Track.defaultTrackId()
+	end
 	local spawnCFrame = CartManager.reset(player)
 	if not spawnCFrame then
 		return
 	end
-	local race = getRace(player)
 	race.phase = "Ready"
 	race.checkpoint = nil
 	race.usedCheckpointRestart = false
 	race.wrongCheckpoint = nil
 	race.spawnPosition = spawnCFrame.Position
-	race.trackId = currentTrackId()
 	race.splits = {}
 	race.runId += 1
 	race.lastRestart = os.clock()
@@ -241,6 +242,23 @@ function RaceManager.hitLaunchable(player: Player, object: unknown)
 	end
 end
 
+-- Andere Strecke waehlen (geprueft wird vorher: frei? ausserhalb eines Laufs?):
+-- Spieler wird an deren Start gesetzt, neuer Lauf.
+function RaceManager.selectTrack(player: Player, trackId: string)
+	local race = getRace(player)
+	race.trackId = trackId
+	-- Mit StreamingEnabled die neue Startgegend vorher laden lassen (sonst faellt der Wagen
+	-- durch noch nicht geladenen Boden)
+	if workspace.StreamingEnabled then
+		pcall(function()
+			player:RequestStreamAroundAsync(Track.getSpawn(trackId).Position, 3)
+		end)
+	end
+	if player.Parent and race.trackId == trackId then
+		RaceManager.restart(player)
+	end
+end
+
 -- Ist der Spieler gerade ausserhalb eines Laufs (Shop, Track-Wahl erlaubt)?
 -- Erlaubt: am Start vor dem Losfahren, nach dem Ziel, nach einem Abbruch.
 function RaceManager.isOutsideRun(player: Player): boolean
@@ -276,7 +294,7 @@ end
 local function checkCheckpoints(player: Player, race: RaceState, base: BasePart)
 	local position = base.Position
 	local current = race.checkpoint
-	for _, instance in Track.getCheckpoints() do
+	for _, instance in Track.getCheckpoints(race.trackId) do
 		if
 			not instance:IsA("BasePart")
 			or not instance:IsDescendantOf(workspace)
@@ -447,7 +465,7 @@ local function updatePlayer(player: Player, race: RaceState)
 		if os.clock() - race.lastRestart < Config.Race.StartGrace then
 			return
 		end
-		local startZone = Track.findZone(Config.Race.StartZoneTag)
+		local startZone = Track.findZone(race.trackId, Config.Race.StartZoneTag)
 		local leftStart = if startZone
 			then not Track.isInZone(startZone, position)
 			else (position - race.spawnPosition).Magnitude > Config.Race.StartDistanceWithoutZone
@@ -458,7 +476,7 @@ local function updatePlayer(player: Player, race: RaceState)
 		end
 	elseif race.phase == "Running" then
 		checkCheckpoints(player, race, base)
-		local finishZone = Track.findZone(Config.Race.FinishZoneTag)
+		local finishZone = Track.findZone(race.trackId, Config.Race.FinishZoneTag)
 		if finishZone and Track.isInZone(finishZone, position) then
 			finish(player, race, finishZone)
 		end

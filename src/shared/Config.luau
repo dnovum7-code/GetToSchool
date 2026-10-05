@@ -521,6 +521,20 @@ Config.Race = {
 	DefaultTrackId = "Track1",
 }
 
+-- Strecken. Jede Strecke ist in Studio ein Model mit Attribut "TrackId" (Text); StartZone,
+-- FinishZone und Checkpoints liegen darin. Hier stehen Name und Freischalt-Bedingung:
+--   unlock = nil:                          von Anfang an frei
+--   unlock = { track = "Track1", grade = 4 }: Note 4 oder besser auf Track1
+--   unlock = { price = 300 }:               im Menue fuer Muenzen freischalten
+--   beides zusammen:                        was zuerst erfuellt ist
+-- Strecken, die hier fehlen, sind frei (Name: Attribut "TrackName" am Model oder die Id).
+-- Strecken, die es in der Welt nicht gibt, erscheinen nicht im Menue.
+Config.Tracks = {
+	{ id = "Track1", name = "Der Schulweg" },
+	{ id = "Track2", name = "Die Abkuerzung", unlock = { track = "Track1", grade = 4, price = 250 } },
+	{ id = "Track3", name = "Ueber den Berg", unlock = { track = "Track2", grade = 5 } },
+}
+
 -- Spielstand (DataStore): Muenzen, Upgrades, Bestzeiten, freigeschaltete Tracks ...
 Config.Save = {
 	Enabled = true, -- false = nur im Arbeitsspeicher (nichts wird dauerhaft gespeichert)
