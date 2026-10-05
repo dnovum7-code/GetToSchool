@@ -8,30 +8,35 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
-local TuningSliders = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("TuningSliders"))
 local CartBuilder = require(script.Parent:WaitForChild("CartBuilder"))
 
 local DevTuning = {}
 
+-- Groesster erlaubter Betrag (nur Schutz gegen Tippfehler wie 1e30)
+local MAX_ABS_VALUE = 1e6
+
 function DevTuning.init(cartsFolder: Folder)
 	local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DevTuning") :: RemoteEvent
-	remote.OnServerEvent:Connect(function(_player, section: unknown, key: unknown, value: unknown)
+	remote.OnServerEvent:Connect(function(_player, path: unknown, value: unknown)
 		if not RunService:IsStudio() then
 			return
 		end
-		if type(section) ~= "string" or type(key) ~= "string" or type(value) ~= "number" then
+		if type(path) ~= "string" or type(value) ~= "number" then
 			return
 		end
-		if value ~= value then -- NaN abfangen
+		if value ~= value or math.abs(value) > MAX_ABS_VALUE then -- NaN / Unsinn abfangen
 			return
 		end
-		-- Nur Werte aus der Regler-Liste, die der Server braucht, und nur im erlaubten Bereich
-		for _, slider in TuningSliders do
-			if slider.server and slider.section == section and slider.key == key then
-				local clamped = math.clamp(value, slider.min, slider.max)
-				local sectionTable: any = (Config :: any)[section]
-				sectionTable[key] = clamped
-				if section == "Cart" and key == "BallastHeight" then
+		-- Nur Werte aus der Regler-Liste, die der Server braucht
+		for _, entry in (Config :: any).TuningPanel do
+			if entry.server and entry.path == path then
+				local section, key = string.match(path, "^(%w+)%.(%w+)$")
+				local sectionTable = section and (Config :: any)[section]
+				if type(sectionTable) ~= "table" or type(sectionTable[key]) ~= "number" then
+					return
+				end
+				sectionTable[key] = value
+				if path == "Cart.BallastHeight" then
 					for _, cart in cartsFolder:GetChildren() do
 						if cart:IsA("Model") then
 							CartBuilder.applyBallastHeight(cart)

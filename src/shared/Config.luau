@@ -199,6 +199,37 @@ Config.Sounds = {
 	Finish = { Id = "", Volume = 0.8 }, -- im Ziel
 }
 
+-- Tuning-Panel (nur in Studio, Taste F2): welche Werte als Regler erscheinen.
+-- path: "Abschnitt.Name" in dieser Config. Jeder Regler startet in der MITTE, die Mitte ist
+-- der Wert beim Spielstart. Bereich: 0 bis doppelter Wert. Sonderfaelle:
+--   span = halbe Breite (Bereich = Wert - span .. Wert + span), z. B. fuer Winkel. Ist der
+--          Wert 0, gilt min .. min + span (Standard 1), weil "Mitte" dann nicht geht.
+--   min  = untere Grenze (Standard 0); der Bereich bleibt symmetrisch um den Wert
+-- server = true: Der Wert wird zusaetzlich an den Server geschickt (er baut z. B. den Ballast).
+Config.TuningPanel = {
+	{ label = "Motorkraft", path = "Drive.PushAcceleration" },
+	{ label = "Hoechsttempo (Motor)", path = "Drive.MaxPushSpeed" },
+	{ label = "Bremskraft (S)", path = "Drive.BrakeAcceleration" },
+	{ label = "Ausrollen", path = "Drive.RollingResistance" },
+	{ label = "Luftwiderstand", path = "Drive.AirDrag" },
+	{ label = "Lenkung", path = "Drive.SteerRate" },
+	{ label = "Seitenhalt", path = "Drive.LateralGrip" },
+	{ label = "Kipp-Ballast (Hoehe)", path = "Cart.BallastHeight", server = true },
+	{ label = "Drift-Seitenhalt", path = "Drift.LateralGrip" },
+	{ label = "Drift-Lenkung", path = "Drift.SteerRate" },
+	{ label = "Max. Driftwinkel (Grad)", path = "Drift.RecoverAngle", span = 25, min = 5 }, -- Winkel: 5 .. 55
+	{ label = "Rueckstell-Staerke", path = "Drift.RecoverStrength" },
+	{ label = "Heck-Pendeln", path = "Drift.TailWobble", span = 1 }, -- span: falls auf 0 gesetzt
+	{ label = "Hopp-Hoehe (Tempo)", path = "Hop.Speed" },
+	{ label = "Hopp-Drehung", path = "Hop.TurnRate" },
+	{ label = "Boost-Schwelle 1 (s)", path = "Drift.Level1Time" },
+	{ label = "Boost-Schwelle 2 (s)", path = "Drift.Level2Time" },
+	{ label = "Schlamm-Bremse", path = "Track.MudDrag" },
+	{ label = "Eis-Seitenhalt", path = "Track.IceGrip" },
+	{ label = "BoostPad-Staerke", path = "Track.BoostPadStrength" },
+	{ label = "JumpPad-Staerke", path = "Track.JumpPadStrength" },
+}
+
 -- Fehlersuche (nur in Studio wirksam)
 Config.Debug = {
 	-- true = im Output melden, wenn ein Rad einen Bodenbaustein erkennt und welcher
