@@ -200,6 +200,10 @@ Config.Crash = {
 	KillY = -100, -- unter dieser Hoehe gilt der Wagen als abgestuerzt
 	GracePeriod = 0.5, -- nach einem Neustart so lange keine Crashs erkennen
 	RestartDelay = 1.2, -- so lange den Crash zeigen, dann Neustart (R ueberspringt das)
+	-- Selbst verursachte Tempo-Spruenge (BoostPad, JumpPad, Drift-Boost, Hopp) sind kein Aufprall.
+	-- Danach ist die Aufprall-Erkennung so lange (s) um diesen Faktor toleranter:
+	SelfImpulseGrace = 0.3,
+	SelfImpulseTolerance = 2,
 
 	-- Ragdoll: Bei einem Crash fliegt die Figur schlaff aus dem Wagen.
 	Ragdoll = true, -- false = Figur bleibt im Wagen sitzen

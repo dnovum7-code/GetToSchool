@@ -14,6 +14,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Attributes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Attributes"))
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local TrackSensors = require(script.Parent:WaitForChild("TrackSensors"))
 
@@ -32,6 +33,9 @@ export type Telemetry = {
 	onMud: boolean,
 	onIce: boolean,
 	padEvent: string?, -- "Boost" oder "Jump", wenn in diesem Frame ein Pad ausgeloest hat
+	-- Tempo-Sprung, den der Wagen in diesem Frame selbst verursacht hat (Pads usw.).
+	-- Die Crash-Erkennung zieht ihn ab, damit er nicht als Aufprall zaehlt.
+	selfImpulse: Vector3,
 }
 
 type ControllerData = {
@@ -131,17 +135,25 @@ function CartController.resetDrift(self: Controller)
 	self.boostSpeedExtra = 0
 end
 
--- Ganzen Wagen (alle Teile, auch Raeder) um `delta` schneller machen
+-- Ganzen Wagen um `delta` schneller machen. Wichtig: einmal pro Physik-Koerper (Assembly)!
+-- Alle verschweissten Teile teilen sich eine Geschwindigkeit; wuerde man `delta` an jedem
+-- Teil addieren, bekaeme der Korb den Schub zehnfach (das war der BoostPad-Crash-Bug).
 local function addVelocity(cart: Model, delta: Vector3)
+	local done: { [BasePart]: boolean } = {}
 	for _, part in cart:GetDescendants() do
 		if part:IsA("BasePart") then
-			part.AssemblyLinearVelocity += delta
+			local root = part.AssemblyRootPart or part
+			if not done[root] then
+				done[root] = true
+				root.AssemblyLinearVelocity += delta
+			end
 		end
 	end
 end
 
--- BoostPad / JumpPad unter den Raedern ausloesen. Gibt "Boost"/"Jump" oder nil zurueck.
-function CartController.applyPads(self: Controller, surface: TrackSensors.Surface): string?
+-- BoostPad / JumpPad unter den Raedern ausloesen. Gibt "Boost"/"Jump" (oder nil) und den
+-- verursachten Tempo-Sprung zurueck.
+function CartController.applyPads(self: Controller, surface: TrackSensors.Surface): (string?, Vector3)
 	local T = Config.Track
 	local now = os.clock()
 	-- Ein Pad loest nur beim Drauffahren aus: Solange man drauf ist, wird "zuletzt gesehen"
@@ -152,24 +164,29 @@ function CartController.applyPads(self: Controller, surface: TrackSensors.Surfac
 		return last == nil or now - last >= T.PadCooldown
 	end
 	local event: string? = nil
+	local impulse = Vector3.zero
 	local boostPad = surface.boostPad
 	if boostPad and ready(boostPad) then
 		-- Schub in Blickrichtung des Pads; Hoechsttempo kurz um den Schub anheben
-		local strength = TrackSensors.numberAttribute(boostPad, "Strength", T.BoostPadStrength)
-		addVelocity(self.cart, TrackSensors.pieceCFrame(boostPad).LookVector * strength)
+		local strength = Attributes.number(boostPad, "Strength", T.BoostPadStrength, true)
+		local delta = TrackSensors.pieceCFrame(boostPad).LookVector * strength
+		addVelocity(self.cart, delta)
+		impulse += delta
 		self.boostSpeedExtra = math.max(self.boostSpeedExtra, strength)
 		event = "Boost"
 	end
 	local jumpPad = surface.jumpPad
 	if jumpPad and ready(jumpPad) then
 		-- Tempo entlang der Oberseite des Pads auf `strength` setzen (immer gleich hoch)
-		local strength = TrackSensors.numberAttribute(jumpPad, "Strength", T.JumpPadStrength)
+		local strength = Attributes.number(jumpPad, "Strength", T.JumpPadStrength, true)
 		local up = TrackSensors.pieceCFrame(jumpPad).UpVector
 		local current = self.base.AssemblyLinearVelocity:Dot(up)
-		addVelocity(self.cart, up * (strength - current))
+		local delta = up * (strength - current)
+		addVelocity(self.cart, delta)
+		impulse += delta
 		event = "Jump"
 	end
-	return event
+	return event, impulse
 end
 
 -- throttle: -1 (S) .. 1 (W), steer: -1 (A) .. 1 (D), handbrake: Shift gedrueckt,
@@ -197,7 +214,7 @@ function CartController.step(
 	end
 	local m = self.mass
 
-	local padEvent = self:applyPads(surface)
+	local padEvent, selfImpulse = self:applyPads(surface)
 	if padEvent then
 		velocity = base.AssemblyLinearVelocity
 	end
@@ -381,6 +398,7 @@ function CartController.step(
 		onMud = onMud,
 		onIce = onIce,
 		padEvent = padEvent,
+		selfImpulse = selfImpulse,
 	}
 end
 

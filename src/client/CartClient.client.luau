@@ -50,6 +50,7 @@ local runStartedAt = 0
 local runTimeScale = Config.Clock.TimeScale -- Spielsekunden pro echter Sekunde (vom Server)
 local bellRung = false -- Schulglocke in diesem Lauf schon gelaeutet?
 local wasBoosting = false
+local wasBoostingForCrash = false
 
 -- Aktuelle Spielzeit (Sekunden seit Mitternacht) fuer die Uhr im UI
 local finishedArrival = 0 -- Ankunftszeit des letzten Laufs (bleibt auf der Uhr stehen)
@@ -518,6 +519,15 @@ RunService.PreSimulation:Connect(function(dt)
 			if type(message) == "string" then message else Config.Track.HazardMessage
 		)
 	end
+
+	-- Selbst verursachte Tempo-Spruenge (Pads usw.) sind kein Aufprall
+	if telemetry.selfImpulse.Magnitude > 0 then
+		crashDetector:expectVelocityChange(telemetry.selfImpulse)
+	end
+	if telemetry.boosting and not wasBoostingForCrash then
+		crashDetector:expectVelocityChange(Vector3.zero) -- Drift-Boost: nur toleranter
+	end
+	wasBoostingForCrash = telemetry.boosting
 
 	if not crashed then
 		local reason = crashDetector:update(dt, current.base)

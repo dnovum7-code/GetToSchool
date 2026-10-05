@@ -20,6 +20,7 @@ type DetectorData = {
 	lastVelocity: Vector3?,
 	impactMultiplier: number, -- Aufprall-Schwelle mal diesem Faktor (z. B. nach JumpPad)
 	relaxTime: number, -- so lange gilt impactMultiplier noch
+	expectedChange: Vector3, -- selbst verursachter Tempo-Sprung (Pads, Hopp, ...) im naechsten Update
 }
 
 export type Detector = typeof(setmetatable({} :: DetectorData, CrashDetector))
@@ -31,6 +32,7 @@ function CrashDetector.new(): Detector
 		lastVelocity = nil,
 		impactMultiplier = 1,
 		relaxTime = 0,
+		expectedChange = Vector3.zero,
 	}, CrashDetector)
 	return self
 end
@@ -43,6 +45,16 @@ function CrashDetector.reset(self: Detector)
 	self.lastVelocity = nil
 	self.impactMultiplier = 1
 	self.relaxTime = 0
+	self.expectedChange = Vector3.zero
+end
+
+-- Der Wagen hat sein Tempo selbst um `delta` geaendert (BoostPad, JumpPad, Drift-Boost,
+-- Hopp, spaeter ForceZone). Das zaehlt nicht als Aufprall: Der Sprung wird beim naechsten
+-- Update abgezogen, und kurz danach ist die Erkennung toleranter, weil die Physik so einen
+-- Sprung manchmal ueber mehrere Frames verteilt. Echte Kollisionen zaehlen weiterhin.
+function CrashDetector.expectVelocityChange(self: Detector, delta: Vector3)
+	self.expectedChange += delta
+	self:relaxImpact(Config.Crash.SelfImpulseTolerance, Config.Crash.SelfImpulseGrace)
 end
 
 -- Aufprall-Crashs fuer `seconds` erst ab dem `multiplier`-fachen der normalen Schwelle
@@ -64,6 +76,7 @@ function CrashDetector.update(self: Detector, dt: number, base: BasePart): Crash
 	if self.graceTime > 0 then
 		self.graceTime -= dt
 		self.tiltTime = 0
+		self.expectedChange = Vector3.zero
 		return nil
 	end
 
@@ -78,7 +91,9 @@ function CrashDetector.update(self: Detector, dt: number, base: BasePart): Crash
 	else
 		self.impactMultiplier = 1
 	end
-	if lastVelocity and (velocity - lastVelocity).Magnitude >= impactThreshold then
+	local expected = self.expectedChange
+	self.expectedChange = Vector3.zero
+	if lastVelocity and (velocity - lastVelocity - expected).Magnitude >= impactThreshold then
 		return "Impact"
 	end
 

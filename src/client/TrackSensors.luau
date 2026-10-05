@@ -7,6 +7,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Attributes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Attributes"))
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local TagList = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("TagList"))
 
@@ -23,9 +24,9 @@ export type Surface = {
 
 local WHEEL_NAMES = { "WheelFL", "WheelFR", "WheelBL", "WheelBR" }
 
+-- Falscher Typ -> Standardwert und Warnung im Output (siehe shared/Attributes)
 local function numberAttribute(instance: Instance, name: string, default: number): number
-	local value = instance:GetAttribute(name)
-	return if type(value) == "number" then value else default
+	return Attributes.number(instance, name, default)
 end
 
 -- Hat das getroffene Part (oder ein Modell darueber) den Tag? Liefert das getaggte Objekt.
