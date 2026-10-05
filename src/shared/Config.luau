@@ -543,6 +543,11 @@ Config.Save = {
 	Retries = 4, -- so oft wird Laden/Speichern bei Fehlern versucht
 	RetryDelay = 1, -- Wartezeit (s) vor dem 2. Versuch, verdoppelt sich jedes Mal
 	AutosaveInterval = 60, -- alle x Sekunden speichern, was sich geaendert hat
+	-- Sitzungs-Sperre (schneller Serverwechsel): so lange (s) gilt eine Sperre ohne Speichern
+	-- als aktiv; ein neuer Server versucht es so oft, mit dieser Pause (s), dann uebernimmt er
+	LockTimeout = 150,
+	LockAttempts = 6,
+	LockRetryDelay = 4,
 }
 
 -- Aus- und Einsteigen (Taste E / Gamepad X)

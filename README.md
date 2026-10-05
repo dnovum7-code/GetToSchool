@@ -231,6 +231,9 @@ einmalig übernommen).
   damit der echte Spielstand nicht überschrieben wird.
 - Gespeichert wird alle 60 s (wenn sich etwas geändert hat), nach Käufen, beim Verlassen und
   beim Herunterfahren des Servers.
+- **Serverwechsel**: Der Spielstand merkt sich, welcher Server ihn gerade benutzt
+  (Sitzungs-Sperre). Wechselt ein Spieler schnell den Server, wartet der neue kurz, bis der
+  alte fertig gespeichert hat. So überschreibt nie ein alter Stand einen neueren.
 
 ## M1 testen
 
@@ -376,7 +379,7 @@ Upgrades auf höchster Stufe. Für den echten Ablauf wieder auf `false`.
 | Fallschirm | Springen, Leertaste halten | Schirm über dem Wagen, langsames Fallen, gleitet weiter, A/D lenkt |
 | Ability-Anzeige | Unten links | Pro gekaufter Ability: Name, Taste, Zustand, Balken |
 | Zweiter Track | Siehe „Zweiten Track anlegen“; B → Strecken | Gesperrte Strecke zeigt Bedingung; nach Note 4 auf Track1: Meldung „Neue Strecke freigeschaltet“; *Fahren* setzt dich an deren Start |
-| Tests | `lune run tests/run` | „45 von 45 Tests bestanden“ |
+| Tests | `lune run tests/run` | „51 von 51 Tests bestanden“ |
 
 ### Wichtigste Studio-Tests (nach Wichtigkeit)
 

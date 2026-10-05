@@ -10,14 +10,21 @@
 --     beim Herunterfahren des Servers.
 --   * Klappt das Laden gar nicht, wird fuer diesen Spieler NICHT gespeichert. Sonst
 --     koennte ein leerer Spielstand den echten ueberschreiben (Datenverlust).
---   * Sind DataStores nicht erreichbar (Studio ohne API-Zugriff), wird automatisch ein
+--   * Sitzungs-Sperre: Der Datensatz merkt sich, welcher Server ihn benutzt. Wechselt ein
+--     Spieler schnell den Server, wartet der neue, bis der alte fertig gespeichert hat
+--     (hoechstens Config.Save.LockAttempts Versuche, dann uebernimmt er). Ein Server, dessen
+--     Sperre uebernommen wurde, speichert nicht mehr - so ueberschreibt nie ein alter Stand
+--     einen neueren.
+--   * Sind DataStores in Studio nicht erreichbar (kein API-Zugriff), wird automatisch ein
 --     Speicher im Arbeitsspeicher benutzt (nur fuer diese Sitzung), mit Warnung im Output.
 --
 -- Unity-Vergleich: wie PlayerPrefs bzw. eine Cloud-Save-Datei, nur auf dem Server.
 
 local DataStoreService = game:GetService("DataStoreService")
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
@@ -32,6 +39,7 @@ type Profile = {
 	state: State,
 	dirty: boolean,
 	saving: boolean,
+	lastSave: number, -- os.clock() des letzten Speicherns (haelt die Sperre frisch)
 }
 
 -- Ein Speicherort: echter DataStore oder Ersatz im Arbeitsspeicher
@@ -48,6 +56,8 @@ local changedCallbacks: { (Player) -> () } = {}
 local backend: Backend? = nil
 local legacyBackend: Backend? = nil
 local memory: { [string]: any } = {}
+-- Kennung dieses Servers fuer die Sitzungs-Sperre (game.JobId ist in Studio leer)
+local sessionId = HttpService:GenerateGUID(false)
 
 local function memoryBackend(): Backend
 	return {
@@ -129,19 +139,50 @@ local function fire(callbacks: { (Player) -> () }, player: Player)
 	end
 end
 
+-- Spielstand lesen und gleichzeitig die Sitzungs-Sperre setzen (ein UpdateAsync).
+-- Benutzt gerade ein anderer Server den Spielstand, wird gewartet und erneut versucht;
+-- beim letzten Versuch uebernehmen wir die Sperre.
+-- Rueckgabe: Erfolg, gelesener Datensatz (oder Fehlermeldung), Zustand der Sperre
+local function readAndLock(store: Backend, key: string): (boolean, any, string)
+	local S = Config.Save
+	local attempts = math.max(1, math.floor(S.LockAttempts))
+	for attempt = 1, attempts do
+		local force = attempt == attempts
+		local raw: any = nil
+		local status = "Free"
+		local ok, err = retry(function()
+			store.update(key, function(old)
+				raw = old
+				status = SaveData.lockState(old, sessionId, os.time(), S.LockTimeout)
+				if status == "Newer" or (status == "Locked" and not force) then
+					return nil -- nichts schreiben
+				end
+				local record = if type(old) == "table" then old else { version = SaveData.VERSION }
+				return SaveData.withSession(record, sessionId, os.time())
+			end)
+			return true
+		end)
+		if not ok then
+			return false, err, "Error"
+		end
+		if status ~= "Locked" or force then
+			return true, raw, status
+		end
+		task.wait(S.LockRetryDelay) -- der andere Server speichert gerade noch
+	end
+	return false, "Sperre", "Locked"
+end
+
 local function load(player: Player, profile: Profile)
 	local key = keyFor(player)
 	local store = getBackend()
-	local ok, raw = retry(function()
-		return store.get(key)
-	end)
-	if not ok and SaveData.isAccessError(tostring(raw)) then
-		-- kein Zugriff (Studio): ab jetzt Arbeitsspeicher
+	local ok, raw, lock = readAndLock(store, key)
+	if not ok and RunService:IsStudio() and SaveData.isAccessError(tostring(raw)) then
+		-- kein Zugriff in Studio: ab jetzt Arbeitsspeicher (im echten Spiel nie, sonst
+		-- wuerden alle Spieler dieses Servers ihre Speicherstaende verlieren)
 		useMemory(tostring(raw))
 		store = getBackend()
-		ok, raw = retry(function()
-			return store.get(key)
-		end)
+		ok, raw, lock = readAndLock(store, key)
 	end
 	-- Noch kein Spielstand im neuen Format: einmalig die alten Bestzeiten uebernehmen
 	local legacy = legacyBackend
@@ -151,6 +192,18 @@ local function load(player: Player, profile: Profile)
 		end)
 	end
 	if not player.Parent then
+		-- Spieler ist waehrend des Ladens gegangen: Sperre gleich wieder freigeben
+		if ok then
+			retry(function()
+				store.update(key, function(old)
+					if SaveData.lockState(old, sessionId, os.time(), Config.Save.LockTimeout) == "Ours" then
+						return SaveData.withSession(old, nil, os.time())
+					end
+					return nil
+				end)
+				return true
+			end)
+		end
 		return
 	end
 
@@ -164,7 +217,7 @@ local function load(player: Player, profile: Profile)
 		return
 	end
 	local data, note = SaveData.migrate(raw)
-	if not data then
+	if not data or lock == "Newer" then
 		profile.state = "Failed"
 		warn(
 			`[Profiles] Spielstand von {player.Name} stammt von einer neueren Spielversion. `
@@ -173,9 +226,15 @@ local function load(player: Player, profile: Profile)
 		fire(loadedCallbacks, player)
 		return
 	end
+	if lock == "Locked" then
+		warn(
+			`[Profiles] Spielstand von {player.Name} war noch von einem anderen Server gesperrt - uebernommen.`
+		)
+	end
 	-- Was der Spieler waehrend des Ladens gesammelt hat, geht nicht verloren
 	profile.data = SaveData.merge(data, profile.data)
 	profile.state = "Ready"
+	profile.lastSave = os.clock()
 	if note == "migrated" then
 		print(`[Profiles] Spielstand von {player.Name} auf Version {SaveData.VERSION} umgestellt.`)
 		profile.dirty = true
@@ -184,8 +243,10 @@ local function load(player: Player, profile: Profile)
 	fire(changedCallbacks, player)
 end
 
-local function save(player: Player, profile: Profile): boolean
-	if profile.state ~= "Ready" or profile.saving or not profile.dirty then
+-- Speichern. `release`: Sitzungs-Sperre freigeben (Spieler verlaesst den Server).
+-- `force`: auch ohne Aenderungen speichern (haelt die Sperre frisch bzw. gibt sie frei).
+local function save(player: Player, profile: Profile, release: boolean?, force: boolean?): boolean
+	if profile.state ~= "Ready" or profile.saving or not (profile.dirty or force) then
 		return false
 	end
 	profile.saving = true
@@ -193,28 +254,43 @@ local function save(player: Player, profile: Profile): boolean
 	local snapshot = SaveData.serialize(profile.data)
 	local store = getBackend()
 	local key = keyFor(player)
+	local lost: string? = nil
 	local ok, err = retry(function()
+		lost = nil
 		store.update(key, function(old)
-			-- Hat inzwischen eine neuere Spielversion gespeichert? Dann nicht ueberschreiben.
-			if type(old) == "table" and type(old.version) == "number" and old.version > SaveData.VERSION then
+			local status = SaveData.lockState(old, sessionId, os.time(), Config.Save.LockTimeout)
+			if status == "Newer" or status == "Locked" then
+				-- Neuere Spielversion oder ein anderer Server hat uebernommen: nicht ueberschreiben
+				lost = status
 				return nil
 			end
-			return snapshot
+			return SaveData.withSession(snapshot, if release then nil else sessionId, os.time())
 		end)
 		return true
 	end)
 	profile.saving = false
+	profile.lastSave = os.clock()
 	if not ok then
 		profile.dirty = true -- beim naechsten Mal erneut versuchen
 		warn(`[Profiles] Speichern fuer {player.Name} fehlgeschlagen: {err}`)
+		return false
 	end
-	return ok
+	if lost then
+		profile.state = "Failed"
+		warn(
+			`[Profiles] Spielstand von {player.Name} wird inzwischen von einem anderen Server `
+				.. `benutzt ({lost}) - dieser Server speichert ihn nicht mehr.`
+		)
+		return false
+	end
+	return true
 end
 
 local function getProfile(player: Player): Profile
 	local profile = profiles[player]
 	if not profile then
-		profile = { data = SaveData.new(), state = "Loading", dirty = false, saving = false }
+		profile =
+			{ data = SaveData.new(), state = "Loading", dirty = false, saving = false, lastSave = os.clock() }
 		profiles[player] = profile
 	end
 	return profile
@@ -237,7 +313,7 @@ function Profiles.init()
 			while profile.saving do
 				task.wait(0.1)
 			end
-			save(player, profile)
+			save(player, profile, true, true) -- letzter Stand, Sperre freigeben
 			profiles[player] = nil
 		end
 	end)
@@ -251,7 +327,7 @@ function Profiles.init()
 				while profile.saving do
 					task.wait(0.1)
 				end
-				save(player, profile)
+				save(player, profile, true, true)
 				pending -= 1
 			end)
 		end
@@ -261,13 +337,15 @@ function Profiles.init()
 		end
 	end)
 
-	-- Regelmaessig speichern, was sich geaendert hat
+	-- Regelmaessig speichern, was sich geaendert hat. Ohne Aenderungen trotzdem ab und zu,
+	-- damit die Sitzungs-Sperre frisch bleibt (sonst koennte ein anderer Server sie nehmen).
 	task.spawn(function()
 		while true do
 			task.wait(math.max(Config.Save.AutosaveInterval, 10))
 			for player, profile in profiles do
-				if profile.dirty then
-					task.spawn(save, player, profile)
+				local stale = os.clock() - profile.lastSave > Config.Save.LockTimeout / 2
+				if profile.dirty or stale then
+					task.spawn(save, player, profile, false, stale)
 				end
 			end
 		end

@@ -146,4 +146,43 @@ describe("SaveData.withRetry", function()
 	end)
 end)
 
+describe("SaveData: Sitzungs-Sperre", function()
+	local timeout = 150
+	it("ohne Datensatz oder ohne Sperre: frei", function()
+		expect(SaveData.lockState(nil, "A", 1000, timeout)).toBe("Free")
+		expect(SaveData.lockState({ version = 1, coins = 5 }, "A", 1000, timeout)).toBe("Free")
+	end)
+
+	it("eigene Sperre", function()
+		local record = SaveData.withSession({ version = 1 }, "A", 1000)
+		expect(SaveData.lockState(record, "A", 1010, timeout)).toBe("Ours")
+	end)
+
+	it("frische fremde Sperre: gesperrt, abgelaufene: frei", function()
+		local record = SaveData.withSession({ version = 1 }, "B", 1000)
+		expect(SaveData.lockState(record, "A", 1100, timeout)).toBe("Locked")
+		expect(SaveData.lockState(record, "A", 1000 + timeout, timeout)).toBe("Free")
+	end)
+
+	it("neuere Spielversion wird nicht angefasst", function()
+		expect(SaveData.lockState({ version = SaveData.VERSION + 1 }, "A", 0, timeout)).toBe("Newer")
+	end)
+
+	it("Sperre freigeben", function()
+		local locked = SaveData.withSession({ version = 1, coins = 3 }, "A", 1000)
+		local released = SaveData.withSession(locked, nil, 1001)
+		expect(released.session).toBeNil()
+		expect(released.coins).toBe(3)
+		expect(locked.session.id).toBe("A") -- Original bleibt unveraendert
+	end)
+
+	it("Sperre stoert das Laden nicht", function()
+		local record = SaveData.withSession(SaveData.serialize(SaveData.new()), "A", 1000)
+		record.coins = 9
+		local data, note = SaveData.migrate(record)
+		expect(note).toBe("ok")
+		expect(data and data.coins).toBe(9)
+	end)
+end)
+
 return nil

@@ -217,6 +217,46 @@ function SaveData.serialize(data: Data): { [string]: any }
 	return copy :: any
 end
 
+-- Sitzungs-Sperre ------------------------------------------------------------------------
+-- Wechselt ein Spieler schnell den Server, koennte der neue Server den Spielstand laden,
+-- bevor der alte fertig gespeichert hat - und spaeter mit veralteten Daten ueberschreiben.
+-- Deshalb steht im gespeicherten Datensatz, welcher Server ihn gerade benutzt
+-- (`session = { id, time }`). Ein anderer Server wartet, bis die Sperre frei ist, und
+-- ein Server, dessen Sperre uebernommen wurde, speichert nicht mehr.
+
+-- Zustand der Sperre im gespeicherten Datensatz `old` aus Sicht von `sessionId`:
+--   "Free"   kein Datensatz, keine Sperre, oder Sperre abgelaufen (Server abgestuerzt)
+--   "Ours"   wir haben die Sperre
+--   "Locked" ein anderer Server benutzt den Spielstand gerade
+--   "Newer"  Datensatz einer neueren Spielversion (nicht anfassen)
+function SaveData.lockState(old: unknown, sessionId: string, now: number, timeout: number): string
+	if type(old) ~= "table" then
+		return "Free"
+	end
+	local record = old :: { [any]: any }
+	if isNumber(record.version) and record.version > SaveData.VERSION then
+		return "Newer"
+	end
+	local session = record.session
+	if type(session) ~= "table" or type(session.id) ~= "string" then
+		return "Free"
+	end
+	if session.id == sessionId then
+		return "Ours"
+	end
+	if not isNumber(session.time) or now - session.time >= timeout then
+		return "Free"
+	end
+	return "Locked"
+end
+
+-- Kopie des Datensatzes mit gesetzter (sessionId) oder freigegebener (nil) Sperre
+function SaveData.withSession(record: { [any]: any }, sessionId: string?, now: number): { [any]: any }
+	local copy = table.clone(record)
+	copy.session = if sessionId then { id = sessionId, time = now } else nil
+	return copy
+end
+
 -- Fuehrt `fn` aus und wiederholt es bei Fehlern (bis zu `attempts` Mal, Wartezeit
 -- verdoppelt sich: baseDelay, 2 * baseDelay, ...). `wait` wartet (in Roblox task.wait).
 -- `isFatal(err)`: bei diesen Fehlern sofort aufgeben (z. B. kein Zugriff in Studio).
