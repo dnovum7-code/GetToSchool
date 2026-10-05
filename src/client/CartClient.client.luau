@@ -119,6 +119,7 @@ end)
 local EXIT_ACTION = "GetToSchoolExit"
 local HANDBRAKE_ACTION = "GetToSchoolHandbrake"
 local handbrakeHeld = false
+local hopRequested = false -- Drift-Taste neu gedrueckt: Hopp im naechsten Physik-Frame
 
 -- Diese Zustaende wuerden die Figur aus dem Sitz werfen
 local BLOCKED_STATES = {
@@ -187,6 +188,7 @@ local function activate(seat: BasePart, humanoid: Humanoid)
 		function(_, inputState)
 			if inputState == Enum.UserInputState.Begin then
 				handbrakeHeld = true
+				hopRequested = true -- Druecken = Hopp (wie Mario Kart), Halten = Drift
 			elseif inputState == Enum.UserInputState.End or inputState == Enum.UserInputState.Cancel then
 				handbrakeHeld = false
 			end
@@ -479,7 +481,9 @@ RunService.PreSimulation:Connect(function(dt)
 	-- Handbremse nur, wenn nicht gerade im Chat getippt wird
 	local handbrake = handbrakeHeld and UserInputService:GetFocusedTextBox() == nil
 	local surface = TrackSensors.sampleGround(current.cart, current.rayParams)
-	local telemetry = current:step(dt, throttle, steer, handbrake, surface)
+	local hop = hopRequested and UserInputService:GetFocusedTextBox() == nil
+	hopRequested = false
+	local telemetry = current:step(dt, throttle, steer, handbrake, hop, surface)
 
 	-- Bouncy: federt ab, ein harter Aufprall ist hier kein Crash
 	if TrackSensors.touching(current.cart, "Bouncy") then

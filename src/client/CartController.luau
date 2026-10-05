@@ -33,6 +33,7 @@ export type Telemetry = {
 	onMud: boolean,
 	onIce: boolean,
 	padEvent: string?, -- "Boost" oder "Jump", wenn in diesem Frame ein Pad ausgeloest hat
+	hopped: boolean, -- in diesem Frame gehuepft
 	-- Tempo-Sprung, den der Wagen in diesem Frame selbst verursacht hat (Pads usw.).
 	-- Die Crash-Erkennung zieht ihn ab, damit er nicht als Aufprall zaehlt.
 	selfImpulse: Vector3,
@@ -56,6 +57,7 @@ type ControllerData = {
 	boostTime: number, -- Restzeit des laufenden Schubs
 	boostAcceleration: number,
 	padCooldowns: { [Instance]: number }, -- wann welches Pad zuletzt unter dem Wagen war
+	hopTime: number, -- Sekunden seit dem letzten Hopp
 }
 
 export type Controller = typeof(setmetatable({} :: ControllerData, CartController))
@@ -102,6 +104,7 @@ function CartController.new(cart: Model, character: Model): Controller
 		boostTime = 0,
 		boostAcceleration = 0,
 		padCooldowns = {},
+		hopTime = math.huge,
 	}, CartController)
 	return self
 end
@@ -186,6 +189,7 @@ function CartController.applyPads(self: Controller, surface: TrackSensors.Surfac
 end
 
 -- throttle: -1 (S) .. 1 (W), steer: -1 (A) .. 1 (D), handbrake: Shift gedrueckt,
+-- hopPressed: Shift wurde in diesem Frame neu gedrueckt (Hopp),
 -- surface: Streckenbausteine unter den Raedern (siehe TrackSensors)
 function CartController.step(
 	self: Controller,
@@ -193,6 +197,7 @@ function CartController.step(
 	throttle: number,
 	steer: number,
 	handbrake: boolean,
+	hopPressed: boolean,
 	surface: TrackSensors.Surface
 ): Telemetry
 	local D = Config.Drive
@@ -220,10 +225,30 @@ function CartController.step(
 	local gripScale = 1 + (surface.iceGrip - 1) * surface.iceFraction
 	local steerScale = 1 + (Config.Track.IceSteer - 1) * surface.iceFraction
 
+	local grounded = self:isGrounded()
+
+	-- Hopp: kleiner Sprung nach oben, nur vom Boden aus und nicht zu oft
+	local H = Config.Hop
+	local hopped = false
+	self.hopTime += dt
+	if H.Enabled and hopPressed and grounded and self.hopTime >= H.Cooldown then
+		local delta = up * H.Speed
+		addVelocity(self.cart, delta)
+		selfImpulse += delta
+		velocity = base.AssemblyLinearVelocity
+		self.hopTime = 0
+		hopped = true
+	end
+	-- Waehrend des Hopps gilt der Wagen als in der Luft (der Boden-Strahl reicht kurz noch
+	-- bis zum Boden). Dann wirkt die schnelle Luft-Drehung statt der Bodenkraefte.
+	local hopActive = self.hopTime < H.MaxAirTime and (self.hopTime < H.MinAirTime or not grounded)
+	if hopActive then
+		grounded = false
+	end
+
 	local speed = velocity.Magnitude
 	local forwardSpeed = velocity:Dot(forward)
 	local lateralSpeed = velocity:Dot(right)
-	local grounded = self:isGrounded()
 
 	-- Driftwinkel: positiv, wenn die Fahrtrichtung rechts von der Blickrichtung liegt
 	local slipAngle = if speed > 1 then math.deg(math.atan2(lateralSpeed, math.abs(forwardSpeed))) else 0
@@ -355,6 +380,12 @@ function CartController.step(
 		-- Kipp- und Nickbewegungen etwas daempfen (nicht verhindern!)
 		local otherRotation = angular - up * yawRate
 		torque -= otherRotation * D.RollDamping * self.inertia
+	elseif hopActive then
+		-- Hopp-Drehung in der Luft: schnell in Lenkrichtung drehen (Fahrtrichtung bleibt),
+		-- so landet man direkt im Drift in die neue Richtung.
+		local yawRate = angular:Dot(up)
+		local targetYawRate = -steer * H.TurnRate
+		torque += up * (targetYawRate - yawRate) * H.TurnResponse * self.inertia
 	end
 
 	self.driveForce.Force = force
@@ -372,6 +403,7 @@ function CartController.step(
 		onMud = onMud,
 		onIce = onIce,
 		padEvent = padEvent,
+		hopped = hopped,
 		selfImpulse = selfImpulse,
 	}
 end

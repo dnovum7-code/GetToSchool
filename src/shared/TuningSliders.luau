@@ -59,6 +59,8 @@ local sliders: { Slider } = {
 		step = 0.5,
 	},
 	{ label = "Heck-Pendeln", section = "Drift", key = "TailWobble", min = 0, max = 2, step = 0.05 },
+	{ label = "Hopp-Hoehe (Tempo)", section = "Hop", key = "Speed", min = 0, max = 60, step = 1 },
+	{ label = "Hopp-Drehung", section = "Hop", key = "TurnRate", min = 0, max = 12, step = 0.1 },
 	{ label = "Boost-Schwelle 1 (s)", section = "Drift", key = "Level1Time", min = 0.2, max = 3, step = 0.1 },
 	{ label = "Boost-Schwelle 2 (s)", section = "Drift", key = "Level2Time", min = 0.5, max = 5, step = 0.1 },
 	-- Streckenbausteine (Standardwerte; Attribute an einzelnen Parts gehen vor)

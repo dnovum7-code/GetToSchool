@@ -114,6 +114,19 @@ Config.Drift = {
 	SkidMarkWidth = 0.35,
 }
 
+-- Hopp (wie Mario Kart): Druecken der Drift-Taste (Shift / Gamepad B) laesst den Wagen
+-- kurz huepfen. In der Luft dreht er sich schnell in Lenkrichtung; so wechselt man z. B.
+-- schnell von einem Links- in einen Rechtsdrift.
+Config.Hop = {
+	Enabled = true,
+	Speed = 20, -- Sprung-Tempo nach oben (Studs/s); 20 = ca. 1 Stud hoch
+	Cooldown = 0.35, -- Mindestabstand zwischen zwei Hopps (s)
+	TurnRate = 5, -- Drehgeschwindigkeit in der Luft (Radiant/s)
+	TurnResponse = 12, -- wie direkt die Drehung in der Luft folgt
+	MinAirTime = 0.12, -- so lange (s) gilt der Wagen nach dem Hopp sicher als "in der Luft"
+	MaxAirTime = 0.6, -- spaetestens dann endet die Hopp-Drehung
+}
+
 -- Streckenbausteine: normale Parts mit Tag (CollectionService). Werte hier sind
 -- Standardwerte; einzelne Parts koennen sie per Attribut ueberschreiben (in Klammern).
 Config.Track = {
