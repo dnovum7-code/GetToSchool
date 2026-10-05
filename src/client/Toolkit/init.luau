@@ -11,6 +11,7 @@
 --                            Trigger scharf, Verfolger nach Hause, Signal-Tore zu.
 --                            Props bleiben liegen (Chaos-Zaehler bleibt).
 
+local Collapses = require(script:WaitForChild("Collapses"))
 local Gates = require(script:WaitForChild("Gates"))
 local PathMovers = require(script:WaitForChild("PathMovers"))
 local Spawners = require(script:WaitForChild("Spawners"))
@@ -24,6 +25,7 @@ local MODULES: { ToolkitTypes.Piece } = {
 	Spawners,
 	PathMovers,
 	Gates,
+	Collapses,
 }
 
 function Toolkit.init()

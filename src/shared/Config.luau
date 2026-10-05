@@ -300,6 +300,16 @@ Config.Gate = {
 	CloseAfter = 0, -- mit ListenSignal: nach so vielen Sekunden wieder zu (0 = bleibt offen)
 }
 
+-- Collapse (Tag "Collapse", Part oder Modell): Bruecke/Boden gibt kurz nach dem Befahren nach,
+-- wackelt und stuerzt ab. Kommt bei R und T wieder.
+Config.Collapse = {
+	Delay = 0.8, -- Sekunden vom Befahren bis zum Absturz (in der Zeit wackelt es)
+	Shake = 0.25, -- Wackeln (Studs), 0 = aus
+	ShakeSpeed = 35, -- wie schnell es wackelt
+	FallTime = 4, -- so lange (s) faellt das Stueck sichtbar, dann ist es weg
+	FallSpin = 1.5, -- leichtes Drehen beim Fallen (Radiant/s)
+}
+
 -- Zufallsereignisse: Parts/Modelle mit Tag "RandomEvent" sind pro Lauf aktiv oder nicht.
 -- Attribut "Chance" (0..1): Wahrscheinlichkeit, dass es aktiv ist.
 -- Attribut "Group" (Text): aus jeder Gruppe ist pro Lauf genau ein Element aktiv

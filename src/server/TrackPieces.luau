@@ -100,6 +100,15 @@ function TrackPieces.init()
 		end)
 	end
 
+	-- Collapse: fest und befahrbar, bis der Client des Fahrers es (nur bei sich) einstuerzen laesst
+	TagList.watch("Collapse", function(instance)
+		forEachPart(instance, function(part)
+			part.Anchored = true
+			part.CanCollide = true
+			part.CanQuery = true
+		end)
+	end)
+
 	-- Wegpunkte eines PathMovers: im Spiel unsichtbar und ohne Wirkung
 	TagList.watch("PathMover", function(instance)
 		local waypoints = instance:FindFirstChild("Waypoints")
