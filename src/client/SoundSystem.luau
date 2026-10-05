@@ -13,19 +13,8 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 
 local SoundSystem = {}
 
-local ONE_SHOTS = {
-	"Boost",
-	"Crash",
-	"Checkpoint",
-	"Finish",
-	"Coin",
-	"Ragdoll",
-	"GameOver",
-	"LifeLost",
-	"Shield",
-	"Launch",
-	"SkyStar",
-}
+-- Dauer-Sounds am Wagen; alle anderen Eintraege in Config.Sounds sind Einmal-Sounds
+local LOOPED = { Engine = true, Drift = true }
 
 local oneShots: { [string]: Sound } = {}
 local engineSound: Sound? = nil
@@ -63,7 +52,10 @@ local function makeSound(name: string, parent: Instance, looped: boolean): Sound
 end
 
 function SoundSystem.init()
-	for _, name in ONE_SHOTS do
+	for name in Config.Sounds :: { [string]: any } do
+		if LOOPED[name] then
+			continue
+		end
 		local sound = makeSound(name, SoundService, false)
 		if sound then
 			oneShots[name] = sound

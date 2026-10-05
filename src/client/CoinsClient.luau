@@ -147,6 +147,10 @@ function CoinsClient.update(base: BasePart)
 		if collectedIds[coin.id] or (retryAfter[coin.id] or 0) > now then
 			continue
 		end
+		-- z. B. in einem ausgeblendeten Zufallsereignis: nicht einsammelbar
+		if LocalHide.isHidden(instance) then
+			continue
+		end
 		if (coin.home.Position - position).Magnitude <= Config.Coins.PickupRadius + coin.radius then
 			collect(coin)
 		end

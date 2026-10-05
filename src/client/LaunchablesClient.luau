@@ -308,7 +308,10 @@ function LaunchablesClient.update(cart: Model, base: BasePart, onHit: () -> ())
 end
 
 -- Server hat den Flug geplant: Kopie fliegen lassen
-function LaunchablesClient.onLaunch(object: Instance, info: LaunchInfo)
+function LaunchablesClient.onLaunch(object: Instance?, info: LaunchInfo)
+	if object == nil then
+		return -- Objekt inzwischen entladen (Streaming)
+	end
 	local entry = pending[object]
 	pending[object] = nil
 	if not entry then
@@ -333,7 +336,10 @@ function LaunchablesClient.onLaunch(object: Instance, info: LaunchInfo)
 end
 
 -- Server hat den Treffer nicht anerkannt: Objekt wieder zeigen
-function LaunchablesClient.onRejected(object: Instance)
+function LaunchablesClient.onRejected(object: Instance?)
+	if object == nil then
+		return
+	end
 	local entry = pending[object]
 	pending[object] = nil
 	if entry then
@@ -439,6 +445,13 @@ function LaunchablesClient.init()
 	gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 
 	RunService.RenderStepped:Connect(updateFlights)
+	-- Durch Streaming neu geladen, aber in diesem Lauf schon getroffen: ausgeblendet lassen
+	TagList.watch("Launchable", function(object)
+		local id = object:GetAttribute("LaunchId")
+		if type(id) == "string" and hitIds[id] then
+			LocalHide.set(object, "Launched", true)
+		end
+	end)
 end
 
 return LaunchablesClient

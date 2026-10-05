@@ -23,7 +23,7 @@ local rows: { Row } = {}
 local function makeRow(index: number): Row
 	local frame = Instance.new("Frame")
 	frame.Name = "Ability" .. index
-	frame.Size = UDim2.fromOffset(250, 42)
+	frame.Size = UDim2.fromOffset(250, 52)
 	frame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
 	frame.BackgroundTransparency = 0.35
 	frame.LayoutOrder = index
@@ -46,19 +46,23 @@ local function makeRow(index: number): Row
 	name.TextColor3 = Color3.new(1, 1, 1)
 	name.Parent = frame
 
+	name.TextTruncate = Enum.TextTruncate.AtEnd
+
+	-- Zustand in einer eigenen Zeile (sonst ueberlappen lange Namen)
 	local status = Instance.new("TextLabel")
 	status.BackgroundTransparency = 1
-	status.Position = UDim2.fromOffset(10, 3)
-	status.Size = UDim2.new(1, -20, 0, 18)
+	status.Position = UDim2.fromOffset(10, 21)
+	status.Size = UDim2.new(1, -20, 0, 16)
 	status.Font = Enum.Font.Gotham
 	status.TextSize = 14
-	status.TextXAlignment = Enum.TextXAlignment.Right
+	status.TextXAlignment = Enum.TextXAlignment.Left
+	status.TextTruncate = Enum.TextTruncate.AtEnd
 	status.TextColor3 = Color3.fromRGB(220, 220, 230)
 	status.Parent = frame
 
 	local barBack = Instance.new("Frame")
-	barBack.Position = UDim2.new(0, 10, 1, -14)
-	barBack.Size = UDim2.new(1, -20, 0, 7)
+	barBack.Position = UDim2.new(0, 10, 1, -11)
+	barBack.Size = UDim2.new(1, -20, 0, 6)
 	barBack.BackgroundColor3 = Color3.fromRGB(60, 60, 72)
 	barBack.BorderSizePixel = 0
 	barBack.Parent = frame
@@ -102,7 +106,7 @@ function AbilityHud.init()
 	container.Name = "Abilities"
 	container.AnchorPoint = Vector2.new(0, 1)
 	container.Position = UDim2.new(0, 16, 1, -40)
-	container.Size = UDim2.fromOffset(250, 200)
+	container.Size = UDim2.fromOffset(250, 240)
 	container.BackgroundTransparency = 1
 	container.Parent = gui
 	local layout = Instance.new("UIListLayout")

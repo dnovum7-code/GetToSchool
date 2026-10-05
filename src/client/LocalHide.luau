@@ -4,7 +4,9 @@
 -- unsichtbar (CanQuery), Partikel/Lichter aus.
 --
 -- Mehrere Gruende koennen dasselbe Objekt ausblenden (z. B. "Zufallsereignis" und
--- "eingesammelt"). Sichtbar ist es erst wieder, wenn kein Grund mehr uebrig ist.
+-- "eingesammelt"). Sichtbar ist es erst wieder, wenn kein Grund mehr uebrig ist - weder am
+-- Objekt selbst noch an einem Objekt darueber (z. B. Muenze in einem ausgeblendeten
+-- Zufallsereignis bleibt unsichtbar, auch wenn sie bei T "wieder erscheint").
 
 local LocalHide = {}
 
@@ -53,15 +55,30 @@ local function setItemHidden(item: Instance, hidden: boolean)
 	end
 end
 
-local function apply(instance: Instance)
+local function hasReasons(instance: Instance): boolean
 	local set = reasons[instance]
-	local hidden = set ~= nil and next(set) ~= nil
-	setItemHidden(instance, hidden)
-	for _, descendant in instance:GetDescendants() do
-		setItemHidden(descendant, hidden)
+	return set ~= nil and next(set) ~= nil
+end
+
+-- Ist das Objekt selbst oder eines darueber ausgeblendet?
+local function hiddenInTree(item: Instance): boolean
+	local current: Instance? = item
+	while current and current ~= workspace and current ~= game do
+		if hasReasons(current) then
+			return true
+		end
+		current = current.Parent
 	end
-	if not hidden then
+	return false
+end
+
+local function apply(instance: Instance)
+	if not hasReasons(instance) then
 		reasons[instance] = nil
+	end
+	setItemHidden(instance, hiddenInTree(instance))
+	for _, descendant in instance:GetDescendants() do
+		setItemHidden(descendant, hiddenInTree(descendant))
 	end
 end
 
@@ -86,9 +103,9 @@ function LocalHide.set(instance: Instance, reason: string, hidden: boolean)
 	apply(instance)
 end
 
+-- Ist das Objekt (oder eines darueber) gerade bei diesem Spieler ausgeblendet?
 function LocalHide.isHidden(instance: Instance): boolean
-	local set = reasons[instance]
-	return set ~= nil and next(set) ~= nil
+	return hiddenInTree(instance)
 end
 
 -- Originalwert einer Eigenschaft (falls ausgeblendet, der Wert von vorher)

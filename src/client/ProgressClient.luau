@@ -41,9 +41,11 @@ function ProgressClient.onChanged(callback: (Snapshot) -> ())
 end
 
 local function onData(newSnapshot: Snapshot)
-	local first = snapshot == nil
+	local previous = snapshot
+	-- Erste Daten oder gerade fertig geladen: Stand direkt zeigen (nicht von 0 hochzaehlen)
+	local instant = previous == nil or (previous.state == "Loading" and newSnapshot.state ~= "Loading")
 	snapshot = newSnapshot
-	ProgressUI.setCoins(newSnapshot.coins, first)
+	ProgressUI.setCoins(newSnapshot.coins, instant)
 	if newSnapshot.state == "Failed" and not warnedState.Failed then
 		warnedState.Failed = true
 		RaceUI.showToast(

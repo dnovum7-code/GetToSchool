@@ -356,10 +356,14 @@ end
 -- Der Fahrradhelm faengt den Crash ab: kein Leben weg, keine Ragdoll.
 -- Umgekippt: Wagen wird wieder aufgestellt. Harter Aufprall: einfach weiterfahren.
 -- Wasser/Abgrund (Hazard, Absturz): zurueck zum Checkpoint, aber ohne Lebensverlust.
-local function helmetSave(reason: string, base: BasePart)
-	lifeState.shield -= 1
-	ProgressUI.setLives(lifeState.lives, lifeState.maxLives, lifeState.shield, lifeState.maxShield)
-	Abilities.setShield(lifeState.shield, lifeState.maxShield)
+-- `predicted`: true = vom Client vorhergesagt (Ladung hier abziehen), false = der Server hat
+-- gerettet, obwohl wir es nicht wussten (Ladung kommt mit "Lives")
+local function helmetSave(reason: string, base: BasePart, predicted: boolean)
+	if predicted then
+		lifeState.shield -= 1
+		ProgressUI.setLives(lifeState.lives, lifeState.maxLives, lifeState.shield, lifeState.maxShield)
+		Abilities.setShield(lifeState.shield, lifeState.maxShield)
+	end
 	helmetGraceUntil = os.clock() + Config.Abilities.HelmetGrace
 	crashDetector:reset()
 	RaceUI.showMessage("HELM!", Color3.fromRGB(90, 180, 255), "Der Fahrradhelm hat dich gerettet!", 1.2)
@@ -392,7 +396,7 @@ end
 local function onCrash(reason: string, base: BasePart, text: string?)
 	reportCrash:FireServer(reason) -- Server zieht das Leben ab (oder die Helm-Ladung)
 	if livesCount() and lifeState.shield > 0 then
-		helmetSave(reason, base)
+		helmetSave(reason, base, true)
 		return
 	end
 	enterCrashed(base)
@@ -611,8 +615,21 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		onGameOver(...)
 	elseif kind == "Shielded" then
 		-- Server bestaetigt die Helm-Rettung; Ladungen kommen mit "Lives"
-		local _reason: string, shield: number = ...
+		local reason: string, shield: number = ...
 		lifeState.shield = shield
+		-- Wir hatten keine Ladung vorhergesagt (z. B. Checkpoint gerade erst erreicht) und
+		-- stehen schon im Crash: Crash zuruecknehmen, der Helm hat gerettet.
+		if crashed and not gameOver then
+			crashed = false
+			crashToken += 1 -- verzoegerten Checkpoint-Neustart abbrechen
+			local cart = OwnCart.find()
+			local base = cart and cart:FindFirstChild("Base")
+			if base and base:IsA("BasePart") then
+				helmetSave(reason, base, false)
+			else
+				RaceUI.hideMessage()
+			end
+		end
 	elseif kind == "Exited" then
 		onExited(...)
 	elseif kind == "Aborted" then

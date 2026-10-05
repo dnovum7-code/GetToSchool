@@ -142,6 +142,8 @@ end
 -- Nach einem Neustart: kurz Restdrehungen wegdaempfen (wie nach dem Einsteigen)
 function CartController.settle(self: Controller)
 	self.settleTime = Config.Drive.SettleTime
+	self.freezeTime = 0 -- laufender Hit-Stop gilt nach dem Neustart nicht mehr
+	self.freezeVelocity = Vector3.zero
 end
 
 -- Drift-Ladung und laufenden Boost verwerfen (Crash, Neustart, Aussteigen).

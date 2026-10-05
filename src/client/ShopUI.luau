@@ -4,9 +4,11 @@
 -- Der Client fragt nur; ob ein Kauf klappt, entscheidet der Server (siehe server/Shop).
 
 local ContextActionService = game:GetService("ContextActionService")
+local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local Economy =
@@ -43,6 +45,7 @@ local content: ScrollingFrame
 local coinLabel: TextLabel
 local tabButtons: { [string]: TextButton } = {}
 local currentTab: Tab = "Upgrades"
+local PANEL_SIZE = Vector2.new(700, 480)
 local canOpen: () -> boolean = function()
 	return true
 end
@@ -308,6 +311,32 @@ local function render()
 	end
 end
 
+-- Panel passend zum Bildschirm verkleinern (Handy quer: nur ca. 390 Pixel hoch)
+local function fitScale(): number
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return 1
+	end
+	local viewport = camera.ViewportSize
+	return math.clamp(math.min((viewport.X - 20) / PANEL_SIZE.X, (viewport.Y - 20) / PANEL_SIZE.Y), 0.4, 1)
+end
+
+-- Gamepad: ersten Knopf auswaehlen, damit man mit dem Steuerkreuz bedienen kann
+local function selectFirstButton()
+	if not UserInputService.GamepadEnabled then
+		return
+	end
+	task.defer(function()
+		for _, item in content:GetDescendants() do
+			if item:IsA("TextButton") and item.AutoButtonColor then
+				GuiService.SelectedObject = item
+				return
+			end
+		end
+		GuiService.SelectedObject = tabButtons.Upgrades
+	end)
+end
+
 function ShopUI.open()
 	if not canOpen() then
 		RaceUI.showToast(
@@ -319,15 +348,21 @@ function ShopUI.open()
 	end
 	panel.Visible = true
 	local scale = panel:FindFirstChildOfClass("UIScale") :: UIScale
-	scale.Scale = 0.85
-	TweenService
-		:Create(scale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 })
-		:Play()
+	local target = fitScale()
+	scale.Scale = target * 0.85
+	TweenService:Create(scale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Scale = target,
+	}):Play()
 	render()
+	selectFirstButton()
 end
 
 function ShopUI.close()
 	panel.Visible = false
+	local selected = GuiService.SelectedObject
+	if selected and selected:IsDescendantOf(panel) then
+		GuiService.SelectedObject = nil
+	end
 end
 
 function ShopUI.toggle()
@@ -366,19 +401,24 @@ function ShopUI.init(check: () -> boolean)
 	panel.Name = "Panel"
 	panel.AnchorPoint = Vector2.new(0.5, 0.5)
 	panel.Position = UDim2.fromScale(0.5, 0.5)
-	panel.Size = UDim2.fromOffset(700, 480)
+	panel.Size = UDim2.fromOffset(PANEL_SIZE.X, PANEL_SIZE.Y)
 	panel.BackgroundColor3 = DARK
 	panel.BackgroundTransparency = 0.05
 	panel.Visible = false
 	panel.Active = true
 	panel.Parent = gui
 	corner(panel, 14)
+	-- UIScale: kleine Bildschirme (fitScale) und die Auf-Animation
 	local scale = Instance.new("UIScale")
 	scale.Parent = panel
-	-- Kleine Bildschirme: Panel passend verkleinern
-	local sizeConstraint = Instance.new("UISizeConstraint")
-	sizeConstraint.MaxSize = Vector2.new(700, 480)
-	sizeConstraint.Parent = panel
+	local camera = workspace.CurrentCamera
+	if camera then
+		camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+			if panel.Visible then
+				scale.Scale = fitScale()
+			end
+		end)
+	end
 
 	label(panel, {
 		Position = UDim2.fromOffset(20, 12),

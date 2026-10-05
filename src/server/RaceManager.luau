@@ -245,16 +245,16 @@ end
 -- Andere Strecke waehlen (geprueft wird vorher: frei? ausserhalb eines Laufs?):
 -- Spieler wird an deren Start gesetzt, neuer Lauf.
 function RaceManager.selectTrack(player: Player, trackId: string)
-	local race = getRace(player)
-	race.trackId = trackId
 	-- Mit StreamingEnabled die neue Startgegend vorher laden lassen (sonst faellt der Wagen
-	-- durch noch nicht geladenen Boden)
+	-- durch noch nicht geladenen Boden). Die Strecke wird erst danach umgestellt, sonst
+	-- wuerde der Wagen (noch am alten Start) als "aus der neuen Startzone gefahren" gelten.
 	if workspace.StreamingEnabled then
 		pcall(function()
 			player:RequestStreamAroundAsync(Track.getSpawn(trackId).Position, 3)
 		end)
 	end
-	if player.Parent and race.trackId == trackId then
+	if player.Parent and RaceManager.isOutsideRun(player) then
+		getRace(player).trackId = trackId
 		RaceManager.restart(player)
 	end
 end
