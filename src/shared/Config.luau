@@ -142,6 +142,9 @@ Config.Track = {
 	-- JumpPad: schleudert nach oben, entlang der Oberseite des Parts (Attribut "Strength")
 	JumpPadStrength = 70, -- Studs/s nach oben (70 = ca. 12 Studs hoch)
 	PadCooldown = 0.5, -- Pads wirken nur beim Drauffahren; so lange (s) muss man weg gewesen sein
+	-- Erkennung der Bodenbausteine: Kasten an der Aufstandsflaeche jedes Rads (Studs)
+	FloorSensorAbove = 0.4, -- so weit ueber der Radunterseite
+	FloorSensorBelow = 0.5, -- so weit darunter (fuer buendige oder leicht eingelassene Parts)
 	-- Nach einem JumpPad zaehlt eine harte Landung erst ab dem x-fachen Crash.ImpactSpeedChange
 	JumpLandingTolerance = 2.5,
 
@@ -194,6 +197,13 @@ Config.Sounds = {
 	Crash = { Id = "", Volume = 0.8 },
 	Checkpoint = { Id = "", Volume = 0.6 },
 	Finish = { Id = "", Volume = 0.8 }, -- im Ziel
+}
+
+-- Fehlersuche (nur in Studio wirksam)
+Config.Debug = {
+	-- true = im Output melden, wenn ein Rad einen Bodenbaustein erkennt und welcher
+	-- Effekt (BoostPad, JumpPad) ausgeloest wird
+	TrackPieces = false,
 }
 
 -- Verfolgerkamera

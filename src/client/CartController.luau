@@ -176,9 +176,24 @@ function CartController.applyPads(self: Controller, surface: TrackSensors.Surfac
 	if boostPad and ready(boostPad) then
 		-- Schub in Blickrichtung des Pads
 		local strength = Attributes.number(boostPad, "Strength", T.BoostPadStrength, true)
-		local delta = TrackSensors.pieceCFrame(boostPad).LookVector * strength
+		local direction = TrackSensors.pieceCFrame(boostPad).LookVector
+		local delta = direction * strength
 		addVelocity(self.cart, delta)
 		impulse += delta
+		if Config.Debug.TrackPieces then
+			local source = if type(boostPad:GetAttribute("Strength")) == "number"
+				then "Attribut"
+				else "Standardwert"
+			local alongCart = direction:Dot(self.base.CFrame.LookVector)
+			TrackSensors.debugLog(
+				`BoostPad "{boostPad.Name}" ausgeloest: +{strength} Studs/s ({source}), `
+					.. (
+						if alongCart > 0.3
+							then "Richtung passt zur Fahrtrichtung"
+							else "ACHTUNG: Pad zeigt nicht in Fahrtrichtung (Part um 180 Grad drehen?)"
+					)
+			)
+		end
 		event = "Boost"
 	end
 	local jumpPad = surface.jumpPad
@@ -190,6 +205,14 @@ function CartController.applyPads(self: Controller, surface: TrackSensors.Surfac
 		local delta = up * (strength - current)
 		addVelocity(self.cart, delta)
 		impulse += delta
+		if Config.Debug.TrackPieces then
+			local source = if type(jumpPad:GetAttribute("Strength")) == "number"
+				then "Attribut"
+				else "Standardwert"
+			TrackSensors.debugLog(
+				`JumpPad "{jumpPad.Name}" ausgeloest: {strength} Studs/s nach oben ({source})`
+			)
+		end
 		event = "Jump"
 	end
 	return event, impulse

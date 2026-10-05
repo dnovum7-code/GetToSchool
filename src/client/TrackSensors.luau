@@ -1,11 +1,14 @@
 --!strict
 -- Erkennt, auf bzw. an welchen Streckenbausteinen der eigene Wagen gerade ist.
---   Boden (BoostPad, JumpPad, Mud, Ice): je ein Raycast unter jedem der 4 Raeder.
+--   Boden (BoostPad, JumpPad, Mud, Ice): je ein kleiner Kasten an der Aufstandsflaeche
+--   jedes der 4 Raeder. (Frueher ein Raycast: Der meldet nur das erste Part, das er trifft.
+--   Liegt ein Pad buendig in der Strasse, traf er die Strasse und das Pad blieb unerkannt.)
 --   Hazard, Bouncy: raeumliche Abfrage um den Wagen herum (auch Waende, nicht nur Boden).
--- Unity-Vergleich: Physics.Raycast pro Rad und Physics.OverlapBox um den Wagen.
+-- Unity-Vergleich: Physics.OverlapBox pro Rad und um den Wagen.
 -- Bewusst nicht ueber Touched-Events: die sind bei schnellen Objekten unzuverlaessig.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Attributes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Attributes"))
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
@@ -23,6 +26,14 @@ export type Surface = {
 }
 
 local WHEEL_NAMES = { "WheelFL", "WheelFR", "WheelBL", "WheelBR" }
+local FLOOR_TAGS = { "BoostPad", "JumpPad", "Mud", "Ice" }
+
+-- Debug-Ausgaben (nur in Studio, an/aus: Config.Debug.TrackPieces)
+function TrackSensors.debugLog(message: string)
+	if Config.Debug.TrackPieces and RunService:IsStudio() then
+		print("[Baustein-Debug] " .. message)
+	end
+end
 
 -- Falscher Typ -> Standardwert und Warnung im Output (siehe shared/Attributes)
 local function numberAttribute(instance: Instance, name: string, default: number): number
@@ -41,8 +52,13 @@ local function findTagged(part: Instance, tag: string): Instance?
 	return nil
 end
 
+local floorParams = OverlapParams.new()
+floorParams.FilterType = Enum.RaycastFilterType.Include
+local lastWheelReport: { [string]: string } = {} -- fuer Debug: nur Aenderungen melden
+local lastPieceCounts = ""
+
 -- Was liegt unter den Raedern?
-function TrackSensors.sampleGround(cart: Model, rayParams: RaycastParams): Surface
+function TrackSensors.sampleGround(cart: Model): Surface
 	local T = Config.Track
 	local surface: Surface = {
 		mudFraction = 0,
@@ -56,7 +72,34 @@ function TrackSensors.sampleGround(cart: Model, rayParams: RaycastParams): Surfa
 	if not base then
 		return surface
 	end
-	local down = -base.CFrame.UpVector * (Config.Cart.WheelDiameter / 2 + 0.6)
+
+	-- Nur getaggte Bodenbausteine pruefen (Strasse usw. werden ignoriert)
+	local include = {}
+	local counts = {}
+	for _, tag in FLOOR_TAGS do
+		local tagged = TagList.get(tag)
+		table.insert(counts, `{tag} {#tagged}`)
+		for _, instance in tagged do
+			table.insert(include, instance)
+		end
+	end
+	local countText = table.concat(counts, ", ")
+	if countText ~= lastPieceCounts then
+		lastPieceCounts = countText
+		TrackSensors.debugLog("Bodenbausteine in der Welt: " .. countText)
+	end
+	if #include == 0 then
+		return surface
+	end
+	floorParams.FilterDescendantsInstances = include
+
+	-- Kasten an der Aufstandsflaeche jedes Rads: etwas darueber und darunter, damit
+	-- aufliegende, buendige und leicht eingelassene Bausteine erkannt werden.
+	local cf = base.CFrame
+	local up = cf.UpVector
+	local radius = Config.Cart.WheelDiameter / 2
+	local above, below = T.FloorSensorAbove, T.FloorSensorBelow
+	local size = Vector3.new(radius * 1.5, above + below, radius * 1.5)
 	local count = 0
 	local mud, ice = 0, 0
 	for _, name in WHEEL_NAMES do
@@ -65,23 +108,47 @@ function TrackSensors.sampleGround(cart: Model, rayParams: RaycastParams): Surfa
 			continue
 		end
 		count += 1
-		local hit = workspace:Raycast(wheel.Position, down, rayParams)
-		if not hit then
-			continue
+		local contact = wheel.Position - up * radius
+		local boxCFrame = CFrame.fromMatrix(contact + up * ((above - below) / 2), cf.RightVector, up)
+		local found: { [string]: Instance } = {}
+		for _, part in workspace:GetPartBoundsInBox(boxCFrame, size, floorParams) do
+			for _, tag in FLOOR_TAGS do
+				if not found[tag] then
+					local piece = findTagged(part, tag)
+					if piece then
+						found[tag] = piece
+					end
+				end
+			end
 		end
-		local part = hit.Instance
-		local mudPiece = findTagged(part, "Mud")
+		local mudPiece = found.Mud
 		if mudPiece then
 			mud += 1
 			surface.mudDrag = numberAttribute(mudPiece, "Drag", T.MudDrag)
 		end
-		local icePiece = findTagged(part, "Ice")
+		local icePiece = found.Ice
 		if icePiece then
 			ice += 1
 			surface.iceGrip = numberAttribute(icePiece, "Grip", T.IceGrip)
 		end
-		surface.boostPad = surface.boostPad or findTagged(part, "BoostPad")
-		surface.jumpPad = surface.jumpPad or findTagged(part, "JumpPad")
+		surface.boostPad = surface.boostPad or found.BoostPad
+		surface.jumpPad = surface.jumpPad or found.JumpPad
+
+		-- Debug: melden, wenn sich aendert, was dieses Rad erkennt
+		if Config.Debug.TrackPieces then
+			local names = {}
+			for _, tag in FLOOR_TAGS do
+				local piece = found[tag]
+				if piece then
+					table.insert(names, `{tag} "{piece.Name}"`)
+				end
+			end
+			local report = if #names > 0 then table.concat(names, ", ") else "nichts"
+			if lastWheelReport[name] ~= report then
+				lastWheelReport[name] = report
+				TrackSensors.debugLog(`Rad {name} erkennt: {report}`)
+			end
+		end
 	end
 	if count > 0 then
 		surface.mudFraction = mud / count

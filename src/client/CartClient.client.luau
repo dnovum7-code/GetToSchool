@@ -504,7 +504,7 @@ RunService.PreSimulation:Connect(function(dt)
 	local throttle, steer = readInput()
 	-- Handbremse nur, wenn nicht gerade im Chat getippt wird
 	local handbrake = handbrakeHeld and UserInputService:GetFocusedTextBox() == nil
-	local surface = TrackSensors.sampleGround(current.cart, current.rayParams)
+	local surface = TrackSensors.sampleGround(current.cart)
 	local hop = hopRequested and UserInputService:GetFocusedTextBox() == nil
 	hopRequested = false
 	local telemetry = current:step(dt, throttle, steer, handbrake, hop, surface)
