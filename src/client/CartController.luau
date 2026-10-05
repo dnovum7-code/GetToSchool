@@ -196,7 +196,7 @@ function CartController.applyPads(self: Controller, surface: TrackSensors.Surfac
 end
 
 -- throttle: -1 (S) .. 1 (W), steer: -1 (A) .. 1 (D), handbrake: Shift gedrueckt,
--- hopPressed: Shift wurde in diesem Frame neu gedrueckt (Hopp),
+-- hopPressed: Hopp-Taste (Leertaste) wurde in diesem Frame gedrueckt,
 -- surface: Streckenbausteine unter den Raedern (siehe TrackSensors)
 function CartController.step(
 	self: Controller,

@@ -183,7 +183,7 @@ kompletter Neustart; der Timer zeigt Minuten, Sekunden und Hundertstel.
 | R zu Fuß | Ausgestiegen R drücken | Figur sitzt sofort wieder im Wagen am Start |
 | Ragdoll-Crash | Gegen eine Wand fahren / umkippen | „CRASH!“, Figur fliegt schlaff mit Schwung nach vorne/oben aus dem Wagen, der Wagen überschlägt sich weiter. Nach 1,2 s Neustart |
 | R überspringt | Direkt nach dem Crash R drücken | Sofortiger Neustart, Figur sitzt wieder normal im Wagen |
-| Drift | Bei Tempo lenken und **Shift** halten (Gamepad B, Touch: Button „Drift“) | Kurzer Hopp, dann zieht die Front den Wagen durch die Kurve, das Heck schwingt aus. Reifenspuren erscheinen und verblassen nach ~3 s (Details siehe „Feedback-Runde“ unten) |
+| Drift | Bei Tempo lenken und **Shift** halten (Gamepad B, Touch: Button „Drift“) | Die Front zieht den Wagen durch die Kurve, das Heck schwingt aus. Reifenspuren erscheinen und verblassen nach ~3 s (Details siehe „Feedback-Runde“ unten) |
 | Boost-Ladung | Lange driften (über 25 Studs/s, Driftwinkel über 12°) | Funken an den Hinterrädern: hell → nach 1 s blau (Stufe 1) → nach 2 s orange (Stufe 2) |
 | Boost | Shift nach blauen/orangen Funken loslassen | Kurzer Schub nach vorne (+15 % / +25 % des Höchsttempos), am Tacho sichtbar |
 | Kein Farmen | Im Stand Shift halten und lenken | Keine Funken, kein Boost |
@@ -223,8 +223,8 @@ kompletter Neustart; der Timer zeigt Minuten, Sekunden und Hundertstel.
 | Lenkung | A/D ohne Shift | Nur noch leichte Korrekturen (60 % der alten Stärke) |
 | Drift | Bei Tempo Shift halten und lenken | Front zieht den Wagen durch die Kurve, Heck schwingt weich aus (max. ~30°), leicht unruhig. **Kein Dreher**, auch nicht bei langem Driften |
 | Drift loslassen | Shift loslassen | Heck kommt weich zurück, der Wagen fährt gerade weiter |
-| Hopp | Shift kurz antippen | Kleiner Sprung (ca. 1 Stud); in der Luft dreht der Wagen schnell in Lenkrichtung |
-| Driftwechsel | Im Linksdrift: Shift los, D halten, Shift drücken | Hopp mit schneller Drehung nach rechts, Landung direkt im Rechtsdrift |
+| Hopp | **Leertaste** (Gamepad A, Touch: Button „Hopp“) | Kleiner Sprung (ca. 1 Stud); in der Luft dreht der Wagen schnell in Lenkrichtung. Shift löst keinen Hopp mehr aus |
+| Driftwechsel | Im Linksdrift Shift halten, D drücken, Leertaste | Hopp mit schneller Drehung nach rechts, Landung direkt im Rechtsdrift |
 | Flach fahren | Auf ebener Strecke W halten | Deutlich schnellere Beschleunigung, Motor-Höchsttempo ca. 60 Studs/s (≈ 60 km/h) |
 | Bergab mit W | Rampe hinunter, W halten | Wird schneller als 60 Studs/s, kein Abbremsen (nur leichter Luftwiderstand) |
 | Ausrollen | Nichts drücken | Wagen wird langsam weniger schnell |

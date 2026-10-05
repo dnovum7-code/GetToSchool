@@ -121,9 +121,9 @@ Config.Drift = {
 	SkidMarkWidth = 0.35,
 }
 
--- Hopp (wie Mario Kart): Druecken der Drift-Taste (Shift / Gamepad B) laesst den Wagen
--- kurz huepfen. In der Luft dreht er sich schnell in Lenkrichtung; so wechselt man z. B.
--- schnell von einem Links- in einen Rechtsdrift.
+-- Hopp (wie Mario Kart): Leertaste (Gamepad A) laesst den Wagen kurz huepfen. In der Luft
+-- dreht er sich schnell in Lenkrichtung; so wechselt man z. B. schnell von einem Links- in
+-- einen Rechtsdrift (Shift dabei gedrueckt halten).
 Config.Hop = {
 	Enabled = true,
 	Speed = 20, -- Sprung-Tempo nach oben (Studs/s); 20 = ca. 1 Stud hoch

@@ -129,8 +129,9 @@ end)
 
 local EXIT_ACTION = "GetToSchoolExit"
 local HANDBRAKE_ACTION = "GetToSchoolHandbrake"
+local HOP_ACTION = "GetToSchoolHop"
 local handbrakeHeld = false
-local hopRequested = false -- Drift-Taste neu gedrueckt: Hopp im naechsten Physik-Frame
+local hopRequested = false -- Hopp-Taste gedrueckt: Hopp im naechsten Physik-Frame
 
 -- Diese Zustaende wuerden die Figur aus dem Sitz werfen
 local BLOCKED_STATES = {
@@ -157,6 +158,7 @@ local function deactivate()
 	activeSeat = nil
 	ContextActionService:UnbindAction(EXIT_ACTION)
 	ContextActionService:UnbindAction(HANDBRAKE_ACTION)
+	ContextActionService:UnbindAction(HOP_ACTION)
 	handbrakeHeld = false
 	DriftEffects.detach()
 	SoundSystem.detach()
@@ -199,7 +201,6 @@ local function activate(seat: BasePart, humanoid: Humanoid)
 		function(_, inputState)
 			if inputState == Enum.UserInputState.Begin then
 				handbrakeHeld = true
-				hopRequested = true -- Druecken = Hopp (wie Mario Kart), Halten = Drift
 			elseif inputState == Enum.UserInputState.End or inputState == Enum.UserInputState.Cancel then
 				handbrakeHeld = false
 			end
@@ -212,6 +213,16 @@ local function activate(seat: BasePart, humanoid: Humanoid)
 		Enum.KeyCode.ButtonB
 	)
 	ContextActionService:SetTitle(HANDBRAKE_ACTION, "Drift")
+
+	-- Hopp: Leertaste (Gamepad A), Touch-Button "Hopp". Hohe Prioritaet und "Sink", damit
+	-- Roblox' eigener Sprung die Taste im Wagen nicht bekommt.
+	ContextActionService:BindActionAtPriority(HOP_ACTION, function(_, inputState)
+		if inputState == Enum.UserInputState.Begin then
+			hopRequested = true
+		end
+		return Enum.ContextActionResult.Sink
+	end, true, Enum.ContextActionPriority.High.Value, Enum.KeyCode.Space, Enum.KeyCode.ButtonA)
+	ContextActionService:SetTitle(HOP_ACTION, "Hopp")
 
 	DriftEffects.attach(cart, character)
 	SoundSystem.attach(cart)

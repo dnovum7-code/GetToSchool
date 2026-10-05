@@ -56,5 +56,5 @@ Ragdoll-Crash, Tacho, Kamera-Wackeln, Tuning-Panel; M1.5 noch nicht getestet/get
 | Zurück zum letzten Checkpoint (auch nach Crash, überspringt Wartezeit; ohne Checkpoint: Start) | R | Y | Button „R“ |
 | Kompletter Neustart am Start (Zeit wieder 0) | T | Steuerkreuz hoch | Button „Start“ |
 | Tuning-Panel (nur Studio) | F2 | – | – |
-| Hopp (antippen) / Drift (halten, loslassen = Boost) | Shift | B | Button „Drift“ |
-| Sprung / Doublejump | Leertaste (reserviert, kommt später) | A | – |
+| Drift / Handbremse (halten, loslassen = Boost) | Shift | B | Button „Drift“ |
+| Hopp (kleiner Sprung, schneller Richtungswechsel) | Leertaste | A | Button „Hopp“ |
