@@ -79,8 +79,8 @@ function TrackPieces.init()
 	end)
 
 	-- Bewegte Hindernisse: verankert, die Bewegung rechnet jeder Client selbst
-	-- (siehe src/client/Obstacles.luau)
-	for _, tag in { "Mover", "Spinner", "Pendulum" } do
+	-- (siehe src/client/Obstacles.luau und src/client/Toolkit)
+	for _, tag in { "Mover", "Spinner", "Pendulum", "PathMover", "Gate" } do
 		TagList.watch(tag, function(instance)
 			forEachPart(instance, function(part)
 				part.Anchored = true
@@ -99,6 +99,20 @@ function TrackPieces.init()
 			end
 		end)
 	end
+
+	-- Wegpunkte eines PathMovers: im Spiel unsichtbar und ohne Wirkung
+	TagList.watch("PathMover", function(instance)
+		local waypoints = instance:FindFirstChild("Waypoints")
+		if waypoints then
+			forEachPart(waypoints, function(part)
+				part.Anchored = true
+				part.CanCollide = false
+				part.CanQuery = false
+				part.CanTouch = false
+				part.Transparency = 1
+			end)
+		end
+	end)
 
 	-- Unsichtbare Bereiche (TriggerZone, Spawner): nur Messbereich, im Spiel unsichtbar
 	for _, tag in { "TriggerZone", "Spawner" } do

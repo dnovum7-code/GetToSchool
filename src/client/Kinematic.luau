@@ -14,9 +14,12 @@ function Kinematic.getCFrame(instance: PVInstance): CFrame
 	return instance:GetPivot()
 end
 
--- `instance` von `last` nach `target` bewegen (`dt` = Zeit seit dem letzten Aufruf)
-function Kinematic.move(instance: PVInstance, last: CFrame, target: CFrame, dt: number)
-	if instance:IsA("BasePart") then
+-- `instance` von `last` nach `target` bewegen (`dt` = Zeit seit dem letzten Aufruf).
+-- `usePivot`: die Lagen sind Pivot-Lagen (GetPivot/PivotTo), auch bei einzelnen Parts.
+function Kinematic.move(instance: PVInstance, last: CFrame, target: CFrame, dt: number, usePivot: boolean?)
+	if usePivot then
+		instance:PivotTo(target)
+	elseif instance:IsA("BasePart") then
 		instance.CFrame = target
 	elseif instance:IsA("Model") then
 		instance:PivotTo(target)

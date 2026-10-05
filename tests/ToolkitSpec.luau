@@ -1,5 +1,6 @@
 --!strict
 local TestLib = require("./TestLib")
+local PathMath = require("../src/shared/Toolkit/PathMath")
 local Rng = require("../src/shared/Toolkit/Rng")
 local SpawnSchedule = require("../src/shared/Toolkit/SpawnSchedule")
 local TriggerRules = require("../src/shared/Toolkit/TriggerRules")
@@ -125,6 +126,72 @@ describe("SpawnSchedule", function()
 		expect(SpawnSchedule.pick(names, 0)).toBe("Stein1")
 		expect(SpawnSchedule.pick(names, 0.999)).toBe("Auto")
 		expect(SpawnSchedule.pick({}, 0.5)).toBeNil()
+	end)
+end)
+
+describe("PathMath", function()
+	-- drei Punkte auf einer Linie: 0, 10, 30 (Abstaende 10 und 20)
+	local positions = { 0, 10, 30 }
+	local function distance(a: number, b: number): number
+		return math.abs(positions[b] - positions[a])
+	end
+
+	it("hin und zurueck: Zyklus und Abschnitte", function()
+		local path = PathMath.build(3, distance, 10, 0, false)
+		expect(#path.legs).toBe(4)
+		expect(path.cycle).toBeNear(6) -- (10 + 20) * 2 / 10
+		local from, to, alpha, moving = PathMath.sample(path, 0.5)
+		expect(from).toBe(1)
+		expect(to).toBe(2)
+		expect(alpha).toBeNear(0.5)
+		expect(moving).toBe(true)
+		from, to = PathMath.sample(path, 3.5)
+		expect(from).toBe(3)
+		expect(to).toBe(2)
+	end)
+
+	it("Kreis: letzter Abschnitt fuehrt zum ersten Punkt", function()
+		local path = PathMath.build(3, distance, 10, 0, true)
+		expect(#path.legs).toBe(3)
+		local last = path.legs[3]
+		expect(last.from).toBe(3)
+		expect(last.to).toBe(1)
+		expect(path.cycle).toBeNear(6) -- 10 + 20 + 30 = 60 / 10
+	end)
+
+	it("Wartezeit an den Punkten", function()
+		local path = PathMath.build(3, distance, 10, 2, false)
+		expect(path.cycle).toBeNear(6 + 4 * 2)
+		local _, to, alpha, moving = PathMath.sample(path, 1.5)
+		expect(to).toBe(2)
+		expect(alpha).toBe(1)
+		expect(moving).toBe(false)
+	end)
+
+	it("Zeit laeuft im Kreis (Serverzeit gross)", function()
+		local path = PathMath.build(3, distance, 10, 0, false)
+		local a1, b1, c1 = PathMath.sample(path, 0.5)
+		local a2, b2, c2 = PathMath.sample(path, 0.5 + path.cycle * 1000)
+		expect(a1).toBe(a2)
+		expect(b1).toBe(b2)
+		expect(c1).toBeNear(c2, 1e-6)
+	end)
+
+	it("Tor im Takt: zu, oeffnet, offen, schliesst", function()
+		expect(PathMath.gateTimer(1, 2, 3, 3)).toBe(0)
+		expect(PathMath.gateTimer(4, 2, 3, 3)).toBeNear(0.5)
+		expect(PathMath.gateTimer(6, 2, 3, 3)).toBe(1)
+		expect(PathMath.gateTimer(9, 2, 3, 3)).toBeNear(0.5)
+		expect(PathMath.gateTimer(10 + 0.5, 2, 3, 3)).toBe(0)
+	end)
+
+	it("Tor per Signal", function()
+		expect(PathMath.gateSignal(nil, 2, 0)).toBe(0)
+		expect(PathMath.gateSignal(1, 2, 0)).toBeNear(0.5)
+		expect(PathMath.gateSignal(100, 2, 0)).toBe(1)
+		expect(PathMath.gateSignal(3, 2, 5)).toBe(1)
+		expect(PathMath.gateSignal(8, 2, 5)).toBeNear(0.5)
+		expect(PathMath.gateSignal(20, 2, 5)).toBe(0)
 	end)
 end)
 

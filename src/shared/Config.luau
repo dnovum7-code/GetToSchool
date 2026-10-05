@@ -275,6 +275,31 @@ Config.Spawner = {
 	PlaceholderSize = 3, -- Ersatz-Kugel, wenn die Vorlage fehlt
 }
 
+-- PathMover (Tag "PathMover", Modell oder Part): faehrt Wegpunkte ab. Die Wegpunkte sind
+-- Parts "1", "2", "3" ... in einem Ordner "Waypoints" im Modell (im Spiel unsichtbar).
+-- Der Pivot des Modells faehrt durch die Wegpunkte.
+Config.PathMover = {
+	Speed = 16, -- Studs/s
+	Loop = false, -- true = Kreis (letzter Punkt -> erster), false = hin und zurueck
+	WaitAtPoints = 0, -- Sekunden Pause an jedem Wegpunkt
+	FaceDirection = true, -- Vorderseite (Pivot) zeigt in Fahrtrichtung (Autos, Hunde)
+	TurnSpeed = 6, -- wie schnell es sich in die neue Richtung dreht
+	-- Mit ListenSignal: wartet am ersten Punkt und faehrt pro Signal einen Durchgang
+}
+
+-- Gate (Tag "Gate", Modell oder Part): Schiebetor, Schranke, Klappbruecke. Bewegt sich um
+-- seinen Pivot (Studio: Edit Pivot = Scharnier) um Offset und/oder Angle.
+Config.Gate = {
+	Offset = Vector3.new(0, 0, 0), -- Verschiebung im geoeffneten Zustand (relativ zum Pivot)
+	Angle = 0, -- Drehung (Grad) im geoeffneten Zustand ...
+	Axis = "X", -- ... um diese Achse des Pivots ("X", "Y" oder "Z")
+	Duration = 2, -- Sekunden zum Oeffnen bzw. Schliessen
+	OpenTime = 3, -- Taktbetrieb: so lange offen ...
+	ClosedTime = 3, -- ... und so lange zu
+	StartOpen = false, -- true = Grundzustand offen (oeffnen heisst dann schliessen)
+	CloseAfter = 0, -- mit ListenSignal: nach so vielen Sekunden wieder zu (0 = bleibt offen)
+}
+
 -- Zufallsereignisse: Parts/Modelle mit Tag "RandomEvent" sind pro Lauf aktiv oder nicht.
 -- Attribut "Chance" (0..1): Wahrscheinlichkeit, dass es aktiv ist.
 -- Attribut "Group" (Text): aus jeder Gruppe ist pro Lauf genau ein Element aktiv
