@@ -1,7 +1,7 @@
 --!strict
 -- Rennablauf pro Spieler, komplett auf dem Server (autoritativ):
 --   Ready    Wagen steht am Start. Die Zeit startet, sobald er die Startzone verlaesst.
---   Running  Zeit laeuft. Erreicht der Wagen die Zielzone, ist der Lauf beendet.
+--   Running  Spielzeit laeuft (ab 7:45). Erreicht der Wagen die Zielzone, ist der Lauf beendet.
 --   Finished Ergebnis wird angezeigt, danach automatischer Neustart.
 --   Aborted  Spieler ist waehrend des Laufs ausgestiegen: Zeit ungueltig, weiter mit R.
 --
@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local SchoolClock = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SchoolClock"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
 local Track = require(script.Parent:WaitForChild("Track"))
 
@@ -25,10 +26,22 @@ type Phase = "Ready" | "Running" | "Finished" | "Aborted"
 type RaceState = {
 	phase: Phase,
 	spawnPosition: Vector3,
-	startTime: number,
+	startTime: number, -- os.clock() beim Verlassen der Startzone
+	timeScale: number, -- Spielsekunden pro echter Sekunde in diesem Lauf
 	runId: number,
-	bestTime: number?,
+	bestArrival: number?, -- beste Ankunftszeit (Sekunden seit Mitternacht, Spielzeit)
 	lastRestart: number,
+}
+
+-- Ergebnis eines Laufs, so wie es an den Client geht
+export type RunResult = {
+	arrival: number, -- Ankunft (Spielzeit, Sekunden seit Mitternacht)
+	schoolTime: number,
+	onTime: boolean,
+	grade: number, -- 1-6, 6 = beste
+	bestArrival: number,
+	isNewBest: boolean,
+	realTime: number, -- echte Sekunden
 }
 
 local races: { [Player]: RaceState } = {}
@@ -40,8 +53,9 @@ local function getRace(player: Player): RaceState
 			phase = "Ready",
 			spawnPosition = Vector3.zero,
 			startTime = 0,
+			timeScale = Config.Clock.TimeScale,
 			runId = 0,
-			bestTime = nil,
+			bestArrival = nil,
 			lastRestart = -math.huge,
 		}
 		races[player] = race
@@ -72,14 +86,25 @@ function RaceManager.requestRestart(player: Player)
 	RaceManager.restart(player)
 end
 
-local function finish(player: Player, race: RaceState)
-	local time = os.clock() - race.startTime
-	local isNewBest = race.bestTime == nil or time < (race.bestTime :: number)
+local function finish(player: Player, race: RaceState, finishZone: BasePart)
+	local realTime = os.clock() - race.startTime
+	local arrival = SchoolClock.startSeconds() + realTime * race.timeScale
+	local isNewBest = race.bestArrival == nil or arrival < (race.bestArrival :: number)
 	if isNewBest then
-		race.bestTime = time
+		race.bestArrival = arrival
 	end
 	race.phase = "Finished"
-	runState:FireClient(player, "Finished", time, race.bestTime, isNewBest)
+	local schoolTime = SchoolClock.schoolSeconds()
+	local result: RunResult = {
+		arrival = arrival,
+		schoolTime = schoolTime,
+		onTime = arrival < schoolTime,
+		grade = SchoolClock.gradeFor(arrival, finishZone),
+		bestArrival = race.bestArrival :: number,
+		isNewBest = isNewBest,
+		realTime = realTime,
+	}
+	runState:FireClient(player, "Finished", result)
 
 	local delay = Config.Race.AutoRestartAfterFinish
 	if delay > 0 then
@@ -158,12 +183,14 @@ local function updatePlayer(player: Player, race: RaceState)
 		if leftStart then
 			race.phase = "Running"
 			race.startTime = os.clock()
-			runState:FireClient(player, "Started")
+			-- Tempo der Spielzeit: Attribut an der StartZone oder Config
+			race.timeScale = SchoolClock.timeScaleFor(startZone)
+			runState:FireClient(player, "Started", race.timeScale)
 		end
 	elseif race.phase == "Running" then
 		local finishZone = Track.findZone(Config.Race.FinishZoneTag)
 		if finishZone and Track.isInZone(finishZone, position) then
-			finish(player, race)
+			finish(player, race, finishZone)
 		end
 	end
 end

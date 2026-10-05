@@ -158,9 +158,40 @@ Config.Race = {
 	DownhillMinSlope = 5, -- Grad; flacher gilt als eben
 	MinRestartInterval = 0.3, -- Schutz gegen Spam der Neustart-Taste
 	StartGrace = 0.3, -- nach einem Neustart so lange keine Zonen pruefen
-	AutoRestartAfterFinish = 3, -- Sekunden nach dem Ziel bis zum Neustart (0 = aus)
+	AutoRestartAfterFinish = 5, -- Sekunden nach dem Ziel bis zum Neustart (0 = aus)
 	StartDistanceWithoutZone = 4, -- ohne Startzone: Zeit laeuft ab dieser Strecke
 	RespawnTime = 1, -- Wartezeit, falls der Charakter doch einmal stirbt
+}
+
+-- Schulglocke: Spielzeit statt Stoppuhr. Jeder Lauf startet um StartTime, die Schule
+-- beginnt um SchoolTime. Uhrzeiten als Text "H:MM" oder "H:MM:SS".
+Config.Clock = {
+	StartTime = "7:45",
+	SchoolTime = "8:00",
+	-- Spielsekunden pro echter Sekunde. 15 = die 15 Minuten bis 8:00 dauern 60 echte Sekunden.
+	-- Pro Track ueberschreibbar: Attribut "TimeScale" (Zahl) an der StartZone.
+	TimeScale = 15,
+	NervousShare = 0.2, -- in den letzten 20 % vor SchoolTime tickt die Uhr nervoes
+	-- Schulnoten (Schweizer System, 6 = beste): spaetestens um diese Uhrzeit ankommen.
+	-- Pro Track ueberschreibbar: Attribute "Grade6" ... "Grade2" (Text) an der FinishZone.
+	-- Spaeter als Grade2 = Note 1.
+	GradeLimits = {
+		[6] = "7:53",
+		[5] = "7:56",
+		[4] = "8:00", -- 4 = genuegend: puenktlich
+		[3] = "8:02",
+		[2] = "8:05",
+	},
+	OnTimeTitle = "PUENKTLICH!",
+	-- Zufaellige Titel, wenn man zu spaet kommt
+	LateMessages = {
+		"Ab zum Rektor!",
+		"Nachsitzen!",
+		"Der Hund hat die Hausaufgaben gefressen?",
+		"Eintrag ins Klassenbuch!",
+		"Die Lehrerin schaut schon auf die Uhr...",
+		"Schon wieder du?!",
+	},
 }
 
 -- Aus- und Einsteigen (Taste E / Gamepad X)
@@ -175,7 +206,7 @@ Config.Exit = {
 
 -- Anzeige
 Config.UI = {
-	ResultDisplayTime = 3, -- so lange bleibt "ZIEL!" sichtbar
+	ResultDisplayTime = 5, -- so lange bleibt der Ergebnis-Screen sichtbar
 	ShowSpeed = true, -- kleine Anzeige in Studs/s (fuers Tunen)
 	-- Tacho: 1 Stud entspricht in Roblox etwa 0.28 m, also km/h = Studs/s * 0.28 * 3.6
 	StudsToMeters = 0.28,

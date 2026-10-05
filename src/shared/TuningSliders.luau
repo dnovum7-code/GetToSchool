@@ -57,6 +57,16 @@ local sliders: { Slider } = {
 	},
 	{ label = "Boost-Schwelle 1 (s)", section = "Drift", key = "Level1Time", min = 0.2, max = 3, step = 0.1 },
 	{ label = "Boost-Schwelle 2 (s)", section = "Drift", key = "Level2Time", min = 0.5, max = 5, step = 0.1 },
+	-- Spielzeit: Spielsekunden pro echter Sekunde (gilt ab dem naechsten Start)
+	{
+		label = "Spielzeit-Tempo",
+		section = "Clock",
+		key = "TimeScale",
+		min = 1,
+		max = 60,
+		step = 1,
+		server = true,
+	},
 }
 
 return sliders

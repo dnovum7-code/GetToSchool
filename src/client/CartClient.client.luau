@@ -18,6 +18,7 @@ local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local SchoolClock = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SchoolClock"))
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local requestRestart = remotes:WaitForChild("RequestRestart") :: RemoteEvent
@@ -42,6 +43,54 @@ local wasGrounded = true -- fuer die Landungs-Erkennung (Kamera-Wackeln)
 -- hier nur zur Anzeige mit; das Endergebnis kommt vom Server.
 local runPhase: "Ready" | "Running" | "Finished" | "Aborted" = "Ready"
 local runStartedAt = 0
+local runTimeScale = Config.Clock.TimeScale -- Spielsekunden pro echter Sekunde (vom Server)
+
+-- Aktuelle Spielzeit (Sekunden seit Mitternacht) fuer die Uhr im UI
+local finishedArrival = 0 -- Ankunftszeit des letzten Laufs (bleibt auf der Uhr stehen)
+
+local function currentGameTime(): number
+	if runPhase == "Running" then
+		return SchoolClock.startSeconds() + (os.clock() - runStartedAt) * runTimeScale
+	elseif runPhase == "Finished" then
+		return finishedArrival
+	end
+	return SchoolClock.startSeconds()
+end
+
+-- Ergebnis-Screen. Die Werte hat der Server berechnet, hier wird nur angezeigt.
+type RunResult = {
+	arrival: number,
+	schoolTime: number,
+	onTime: boolean,
+	grade: number,
+	bestArrival: number,
+	isNewBest: boolean,
+	realTime: number,
+}
+local function showResult(result: RunResult)
+	local title, color
+	if result.onTime then
+		title, color = Config.Clock.OnTimeTitle, Color3.fromRGB(120, 255, 120)
+	else
+		local messages = Config.Clock.LateMessages
+		title = if #messages > 0 then messages[math.random(1, #messages)] else "Zu spaet!"
+		color = Color3.fromRGB(255, 110, 80)
+	end
+	local arrivalLine = "Ankunft: " .. SchoolClock.format(result.arrival, true)
+	if result.onTime then
+		arrivalLine ..= "  (puenktlich)"
+	else
+		arrivalLine ..= "  (" .. SchoolClock.formatDuration(result.arrival - result.schoolTime) .. " zu spaet)"
+	end
+	local lines = {
+		arrivalLine,
+		"Bestzeit: " .. SchoolClock.format(result.bestArrival, true) .. (if result.isNewBest
+			then "  - Neue Bestzeit!"
+			else ""),
+		string.format("Fahrzeit: %.2f s", result.realTime),
+	}
+	RaceUI.showResult(title, color, lines, result.grade, Config.UI.ResultDisplayTime)
+end
 
 local CRASH_TEXTS: { [string]: string } = {
 	Tipped = "Umgekippt",
@@ -255,7 +304,7 @@ end
 runState.OnClientEvent:Connect(function(kind: string, ...)
 	if kind == "Reset" then
 		runPhase = "Ready"
-		RaceUI.setTimer(0)
+		RaceUI.hideResult()
 		onReset(...)
 	elseif kind == "Ragdoll" then
 		onRagdoll()
@@ -263,22 +312,18 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		onExited(...)
 	elseif kind == "Aborted" then
 		runPhase = "Aborted"
-		RaceUI.setTimerInvalid()
 		RaceUI.showMessage("Lauf abgebrochen", Color3.fromRGB(255, 200, 80), "R: Neustart", 2)
 	elseif kind == "Started" then
+		local timeScale: number = ...
 		runPhase = "Running"
 		runStartedAt = os.clock()
+		runTimeScale = timeScale
 	elseif kind == "Finished" then
-		local time: number, best: number, isNewBest: boolean = ...
+		local result: RunResult = ...
 		runPhase = "Finished"
-		RaceUI.setTimer(time)
-		RaceUI.setBest(best)
-		RaceUI.showMessage(
-			"ZIEL!",
-			Color3.fromRGB(120, 255, 120),
-			RaceUI.formatTime(time) .. (if isNewBest then "  -  Neue Bestzeit!" else ""),
-			Config.UI.ResultDisplayTime
-		)
+		finishedArrival = result.arrival
+		RaceUI.setBest(result.bestArrival)
+		showResult(result)
 	end
 end)
 
@@ -358,6 +403,12 @@ end
 RunService.PreSimulation:Connect(function(dt)
 	updateSeat()
 	RaceUI.setSpeedometerVisible(controller ~= nil)
+	-- Schuluhr laeuft auch weiter, wenn man gerade nicht faehrt (z. B. als Ragdoll)
+	if runPhase == "Aborted" then
+		RaceUI.setClockInvalid()
+	else
+		RaceUI.setClock(currentGameTime())
+	end
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	EnterPrompt.update(controller == nil and not crashed and humanoid ~= nil and humanoid.Health > 0)
@@ -393,9 +444,6 @@ RunService.PreSimulation:Connect(function(dt)
 		end
 	end
 	wasGrounded = telemetry.grounded
-	if runPhase == "Running" then
-		RaceUI.setTimer(os.clock() - runStartedAt)
-	end
 
 	if not crashed then
 		local reason = crashDetector:update(dt, current.base)
