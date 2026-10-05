@@ -33,6 +33,17 @@ end)
 
 local function onCharacterAdded(player: Player, character: Model)
 	CartManager.onCharacterAdded(player, character)
+	-- Mit StreamingEnabled laedt der Client nur die Welt in seiner Naehe. Die Spielfigur
+	-- spawnt evtl. weit weg vom Start, also die Startgegend vorher laden lassen,
+	-- sonst faellt der Wagen durch noch nicht geladenen Boden.
+	if workspace.StreamingEnabled then
+		local ok, err = pcall(function()
+			player:RequestStreamAroundAsync(Track.getSpawn().Position, 3)
+		end)
+		if not ok then
+			warn("[GameServer] RequestStreamAroundAsync fehlgeschlagen:", err)
+		end
+	end
 	if player.Character == character then
 		RaceManager.restart(player)
 	end

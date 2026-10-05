@@ -82,7 +82,9 @@ die per `require` geladen werden.
    **bergab**. Ist der Boden dort flach (unter 5°), schaut er zur **Vorderseite (Front)**
    des Parts. Startet er dann falsch herum: Stop, Zone um 90°/180° um die Hochachse drehen,
    nochmal Play. (Immer die Vorderseite nutzen: `Race.StartFacing = "ZoneFront"` in der Config.)
-5. Die Zeit läuft los, sobald der Wagen die Startzone verlässt, und stoppt, sobald er in die
+5. Tipp: Das *SpawnLocation* in die Nähe der Startzone stellen. Dort erscheint die Figur
+   kurz, bevor sie in den Wagen gesetzt wird.
+6. Die Zeit läuft los, sobald der Wagen die Startzone verlässt, und stoppt, sobald er in die
    Zielzone fährt. Ohne Startzone startet der Wagen 10 Studs vor dem *SpawnLocation*.
 
 ## M1 testen
