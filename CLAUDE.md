@@ -47,4 +47,5 @@ sofortiger Neustart, Ziel beendet den Lauf mit Zeit.)
 | Einsteigen (am eigenen leeren Wagen) | E | X | Hinweis antippen |
 | Neustart (auch nach Crash, überspringt Wartezeit) | R | Y | Button „R“ |
 | Tuning-Panel (nur Studio) | F2 | – | – |
-| Drift / Handbremse | Leertaste (geplant, noch nicht gebaut) | – | – |
+| Drift / Handbremse (halten, loslassen = Boost) | Shift | B | Button „Drift“ |
+| Sprung / Doublejump | Leertaste (reserviert, kommt später) | A | – |

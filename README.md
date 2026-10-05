@@ -66,6 +66,7 @@ selene src        # Linter (findet typische Fehler)
 | `src/client/EnterPrompt.luau` | Client | Hinweis „E Einsteigen“ am eigenen leeren Wagen |
 | `src/client/OwnCart.luau` | Client | Helfer: eigenen Wagen finden, Bewegung stoppen |
 | `src/client/DevPanel.luau` | Client | Tuning-Panel (nur Studio, F2) |
+| `src/client/DriftEffects.luau` | Client | Funken und Reifenspuren beim Drift (nur lokal) |
 | `src/shared/TuningSliders.luau` | beiden | Welche Werte das Tuning-Panel zeigt |
 | `src/server/DevTuning.luau` | Server | Tuning-Werte, die der Server braucht (nur Studio) |
 
@@ -116,9 +117,16 @@ die per `require` geladen werden.
 | R zu Fuß | Ausgestiegen R drücken | Figur sitzt sofort wieder im Wagen am Start |
 | Ragdoll-Crash | Gegen eine Wand fahren / umkippen | „CRASH!“, Figur fliegt schlaff mit Schwung nach vorne/oben aus dem Wagen, der Wagen überschlägt sich weiter. Nach 1,2 s Neustart |
 | R überspringt | Direkt nach dem Crash R drücken | Sofortiger Neustart, Figur sitzt wieder normal im Wagen |
+| Drift | Bei Tempo lenken und **Shift** halten (Gamepad B, Touch: Button „Drift“) | Das Heck bricht aus, der Wagen rutscht quer. Reifenspuren erscheinen und verblassen nach ~3 s |
+| Abfangen | Im Drift gegenlenken (Heck rutscht nach rechts → nach rechts lenken) | Der Wagen richtet sich wieder aus. Ohne Gegenlenken dreht er sich nicht um 180°, sondern wird ab ~55° zurückgedreht |
+| Boost-Ladung | Lange driften (über 25 Studs/s, Driftwinkel über 12°) | Funken an den Hinterrädern: hell → nach 1 s blau (Stufe 1) → nach 2 s orange (Stufe 2) |
+| Boost | Shift nach blauen/orangen Funken loslassen | Kurzer Schub nach vorne (+15 % / +25 % des Höchsttempos), am Tacho sichtbar |
+| Kein Farmen | Im Stand Shift halten und lenken | Keine Funken, kein Boost |
+| Ladung weg | Mit Ladung crashen, R drücken oder aussteigen | Boost-Ladung ist danach leer |
+| ShiftLock | Im Wagen Shift drücken, dann aussteigen | ShiftLock wurde durch das Driften nicht umgeschaltet |
 | Tacho | Fahren | Unten Mitte: km/h und Balken (grün → rot). Nur sichtbar, solange man fährt |
 | Kamera-Wackeln | Schnell fahren (über ~60 Studs/s) / von einer Rampe springen | Leichtes Zittern bei Tempo, kurzes stärkeres Wackeln bei harter Landung |
-| Tuning-Panel | In Studio **F2** | Panel links mit Schiebereglern; Änderungen wirken sofort. „Kipp-Ballast“ verschiebt das Gewicht im Wagen (höher = kippeliger) |
+| Tuning-Panel | In Studio **F2** | Panel links mit Schiebereglern; Änderungen wirken sofort. „Kipp-Ballast“ verschiebt das Gewicht im Wagen (höher = kippeliger). Drift-Regler: Seitenhalt hinten, Rückstell-Winkel/-Stärke, Boost-Schwellen |
 | Werte kopieren | Im Panel auf „Werte kopieren“ klicken | Im Output-Fenster stehen die Werte als Config-Code zum Übernehmen |
 
 Das Tuning-Panel gibt es nur in Studio (`RunService:IsStudio()`). Im veröffentlichten Spiel
@@ -133,6 +141,9 @@ Typische Stellschrauben:
 - Kippt zu leicht → `Cart.BallastHeight` senken, `Drive.RollDamping` erhöhen.
 - Zu viele/zu wenige Crashs → `Crash.ImpactSpeedChange`, `Crash.MaxTiltAngle`.
 - Wackelrad nervt → `Drive.WobbleStrength = 0`.
+- Drift zu schwer/zu leicht auszulösen → `Drift.RearGrip` (kleiner = rutschiger).
+- Drift schwer abzufangen → `Drift.SteerAngle` erhöhen; dreht zu weit ein → `Drift.RecoverAngle` senken oder `Drift.RecoverStrength` erhöhen.
+- Boost zu stark → `Drift.Level1Boost` / `Drift.Level2Boost` (Anteil von `Drive.MaxSpeed`).
 - Ragdoll zu wild/zu lahm → `Crash.RagdollUpSpeed`, `Crash.RagdollCarry`, `Crash.RagdollSpin`.
 - Kamera wackelt zu viel → `Camera.ShakeAtFullSpeed`, `Camera.LandingShakePerSpeed`, `Camera.ShakeMaxAngle`.
 - Hügel liegt tiefer als −100 → `Crash.KillY` anpassen.
