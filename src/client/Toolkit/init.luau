@@ -12,6 +12,7 @@
 --                            Props bleiben liegen (Chaos-Zaehler bleibt).
 
 local Collapses = require(script:WaitForChild("Collapses"))
+local ForceZones = require(script:WaitForChild("ForceZones"))
 local Gates = require(script:WaitForChild("Gates"))
 local PathMovers = require(script:WaitForChild("PathMovers"))
 local Props = require(script:WaitForChild("Props"))
@@ -28,6 +29,7 @@ local MODULES: { ToolkitTypes.Piece } = {
 	Gates,
 	Collapses,
 	Props :: any,
+	ForceZones,
 }
 
 function Toolkit.init()

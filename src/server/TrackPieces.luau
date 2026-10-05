@@ -107,6 +107,16 @@ function TrackPieces.init()
 		end)
 	end)
 
+	-- ForceZone: nur ein Bereich (keine Kollision); das Aussehen (z. B. Wasser) bleibt
+	TagList.watch("ForceZone", function(instance)
+		forEachPart(instance, function(part)
+			part.Anchored = true
+			part.CanCollide = false
+			part.CanQuery = false
+			part.CanTouch = false
+		end)
+	end)
+
 	-- Collapse: fest und befahrbar, bis der Client des Fahrers es (nur bei sich) einstuerzen laesst
 	TagList.watch("Collapse", function(instance)
 		forEachPart(instance, function(part)

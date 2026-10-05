@@ -319,6 +319,15 @@ Config.Props = {
 	KickUp = 18, -- ... plus so viel nach oben (Studs/s)
 }
 
+-- ForceZone (Tag "ForceZone", Part = Bereich): drueckt den Wagen in Richtung der Vorderseite
+-- (Wind, Wasserstrahl, Foerderband). Mit Pulse an/aus im Takt (Serveruhr, fuer alle gleich).
+Config.ForceZone = {
+	Strength = 60, -- Beschleunigung (Studs/s^2); zum Vergleich: Motor = Drive.PushAcceleration
+	Pulse = 0, -- Takt in Sekunden (0 = immer an)
+	PulseOn = 0.5, -- Anteil des Takts, in dem sie an ist (0..1)
+	ActiveTime = 3, -- mit ListenSignal: so lange (s) an nach dem Signal
+}
+
 -- Zufallsereignisse: Parts/Modelle mit Tag "RandomEvent" sind pro Lauf aktiv oder nicht.
 -- Attribut "Chance" (0..1): Wahrscheinlichkeit, dass es aktiv ist.
 -- Attribut "Group" (Text): aus jeder Gruppe ist pro Lauf genau ein Element aktiv
