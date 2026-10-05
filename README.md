@@ -62,7 +62,12 @@ selene src        # Linter (findet typische Fehler)
 | `src/client/CartController.luau` | Client | Fahrphysik (Kraft + Drehmoment) |
 | `src/client/ChaseCamera.luau` | Client | Verfolgerkamera |
 | `src/client/CrashDetector.luau` | Client | Crash-Erkennung |
-| `src/client/RaceUI.luau` | Client | Anzeige (Zeit, Tempo, CRASH!/ZIEL!) |
+| `src/client/RaceUI.luau` | Client | Anzeige (Zeit, Tacho, CRASH!/ZIEL!) |
+| `src/client/EnterPrompt.luau` | Client | Hinweis „E Einsteigen“ am eigenen leeren Wagen |
+| `src/client/OwnCart.luau` | Client | Helfer: eigenen Wagen finden, Bewegung stoppen |
+| `src/client/DevPanel.luau` | Client | Tuning-Panel (nur Studio, F2) |
+| `src/shared/TuningSliders.luau` | beiden | Welche Werte das Tuning-Panel zeigt |
+| `src/server/DevTuning.luau` | Server | Tuning-Werte, die der Server braucht (nur Studio) |
 
 Unity-Vergleich: `*.server.luau` / `*.client.luau` sind wie MonoBehaviours, die von selbst
 starten. Alle anderen `.luau`-Dateien sind ModuleScripts, also normale Klassen/Bibliotheken,
@@ -100,6 +105,25 @@ die per `require` geladen werden.
 | e) Neustart | R drücken, oder crashen | Wagen steht sofort (unter 1 s) wieder am Start, Tempo 0, Kamera dahinter |
 | f) Zeit | Durch die Startzone hinaus und in die Zielzone fahren | Oben läuft die Zeit; im Ziel „ZIEL!“ mit Zeit und ggf. „Neue Bestzeit!“, nach 3 s automatischer Neustart |
 
+## M1.5 testen
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| Aussteigen | Im Wagen **E** drücken (Gamepad X, Touch: Button „Raus“) | Figur steht neben dem Wagen (rechts, sonst links/hinten/vorne), fliegt nicht weg. Normale Kamera, laufen und springen geht. Der leere Wagen rollt nicht den Hügel hinunter (Parkbremse) |
+| Lauf abbrechen | Während die Zeit läuft aussteigen | „Lauf abgebrochen“, Zeit zeigt `--.-- s`. Wieder einsteigen startet keine neue Zeit, erst R |
+| Einsteigen | Zu Fuß zum eigenen Wagen gehen (unter 10 Studs) | Hinweis „E Einsteigen“ erscheint; E (Gamepad X, Touch: antippen) setzt dich hinein, Verfolgerkamera ist zurück |
+| Fremder Wagen | Mit 2 Spielern: zum leeren Wagen des anderen gehen | Kein Hinweis, Einsteigen nur in den eigenen Wagen |
+| R zu Fuß | Ausgestiegen R drücken | Figur sitzt sofort wieder im Wagen am Start |
+| Ragdoll-Crash | Gegen eine Wand fahren / umkippen | „CRASH!“, Figur fliegt schlaff mit Schwung nach vorne/oben aus dem Wagen, der Wagen überschlägt sich weiter. Nach 1,2 s Neustart |
+| R überspringt | Direkt nach dem Crash R drücken | Sofortiger Neustart, Figur sitzt wieder normal im Wagen |
+| Tacho | Fahren | Unten Mitte: km/h und Balken (grün → rot). Nur sichtbar, solange man fährt |
+| Kamera-Wackeln | Schnell fahren (über ~60 Studs/s) / von einer Rampe springen | Leichtes Zittern bei Tempo, kurzes stärkeres Wackeln bei harter Landung |
+| Tuning-Panel | In Studio **F2** | Panel links mit Schiebereglern; Änderungen wirken sofort. „Kipp-Ballast“ verschiebt das Gewicht im Wagen (höher = kippeliger) |
+| Werte kopieren | Im Panel auf „Werte kopieren“ klicken | Im Output-Fenster stehen die Werte als Config-Code zum Übernehmen |
+
+Das Tuning-Panel gibt es nur in Studio (`RunService:IsStudio()`). Im veröffentlichten Spiel
+erscheint es nicht, und der Server ignoriert dort Tuning-Anfragen.
+
 **Tuning:** Werte in `src/shared/Config.luau` ändern, speichern, in Studio Stop + Play.
 Typische Stellschrauben:
 
@@ -109,6 +133,8 @@ Typische Stellschrauben:
 - Kippt zu leicht → `Cart.BallastHeight` senken, `Drive.RollDamping` erhöhen.
 - Zu viele/zu wenige Crashs → `Crash.ImpactSpeedChange`, `Crash.MaxTiltAngle`.
 - Wackelrad nervt → `Drive.WobbleStrength = 0`.
+- Ragdoll zu wild/zu lahm → `Crash.RagdollUpSpeed`, `Crash.RagdollCarry`, `Crash.RagdollSpin`.
+- Kamera wackelt zu viel → `Camera.ShakeAtFullSpeed`, `Camera.LandingShakePerSpeed`, `Camera.ShakeMaxAngle`.
 - Hügel liegt tiefer als −100 → `Crash.KillY` anpassen.
 
 Mit mehreren Spielern testen: *Test → Clients and Servers → 2 Players → Start*.

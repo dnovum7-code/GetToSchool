@@ -33,5 +33,18 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
 - Commits nach jedem funktionierenden Schritt.
 
 ## Aktueller Meilenstein
-M1 – Fahrgefühl: Einkaufswagen fährt einen Test-Hügel runter, steuerbar,
-Crash-Erkennung, sofortiger Neustart, Ziel beendet den Lauf mit Zeit.
+M1.5 – Fahrgefühl ausbauen: Aus-/Einsteigen, Drift mit Boost, lustiger
+Ragdoll-Crash, Tacho und Kamera-Wackeln, Tuning-Panel (nur Studio).
+(Erledigt: M1 – Wagen fährt den Test-Hügel runter, steuerbar, Crash-Erkennung,
+sofortiger Neustart, Ziel beendet den Lauf mit Zeit.)
+
+## Steuerung
+| Aktion | Tastatur | Gamepad | Touch |
+|---|---|---|---|
+| Anschieben / Bremsen, rückwärts | W / S (Pfeil hoch/runter) | – | – |
+| Lenken | A / D (Pfeil links/rechts) | – | – |
+| Aussteigen (im Wagen) | E | X | Button „Raus“ |
+| Einsteigen (am eigenen leeren Wagen) | E | X | Hinweis antippen |
+| Neustart (auch nach Crash, überspringt Wartezeit) | R | Y | Button „R“ |
+| Tuning-Panel (nur Studio) | F2 | – | – |
+| Drift / Handbremse | Leertaste (geplant, noch nicht gebaut) | – | – |
