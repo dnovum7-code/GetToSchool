@@ -69,7 +69,9 @@ selene src        # Linter (findet typische Fehler)
 | `src/client/DriftEffects.luau` | Client | Funken und Reifenspuren beim Drift (nur lokal) |
 | `src/shared/TuningSliders.luau` | beiden | Welche Werte das Tuning-Panel zeigt |
 | `src/server/DevTuning.luau` | Server | Tuning-Werte, die der Server braucht (nur Studio) |
-| `src/shared/SchoolClock.luau` | beiden | Spielzeit (7:45 → 8:00), Uhrzeiten, Schulnote |
+| `src/shared/RaceTime.luau` | beiden | Zeit-Anzeige (1:23.45), Abstand (+0.45), Schulnote |
+| `src/shared/Attributes.luau` | beiden | Attribute sicher lesen (falscher Typ → Standardwert + Warnung) |
+| `src/server/BestTimes.luau` | Server | Bestzeiten pro Spieler und Track speichern (DataStore) |
 | `src/shared/TagList.luau` | beiden | Aktuelle Liste aller Objekte pro Tag |
 | `src/server/TrackPieces.luau` | Server | Stellt getaggte Bausteine ein (Anchored, Kollision, Material) |
 | `src/server/RandomEvents.luau` | Server | Würfelt pro Lauf die Zufallsereignisse |
@@ -113,8 +115,8 @@ geschrieben wie in der Tabelle). Mehrere Tags pro Part sind erlaubt (z. B. `Move
 
 | Tag | Wirkung | Attribute (Typ) – Standardwert |
 |---|---|---|
-| `StartZone` | Start: Wagen steht in der Mitte, schaut bergab. Zeit läuft beim Verlassen | `TimeScale` (Zahl) – `Clock.TimeScale` = 15 Spielsekunden pro Sekunde |
-| `FinishZone` | Ziel: beendet den Lauf, Ergebnis mit Note | `Grade6` … `Grade2` (Text „7:53“) – 7:53 / 7:56 / 8:00 / 8:02 / 8:05; später = Note 1 |
+| `StartZone` | Start: Wagen steht in der Mitte, schaut bergab. Zeit läuft beim Verlassen | `TrackId` (Text) – „Track1“. Bestzeiten werden pro TrackId gespeichert |
+| `FinishZone` | Ziel: beendet den Lauf, Ergebnis mit Note | `Grade6` … `Grade2` (Zahl, Sekunden) – 60 / 75 / 90 / 110 / 130; langsamer = Note 1 |
 | `Checkpoint` | Durchfahren speichert Position + Richtung. R / Crash → hierher | `Order` (Zahl) – keine. Mit Order zählt ein Checkpoint mit kleinerer Zahl als der letzte nicht |
 | `BoostPad` | Schub in Blickrichtung (Vorderseite) des Parts, beim Drauffahren | `Strength` (Zahl, Studs/s) – 40 |
 | `JumpPad` | Schleudert entlang der Oberseite des Parts nach oben | `Strength` (Zahl, Studs/s) – 70 (≈ 12 Studs hoch) |
@@ -150,13 +152,14 @@ Hinweise:
 4. Hindernisse (Mover/Spinner/Pendulum) setzen, mit `Phase` gegeneinander versetzen.
 5. Abkürzungen mit `RandomEvent` mal offen, mal versperrt bauen (z. B. eine Sperre mit
    `Chance` 0.5, oder drei Baustellen mit `Group` = „Baustelle“).
-6. Zeit testen und `TimeScale` (StartZone) sowie die Noten-Grenzen (FinishZone) so setzen,
-   dass eine gute Fahrt knapp vor 8:00 ankommt.
+6. Zeit testen und die Noten-Grenzen (`Grade6` … `Grade2` an der FinishZone, in Sekunden)
+   so setzen, dass eine sehr gute Fahrt knapp eine 6 schafft. Jeder Track bekommt an der
+   StartZone eine eigene `TrackId`, damit die Bestzeiten getrennt bleiben.
 
 ## M1 testen
 
 Seit M2 gilt: **R** = zurück zum letzten Checkpoint (ohne Checkpoint: zum Start), **T** =
-kompletter Neustart; die Zeit wird als Schuluhr angezeigt.
+kompletter Neustart; der Timer zeigt Minuten, Sekunden und Hundertstel.
 
 `rojo serve` läuft, Studio ist verbunden. Dann **Play** (F5) drücken. Die *Output*-Ansicht
 (*View → Output*) zeigt Warnungen und Fehler.
@@ -180,8 +183,7 @@ kompletter Neustart; die Zeit wird als Schuluhr angezeigt.
 | R zu Fuß | Ausgestiegen R drücken | Figur sitzt sofort wieder im Wagen am Start |
 | Ragdoll-Crash | Gegen eine Wand fahren / umkippen | „CRASH!“, Figur fliegt schlaff mit Schwung nach vorne/oben aus dem Wagen, der Wagen überschlägt sich weiter. Nach 1,2 s Neustart |
 | R überspringt | Direkt nach dem Crash R drücken | Sofortiger Neustart, Figur sitzt wieder normal im Wagen |
-| Drift | Bei Tempo lenken und **Shift** halten (Gamepad B, Touch: Button „Drift“) | Das Heck bricht aus, der Wagen rutscht quer. Reifenspuren erscheinen und verblassen nach ~3 s |
-| Abfangen | Im Drift gegenlenken (Heck rutscht nach rechts → nach rechts lenken) | Der Wagen richtet sich wieder aus. Ohne Gegenlenken dreht er sich nicht um 180°, sondern wird ab ~55° zurückgedreht |
+| Drift | Bei Tempo lenken und **Shift** halten (Gamepad B, Touch: Button „Drift“) | Kurzer Hopp, dann zieht die Front den Wagen durch die Kurve, das Heck schwingt aus. Reifenspuren erscheinen und verblassen nach ~3 s (Details siehe „Feedback-Runde“ unten) |
 | Boost-Ladung | Lange driften (über 25 Studs/s, Driftwinkel über 12°) | Funken an den Hinterrädern: hell → nach 1 s blau (Stufe 1) → nach 2 s orange (Stufe 2) |
 | Boost | Shift nach blauen/orangen Funken loslassen | Kurzer Schub nach vorne (+15 % / +25 % des Höchsttempos), am Tacho sichtbar |
 | Kein Farmen | Im Stand Shift halten und lenken | Keine Funken, kein Boost |
@@ -189,20 +191,20 @@ kompletter Neustart; die Zeit wird als Schuluhr angezeigt.
 | ShiftLock | Im Wagen Shift drücken, dann aussteigen | ShiftLock wurde durch das Driften nicht umgeschaltet |
 | Tacho | Fahren | Unten Mitte: km/h und Balken (grün → rot). Nur sichtbar, solange man fährt |
 | Kamera-Wackeln | Schnell fahren (über ~60 Studs/s) / von einer Rampe springen | Leichtes Zittern bei Tempo, kurzes stärkeres Wackeln bei harter Landung |
-| Tuning-Panel | In Studio **F2** | Panel links mit Schiebereglern; Änderungen wirken sofort. „Kipp-Ballast“ verschiebt das Gewicht im Wagen (höher = kippeliger). Drift-Regler: Seitenhalt hinten, Rückstell-Winkel/-Stärke, Boost-Schwellen |
+| Tuning-Panel | In Studio **F2** | Panel links mit Schiebereglern; Änderungen wirken sofort. „Kipp-Ballast“ verschiebt das Gewicht im Wagen (höher = kippeliger) |
 | Werte kopieren | Im Panel auf „Werte kopieren“ klicken | Im Output-Fenster stehen die Werte als Config-Code zum Übernehmen |
 
 ## M2 testen
 
 | Funktion | Was du tun kannst | Was passieren sollte |
 |---|---|---|
-| Schuluhr | Play, losfahren | Oben steht 7:45, ab Verlassen der Startzone läuft sie (15 Spielminuten in 60 s). Ab 7:57 gelb → rot und pulsierend, ab 8:00 rot mit „zu spät!“ |
-| Pünktlich | Vor 8:00 in die Zielzone | Ergebnis-Screen: „PUENKTLICH!“, Ankunftszeit, Bestzeit, Fahrzeit, Note (6 = beste) |
-| Zu spät | Nach 8:00 ankommen (oder `TimeScale` an der StartZone auf 60 setzen) | Zufälliger Titel wie „Ab zum Rektor!“, Verspätung in Min:Sek, schlechtere Note |
-| Eigene Noten | Attribut `Grade6` = „7:50“ an der FinishZone | Note 6 nur noch bis 7:50 |
-| Checkpoint | Durch einen `Checkpoint` fahren | Hinweis „Checkpoint!“ unter der Uhr |
-| Zurück zum CP | Nach dem Checkpoint crashen oder R | Wagen steht am Checkpoint in Fahrtrichtung, Uhr läuft weiter. Ergebnis: „Mit Checkpoint-Neustart“ |
-| Komplett neu | T (Gamepad: Steuerkreuz hoch, Touch: „Start“) | Wagen am Start, Uhr 7:45, neue Zufallsereignisse |
+| Timer | Play, losfahren | Oben steht 0:00.00, ab Verlassen der Startzone zählt er mit Hundertstelsekunden hoch |
+| Ziel | In die Zielzone fahren | Ergebnis-Screen: „ZIEL!“, Zeit, Bestzeit mit Abstand, Note (6 = beste) |
+| Neue Bestzeit | Schneller als bisher ins Ziel | Titel „NEUE BESTZEIT!“ in Gold, alte Bestzeit und Verbesserung; unter dem Timer steht die neue Bestzeit |
+| Eigene Noten | Attribut `Grade6` = 45 (Zahl) an der FinishZone | Note 6 nur noch bis 45 s |
+| Checkpoint | Durch einen `Checkpoint` fahren | Hinweis „Checkpoint!“ (beim ersten Lauf) bzw. „Checkpoint −0.45“ grün / „+1.20“ rot im Vergleich zur Bestzeit |
+| Zurück zum CP | Nach dem Checkpoint crashen oder R | Wagen steht am Checkpoint in Fahrtrichtung, Zeit läuft weiter. Ergebnis: „Mit Checkpoint-Neustart“ |
+| Komplett neu | T (Gamepad: Steuerkreuz hoch, Touch: „Start“) | Wagen am Start, Timer 0:00.00, neue Zufallsereignisse |
 | Reihenfolge | Checkpoints mit `Order` 1 und 2; erst 2, dann 1 durchfahren | Bei 1: „Falscher Checkpoint“, R bringt dich zu 2 |
 | BoostPad / JumpPad | Drüberfahren | Schub nach vorne bzw. Sprung; Landung nach JumpPad ist kein Crash (außer extrem hart) |
 | Mud / Ice | Hineinfahren | Schlamm bremst stark, Drift-Funken stoppen. Eis: Wagen rutscht, lenkt kaum |
@@ -211,8 +213,28 @@ kompletter Neustart; die Zeit wird als Schuluhr angezeigt.
 | Mover / Spinner / Pendulum | Hinfahren und anfahren lassen | Bewegung ist flüssig, der Wagen wird weggeschoben (oder crasht bei hartem Treffer), fährt nicht hindurch |
 | RandomEvent | Part mit `Chance` 0.5; mehrmals T | Mal da, mal weg (unsichtbar und durchfahrbar) |
 | Gruppe | 3 Parts mit `Group` = „A“; mehrmals T | Immer genau eins sichtbar |
-| Sounds | IDs in `Config.Sounds` eintragen | Rollen (Tonhöhe nach Tempo), Drift-Quietschen, Boost, Crash, Checkpoint, Glocke um 8:00, Ziel. Leere IDs: kein Ton, kein Fehler im Output |
-| Tuning-Panel | F2 | Neue Regler: Schlamm-Bremse, Eis-Seitenhalt, BoostPad-/JumpPad-Stärke, Spielzeit-Tempo (gilt ab dem nächsten Start); Panel scrollt |
+| Sounds | IDs in `Config.Sounds` eintragen | Rollen (Tonhöhe nach Tempo), Drift-Quietschen, Boost, Crash, Checkpoint, Ziel. Leere IDs: kein Ton, kein Fehler im Output |
+| Tuning-Panel | F2 | Neue Regler: Schlamm-Bremse, Eis-Seitenhalt, BoostPad-/JumpPad-Stärke; Panel scrollt |
+
+## Feedback-Runde testen (nach M2)
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| Lenkung | A/D ohne Shift | Nur noch leichte Korrekturen (60 % der alten Stärke) |
+| Drift | Bei Tempo Shift halten und lenken | Front zieht den Wagen durch die Kurve, Heck schwingt weich aus (max. ~30°), leicht unruhig. **Kein Dreher**, auch nicht bei langem Driften |
+| Drift loslassen | Shift loslassen | Heck kommt weich zurück, der Wagen fährt gerade weiter |
+| Hopp | Shift kurz antippen | Kleiner Sprung (ca. 1 Stud); in der Luft dreht der Wagen schnell in Lenkrichtung |
+| Driftwechsel | Im Linksdrift: Shift los, D halten, Shift drücken | Hopp mit schneller Drehung nach rechts, Landung direkt im Rechtsdrift |
+| Flach fahren | Auf ebener Strecke W halten | Deutlich schnellere Beschleunigung, Motor-Höchsttempo ca. 60 Studs/s (≈ 60 km/h) |
+| Bergab mit W | Rampe hinunter, W halten | Wird schneller als 60 Studs/s, kein Abbremsen (nur leichter Luftwiderstand) |
+| Ausrollen | Nichts drücken | Wagen wird langsam weniger schnell |
+| Bremsen | S halten | Kräftiges Bremsen, im Stand rückwärts |
+| Losfahren | Einsteigen (E) oder T, dann W | Kein Links-rechts-Wackeln mehr; das Wackelrad setzt erst ab ~12 Studs/s weich ein |
+| BoostPad | Über ein BoostPad fahren | Schub nach vorne, **kein Crash** |
+| Falsches Attribut | `Strength` als Text („40“) oder gar nicht setzen | Pad nutzt den Standardwert, im Output steht einmal eine Warnung mit dem Part-Namen |
+| JumpPad / Drift-Boost | Drüberfahren / Boost auslösen | Kein „Harter Aufprall“ durch den eigenen Schub |
+| Bestzeit speichern | Ziel erreichen, Studio stoppen, wieder Play | Bestzeit ist noch da. Voraussetzung in Studio: *Game Settings → Security → Enable Studio Access to API Services*. Sonst Warnung im Output und Bestzeit nur für die Sitzung |
+| Tuning-Panel | F2 | Neue Regler: Hoechsttempo (Motor), Bremskraft, Ausrollen, Drift-Seitenhalt, Drift-Lenkung, Max. Driftwinkel, Rueckstell-Staerke, Heck-Pendeln, Hopp-Hoehe, Hopp-Drehung |
 
 Das Tuning-Panel gibt es nur in Studio (`RunService:IsStudio()`). Im veröffentlichten Spiel
 erscheint es nicht, und der Server ignoriert dort Tuning-Anfragen.
@@ -221,14 +243,17 @@ erscheint es nicht, und der Server ignoriert dort Tuning-Anfragen.
 Typische Stellschrauben:
 
 - Zu schnell bergab → `Drive.AirDrag` erhöhen. Zu langsam → senken.
+- Auf flachen Stücken zu langsam → `Drive.PushAcceleration` / `Drive.MaxPushSpeed` erhöhen.
+- Rollt zu lange aus → `Drive.RollingResistance` erhöhen; S bremst zu schwach → `Drive.BrakeAcceleration`.
 - Lenkt zu träge → `Drive.SteerRate` / `Drive.SteerResponse` erhöhen.
 - Rutscht zu viel in Kurven → `Drive.LateralGrip` / `Drive.MaxGripAcceleration` erhöhen.
 - Kippt zu leicht → `Cart.BallastHeight` senken, `Drive.RollDamping` erhöhen.
 - Zu viele/zu wenige Crashs → `Crash.ImpactSpeedChange`, `Crash.MaxTiltAngle`.
 - Wackelrad nervt → `Drive.WobbleStrength = 0`.
-- Drift zu schwer/zu leicht auszulösen → `Drift.RearGrip` (kleiner = rutschiger).
-- Drift schwer abzufangen → `Drift.SteerAngle` erhöhen; dreht zu weit ein → `Drift.RecoverAngle` senken oder `Drift.RecoverStrength` erhöhen.
-- Boost zu stark → `Drift.Level1Boost` / `Drift.Level2Boost` (Anteil von `Drive.MaxSpeed`).
+- Heck schwingt zu wenig/zu viel aus → `Drift.LateralGrip` (kleiner = weiter); Grenze: `Drift.RecoverAngle`.
+- Drift lenkt zu schwach/zu stark → `Drift.SteerRate`; zu unruhig → `Drift.TailWobble` senken.
+- Hopp zu hoch/zu flach → `Hop.Speed`; dreht in der Luft zu wenig → `Hop.TurnRate`.
+- Boost zu stark → `Drift.Level1Boost` / `Drift.Level2Boost` (Anteil von `Drive.MaxPushSpeed`).
 - Ragdoll zu wild/zu lahm → `Crash.RagdollUpSpeed`, `Crash.RagdollCarry`, `Crash.RagdollSpin`.
 - Kamera wackelt zu viel → `Camera.ShakeAtFullSpeed`, `Camera.LandingShakePerSpeed`, `Camera.ShakeMaxAngle`.
 - Hügel liegt tiefer als −100 → `Crash.KillY` anpassen.
