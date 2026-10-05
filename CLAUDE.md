@@ -57,11 +57,22 @@ M3 – Progression (gebaut, noch nicht in Studio getestet):
 - Shop „Pausen-Kiosk“ (B): Upgrades mit Stufen (Config.Upgrades), Strecken, Rekorde.
 - Mehrere Tracks: Model mit Attribut TrackId, Bedingungen in Config.Tracks.
 - Automatische Tests mit Lune: `lune run tests/run` (reine Logik in src/shared/Progression).
-Geplant (M2.5): erweiterter Baukasten, wartet auf OK zum Vorschlag Client/Server.
+In Arbeit (M2.5, OK erhalten): erweiterter Baukasten. Alle dynamischen Bausteine laufen
+auf dem Client des jeweiligen Spielers (eigene Version pro Spieler, Dauerbetrieb über die
+Serveruhr synchron), Vorlagen in ReplicatedStorage/Templates, Bau-Hilfe als Studio-Plugin.
 (Erledigt: M1 – Fahrgefühl. M1.5 – Aus-/Einsteigen, Drift mit Boost, Ragdoll, Tacho,
 Kamera-Wackeln, Tuning-Panel. M2 – Erster Track: Baukasten, Timer mit Bestzeit, Noten,
 Checkpoints, Hindernisse, Zufallsereignisse, Sound; drei Feedback-Runden: Drift ist der
 Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
+
+## Später
+- M4 – Wiederspielwert (nach M2.5, Reihenfolge einhalten): Geist vom besten Lauf, globale
+  Bestenlisten, Hausaufgaben (tägliche Aufgaben), Fahrzeuge (Garage), Kosmetik, Erfolge
+  (Badge-IDs vorbereiten), Einstellungen und Einstieg. Jeweils Lune-Tests für die Logik.
+- Globale Bestenlisten: Weil Hindernisse auf dem Client laufen, prüft der Server jede Zeit,
+  bevor sie in die globale Bestenliste kommt: alle Checkpoints in der richtigen Reihenfolge
+  durchfahren, Mindestzeit pro Track, Mindestzeit zwischen Checkpoints (Werte in der Config).
+  Unplausible Zeiten zählen nur persönlich, nicht global.
 
 ## Steuerung
 | Aktion | Tastatur | Gamepad | Touch |
