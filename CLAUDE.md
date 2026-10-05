@@ -47,6 +47,8 @@ Streckenbausteine, bewegte Hindernisse, Zufallsereignisse, Sound-Grundlage.
 Bausteine lesen Parameter aus Attributen, Standardwerte aus der Config.
 Nach dem ersten Test überarbeitet: Drift (Front zieht, Heck schwingt, kein Dreher),
 Hopp, schwächere normale Lenkung, mehr Tempo auf flachem Boden, kein Bremsen bergab.
+Dritte Runde: Drift ist der Standard-Fahrmodus (Shift = normal fahren), Drift-Boost
+stärker und beim Drift-Ende, Reifenspuren nur in Kurven, Wackelrad-Drall schwächer.
 Geplant (M2.5): erweiterter Baukasten, wartet auf OK zum Vorschlag Client/Server.
 (Erledigt: M1 – Fahrgefühl-Grundlage. M1.5 – Aus-/Einsteigen, Drift mit Boost,
 Ragdoll-Crash, Tacho, Kamera-Wackeln, Tuning-Panel; M1.5 noch nicht getestet/getunt.)
@@ -61,5 +63,5 @@ Ragdoll-Crash, Tacho, Kamera-Wackeln, Tuning-Panel; M1.5 noch nicht getestet/get
 | Zurück zum letzten Checkpoint (auch nach Crash, überspringt Wartezeit; ohne Checkpoint: Start) | R | Y | Button „R“ |
 | Kompletter Neustart am Start (Zeit wieder 0) | T | Steuerkreuz hoch | Button „Start“ |
 | Tuning-Panel (nur Studio) | F2 | – | – |
-| Drift / Handbremse (halten, loslassen = Boost) | Shift | B | Button „Drift“ |
+| Normal fahren (halten; Standard ist Drift, Boost kommt am Drift-Ende oder beim Drücken) | Shift | B | Button „Normal“ |
 | Hopp (kleiner Sprung, schneller Richtungswechsel) | Leertaste | A | Button „Hopp“ |

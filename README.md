@@ -250,6 +250,22 @@ kompletter Neustart; der Timer zeigt Minuten, Sekunden und Hundertstel.
 | Zurücksetzen | Knopf „R“ neben einem Regler | Wert zurück auf den Config-Wert, Regler wieder in der Mitte |
 | Werte kopieren | Ein paar Werte ändern, „Werte kopieren“ | Output zeigt nur die geänderten, z. B. `Drift.LateralGrip: 3.5 -> 4.2`; ohne Änderung „Keine Aenderungen.“ |
 
+## Test nach drittem Feedback (Drift als Standard, Boost, Drall)
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| Drift als Standard | Ohne Shift bei Tempo lenken | Wagen driftet: Front zieht, Heck schwingt aus |
+| Normal fahren | **Shift** halten und lenken (Gamepad B, Touch: Button „Normal“) | Fester Seitenhalt, schwächere Lenkung wie früher ohne Shift |
+| Geradeaus | Ohne Lenken bergab rollen | Keine Reifenspuren, kein Quietschen, kein zusätzliches Bremsen |
+| Reifenspuren | Im Drift durch eine Kurve fahren | Schwarze Spuren nur, solange der Wagen seitlich rutscht (ab 8°) |
+| Boost auslösen | Lange driften (Funken blau/orange), dann geradeaus lenken **oder** Shift drücken | Nach ca. 0.25 s gerade: deutlicher Schub (+24 / +42 Studs/s), Sichtfeld zieht kurz auf |
+| Driftwechsel | Im Linksdrift D drücken und Leertaste | Hopp, Landung im Rechtsdrift, Ladung (Funkenfarbe) bleibt erhalten |
+| Drall | 20 s geradeaus fahren | Nur noch leichtes Ziehen nach links/rechts; mit Regler „Wackelrad (Drall)“ = 0 ganz weg |
+| Panel | F2 | Neue Regler: Drift-Boost Stufe 1/2, Drift-Boost Dauer, Drift-Ende, Wackelrad (Drall) |
+| Hopp | Leertaste | Höher als vorher (ca. 3.5 Studs), langsamere Luft-Drehung (Werte aus dem Screenshot) |
+
+Zurück zum alten Verhalten (Shift = Drift, Loslassen = Boost): `Config.Drift.DriftByDefault = false`.
+
 ## Tuning-Ablauf
 
 1. In Studio Play, **F2** öffnet das Panel. Jeder Regler startet in der Mitte = aktueller
@@ -274,11 +290,14 @@ Typische Stellschrauben:
 - Rutscht zu viel in Kurven → `Drive.LateralGrip` / `Drive.MaxGripAcceleration` erhöhen.
 - Kippt zu leicht → `Cart.BallastHeight` senken, `Drive.RollDamping` erhöhen.
 - Zu viele/zu wenige Crashs → `Crash.ImpactSpeedChange`, `Crash.MaxTiltAngle`.
-- Wackelrad nervt → `Drive.WobbleStrength = 0`.
+- Wagen zieht nach ein paar Metern nach links/rechts („Drall“) → das ist das Wackelrad:
+  `Drive.WobbleStrength` senken oder 0.
 - Heck schwingt zu wenig/zu viel aus → `Drift.LateralGrip` (kleiner = weiter); Grenze: `Drift.RecoverAngle`.
 - Drift lenkt zu schwach/zu stark → `Drift.SteerRate`; zu unruhig → `Drift.TailWobble` senken.
 - Hopp zu hoch/zu flach → `Hop.Speed`; dreht in der Luft zu wenig → `Hop.TurnRate`.
-- Boost zu stark → `Drift.Level1Boost` / `Drift.Level2Boost` (Anteil von `Drive.MaxPushSpeed`).
+- Boost zu stark/zu schwach → `Drift.Level1Boost` / `Drift.Level2Boost` (Anteil von
+  `Drive.MaxPushSpeed`), `Drift.BoostDuration`; Kamera-Effekt: `Camera.BoostFovKick`.
+- Boost kommt zu früh/zu spät nach dem Drift → `Drift.ReleaseDelay`.
 - Ragdoll zu wild/zu lahm → `Crash.RagdollUpSpeed`, `Crash.RagdollCarry`, `Crash.RagdollSpin`.
 - Kamera wackelt zu viel → `Camera.ShakeAtFullSpeed`, `Camera.LandingShakePerSpeed`, `Camera.ShakeMaxAngle`.
 - Hügel liegt tiefer als −100 → `Crash.KillY` anpassen.
