@@ -96,6 +96,7 @@ Config.Race = {
 	StartZoneTag = "StartZone",
 	FinishZoneTag = "FinishZone",
 	MinRestartInterval = 0.3, -- Schutz gegen Spam der Neustart-Taste
+	StartGrace = 0.3, -- nach einem Neustart so lange keine Zonen pruefen
 	AutoRestartAfterFinish = 3, -- Sekunden nach dem Ziel bis zum Neustart (0 = aus)
 	StartDistanceWithoutZone = 4, -- ohne Startzone: Zeit laeuft ab dieser Strecke
 	RespawnTime = 1, -- Wartezeit, falls der Charakter doch einmal stirbt

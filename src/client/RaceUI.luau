@@ -3,12 +3,18 @@
 -- Unity-Vergleich: ein Canvas (ScreenGui) mit Text-Elementen (TextLabel).
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 
 local RaceUI = {}
 
 local gui: ScreenGui
 local messageLabel: TextLabel
 local subMessageLabel: TextLabel
+local timerLabel: TextLabel
+local bestLabel: TextLabel
+local speedLabel: TextLabel
 local messageToken = 0
 
 local function makeLabel(props: { [string]: any }): TextLabel
@@ -50,6 +56,37 @@ function RaceUI.init()
 		Visible = false,
 	})
 
+	-- Zeit oben in der Mitte, Bestzeit darunter
+	timerLabel = makeLabel({
+		Name = "Timer",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 50),
+		Size = UDim2.new(0, 220, 0, 48),
+		Font = Enum.Font.Code,
+		Text = RaceUI.formatTime(0),
+	})
+	bestLabel = makeLabel({
+		Name = "Best",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 100),
+		Size = UDim2.new(0, 220, 0, 22),
+		Font = Enum.Font.Gotham,
+		Text = "",
+		TextColor3 = Color3.fromRGB(255, 220, 120),
+	})
+
+	-- Tempo unten rechts (hilft beim Tunen)
+	speedLabel = makeLabel({
+		Name = "Speed",
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -20, 1, -40),
+		Size = UDim2.new(0, 160, 0, 36),
+		Font = Enum.Font.Code,
+		Text = "",
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Visible = Config.UI.ShowSpeed,
+	})
+
 	-- Steuerungshilfe unten
 	makeLabel({
 		Name = "Help",
@@ -78,6 +115,23 @@ function RaceUI.showMessage(text: string, color: Color3, subText: string?, durat
 			end
 		end)
 	end
+end
+
+function RaceUI.formatTime(seconds: number): string
+	return string.format("%.2f s", seconds)
+end
+
+function RaceUI.setTimer(seconds: number)
+	timerLabel.Text = RaceUI.formatTime(seconds)
+end
+
+function RaceUI.setBest(seconds: number?)
+	bestLabel.Text = if seconds then "Bestzeit: " .. RaceUI.formatTime(seconds) else ""
+end
+
+-- Tempo in Studs pro Sekunde
+function RaceUI.setSpeed(speed: number)
+	speedLabel.Text = string.format("%d studs/s", math.floor(speed + 0.5))
 end
 
 function RaceUI.hideMessage()

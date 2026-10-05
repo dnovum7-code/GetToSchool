@@ -21,7 +21,7 @@ local states: { [Player]: PlayerState } = {}
 local cartsFolder: Folder
 
 -- Liefert die Start-Position (Mitte des Korbbodens) fuer einen Spieler.
--- Wird von GameServer gesetzt (spaeter: Startzone).
+-- Wird von GameServer gesetzt (Startzone, siehe Track.getSpawn).
 local spawnResolver: (player: Player) -> CFrame = function(_player)
 	return CFrame.new(0, 10, 0)
 end

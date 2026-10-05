@@ -28,6 +28,11 @@ local crashDetector = CrashDetector.new()
 local crashed = false
 local crashedAt = 0
 
+-- Zeitmessung: Der Server entscheidet Start und Ziel. Die laufende Zeit zaehlen wir
+-- hier nur zur Anzeige mit; das Endergebnis kommt vom Server.
+local runPhase: "Ready" | "Running" | "Finished" = "Ready"
+local runStartedAt = 0
+
 local CRASH_TEXTS: { [CrashDetector.CrashReason]: string } = {
 	Tipped = "Umgekippt",
 	Impact = "Harter Aufprall",
@@ -130,7 +135,23 @@ end
 
 runState.OnClientEvent:Connect(function(kind: string, ...)
 	if kind == "Reset" then
+		runPhase = "Ready"
+		RaceUI.setTimer(0)
 		onReset(...)
+	elseif kind == "Started" then
+		runPhase = "Running"
+		runStartedAt = os.clock()
+	elseif kind == "Finished" then
+		local time: number, best: number, isNewBest: boolean = ...
+		runPhase = "Finished"
+		RaceUI.setTimer(time)
+		RaceUI.setBest(best)
+		RaceUI.showMessage(
+			"ZIEL!",
+			Color3.fromRGB(120, 255, 120),
+			RaceUI.formatTime(time) .. (if isNewBest then "  -  Neue Bestzeit!" else ""),
+			Config.UI.ResultDisplayTime
+		)
 	end
 end)
 
@@ -202,7 +223,11 @@ RunService.PreSimulation:Connect(function(dt)
 		return
 	end
 	local throttle, steer = readInput()
-	current:step(dt, throttle, steer)
+	local telemetry = current:step(dt, throttle, steer)
+	RaceUI.setSpeed(telemetry.speed)
+	if runPhase == "Running" then
+		RaceUI.setTimer(os.clock() - runStartedAt)
+	end
 
 	if not crashed then
 		local reason = crashDetector:update(dt, current.base)
