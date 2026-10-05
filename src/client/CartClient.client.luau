@@ -2,7 +2,9 @@
 -- Einstiegspunkt auf dem Client: Eingabe lesen, Fahrphysik und Kamera steuern.
 -- Sobald die eigene Spielfigur im eigenen Wagen sitzt, wird das Fahren aktiviert.
 
+local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
@@ -11,6 +13,12 @@ local ChaseCamera = require(script.Parent:WaitForChild("ChaseCamera"))
 local CrashDetector = require(script.Parent:WaitForChild("CrashDetector"))
 local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
 
+local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+
+local remotes = ReplicatedStorage:WaitForChild("Remotes")
+local requestRestart = remotes:WaitForChild("RequestRestart") :: RemoteEvent
+local runState = remotes:WaitForChild("RunState") :: RemoteEvent
+
 local player = Players.LocalPlayer
 
 local controller: CartController.Controller? = nil
@@ -18,6 +26,7 @@ local activeSeat: BasePart? = nil
 local activeHumanoid: Humanoid? = nil
 local crashDetector = CrashDetector.new()
 local crashed = false
+local crashedAt = 0
 
 local CRASH_TEXTS: { [CrashDetector.CrashReason]: string } = {
 	Tipped = "Umgekippt",
@@ -73,15 +82,66 @@ local function activate(seat: BasePart, humanoid: Humanoid)
 	crashed = false
 end
 
+-- Neustart beim Server anfragen. Der Server entscheidet und antwortet mit "Reset".
+local lastRestartRequest = 0
+local function requestRestartNow()
+	if not controller or os.clock() - lastRestartRequest < Config.Race.MinRestartInterval then
+		return
+	end
+	lastRestartRequest = os.clock()
+	requestRestart:FireServer()
+end
+
 local function onCrash(reason: CrashDetector.CrashReason)
 	crashed = true
-	RaceUI.showMessage("CRASH!", Color3.fromRGB(255, 80, 60), CRASH_TEXTS[reason], 2)
-	-- Schritt d: nur anzeigen. Nach der Meldung wieder scharf schalten.
-	task.delay(2, function()
-		crashDetector:reset()
-		crashed = false
+	crashedAt = os.clock()
+	RaceUI.showMessage("CRASH!", Color3.fromRGB(255, 80, 60), CRASH_TEXTS[reason])
+	-- Kurz zeigen, was passiert ist, dann automatisch neu starten (gesamt unter 1 s)
+	task.delay(Config.Crash.RestartDelay, function()
+		if crashed then
+			requestRestartNow()
+		end
 	end)
 end
+
+-- Antwort des Servers: Wagen steht wieder am Start.
+local function onReset(spawnCFrame: CFrame)
+	local current = controller
+	if not current then
+		return
+	end
+	-- Wir rechnen die Physik des Wagens, also setzen wir Position und Tempo auch hier
+	-- zurueck (Geschwindigkeiten vom Server wuerden bei uns nicht ankommen).
+	current.cart:PivotTo(spawnCFrame)
+	local character = activeHumanoid and activeHumanoid.Parent
+	for _, model in { current.cart, character } do
+		for _, part in (model :: Instance):GetDescendants() do
+			if part:IsA("BasePart") then
+				part.AssemblyLinearVelocity = Vector3.zero
+				part.AssemblyAngularVelocity = Vector3.zero
+			end
+		end
+	end
+	crashDetector:reset()
+	crashed = false
+	RaceUI.hideMessage()
+	ChaseCamera.snap()
+end
+
+runState.OnClientEvent:Connect(function(kind: string, ...)
+	if kind == "Reset" then
+		onReset(...)
+	end
+end)
+
+-- Taste R (Gamepad: Y). Auf Touch-Geraeten erscheint automatisch ein Button.
+ContextActionService:BindAction("GetToSchoolRestart", function(_, inputState)
+	if inputState == Enum.UserInputState.Begin then
+		requestRestartNow()
+	end
+	return Enum.ContextActionResult.Sink
+end, true, Enum.KeyCode.R, Enum.KeyCode.ButtonY)
+ContextActionService:SetTitle("GetToSchoolRestart", "R")
 
 -- Prueft jeden Frame, ob wir (noch) im eigenen Wagen sitzen. Das ist robuster als nur
 -- auf Events zu hoeren, z. B. nach einem Respawn.
@@ -149,5 +209,9 @@ RunService.PreSimulation:Connect(function(dt)
 		if reason then
 			onCrash(reason)
 		end
+	elseif os.clock() - crashedAt > 1.5 then
+		-- Sicherheitsnetz: falls die erste Anfrage verloren ging, nochmal fragen
+		crashedAt = os.clock()
+		requestRestartNow()
 	end
 end)

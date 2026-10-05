@@ -144,24 +144,40 @@ local function createCart(player: Player, state: PlayerState): Model
 	return cart
 end
 
--- Neue Spielfigur: Wagen an den Start setzen (oder neu bauen) und Figur hineinsetzen.
-function CartManager.onCharacterAdded(player: Player, character: Model)
+-- Neue Spielfigur vorbereiten. Danach ruft der Aufrufer CartManager.reset auf,
+-- das den Wagen an den Start setzt (oder neu baut) und die Figur hineinsetzt.
+function CartManager.onCharacterAdded(_player: Player, character: Model)
 	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	character:WaitForChild("HumanoidRootPart")
 	if not character:IsDescendantOf(workspace) then
 		character.AncestryChanged:Wait()
 	end
 	prepareCharacter(character, humanoid)
+	task.wait() -- einen Frame warten, bis die Figur vollstaendig in der Welt ist
+end
 
+-- Neustart: Wagen samt Fahrer sofort an den Start setzen. Ist der Wagen kaputt
+-- (z. B. ins Nichts gefallen), wird ein neuer gebaut. Gibt die Startposition zurueck,
+-- oder nil, wenn gerade kein Neustart moeglich ist (Figur tot / noch nicht da).
+function CartManager.reset(player: Player): CFrame?
+	local humanoid = getAliveHumanoid(player)
+	if not humanoid then
+		return nil
+	end
 	local state = getState(player)
+	local spawnCFrame = spawnResolver(player)
 	local cart = state.cart
 	if cart and isCartIntact(cart) then
-		cart:PivotTo(spawnResolver(player))
+		-- PivotTo verschiebt das ganze Modell; der angeschweisste Fahrer kommt mit.
+		cart:PivotTo(spawnCFrame)
 	else
 		cart = createCart(player, state)
 	end
-	task.wait() -- einen Frame warten, bis die Figur vollstaendig in der Welt ist
-	seatPlayer(player, cart :: Model)
+	local seat = getSeat(cart :: Model)
+	if seat.Occupant ~= humanoid then
+		task.spawn(seatPlayer, player, cart :: Model)
+	end
+	return spawnCFrame
 end
 
 function CartManager.getCart(player: Player): Model?
