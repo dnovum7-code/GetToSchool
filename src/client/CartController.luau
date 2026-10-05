@@ -58,6 +58,7 @@ type ControllerData = {
 	boostAcceleration: number,
 	padCooldowns: { [Instance]: number }, -- wann welches Pad zuletzt unter dem Wagen war
 	hopTime: number, -- Sekunden seit dem letzten Hopp
+	settleTime: number, -- Restzeit der Beruhigung nach Einsteigen/Neustart
 }
 
 export type Controller = typeof(setmetatable({} :: ControllerData, CartController))
@@ -105,6 +106,7 @@ function CartController.new(cart: Model, character: Model): Controller
 		boostAcceleration = 0,
 		padCooldowns = {},
 		hopTime = math.huge,
+		settleTime = Config.Drive.SettleTime,
 	}, CartController)
 	return self
 end
@@ -124,6 +126,11 @@ local function boostLevelFor(driftTime: number): number
 		return 1
 	end
 	return 0
+end
+
+-- Nach einem Neustart: kurz Restdrehungen wegdaempfen (wie nach dem Einsteigen)
+function CartController.settle(self: Controller)
+	self.settleTime = Config.Drive.SettleTime
 end
 
 -- Drift-Ladung und laufenden Boost verwerfen (Crash, Neustart, Aussteigen).
@@ -208,6 +215,7 @@ function CartController.step(
 	local velocity = base.AssemblyLinearVelocity
 	local angular = base.AssemblyAngularVelocity
 	self.time += dt
+	self.settleTime = math.max(0, self.settleTime - dt)
 	-- Masse regelmaessig neu bestimmen (das Tuning-Panel kann den Ballast verschieben)
 	if self.time >= self.nextMeasure then
 		self.nextMeasure = self.time + 0.5
@@ -358,9 +366,16 @@ function CartController.step(
 		local steerRate = D.SteerRate + (DR.SteerRate - D.SteerRate) * drift
 		local targetYawRate = -steer * steerRate * factor * direction
 
-		-- Wackelrad: langsames, zufaelliges Ziehen zur Seite
+		-- Wackelrad: langsames, zufaelliges Ziehen zur Seite. Erst ab einem Mindesttempo
+		-- und nach dem Einsteigen weich eingeblendet (sonst ruckelt es beim Losfahren).
 		local wobble = math.clamp(math.noise(self.time * D.WobbleFrequency, self.wobbleSeed) * 2, -1, 1)
-		targetYawRate += wobble * D.WobbleStrength * math.clamp(absSpeed / D.WobbleFullSpeed, 0, 1)
+		local wobbleSpeed = math.clamp(
+			(absSpeed - D.WobbleMinSpeed) / math.max(D.WobbleFullSpeed - D.WobbleMinSpeed, 1),
+			0,
+			1
+		)
+		local wobbleFade = math.clamp(self.time / math.max(D.WobbleFadeInTime, 0.01), 0, 1)
+		targetYawRate += wobble * D.WobbleStrength * wobbleSpeed * wobbleFade
 
 		-- Wirres Heck: im Drift kleines, unregelmaessiges Pendeln
 		local tail =
@@ -380,6 +395,11 @@ function CartController.step(
 		-- Kipp- und Nickbewegungen etwas daempfen (nicht verhindern!)
 		local otherRotation = angular - up * yawRate
 		torque -= otherRotation * D.RollDamping * self.inertia
+
+		-- Gerade eingestiegen / neu gestartet: Restdrehungen kraeftig wegdaempfen
+		if self.settleTime > 0 then
+			torque -= angular * D.SettleDamping * self.inertia
+		end
 	elseif hopActive then
 		-- Hopp-Drehung in der Luft: schnell in Lenkrichtung drehen (Fahrtrichtung bleibt),
 		-- so landet man direkt im Drift in die neue Richtung.

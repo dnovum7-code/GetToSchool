@@ -186,6 +186,25 @@ local function setRagdoll(character: Model, humanoid: Humanoid, enabled: boolean
 end
 
 -- Setzt die Spielfigur in den Sitz. Wiederholt es kurz, falls die Figur noch nicht bereit ist.
+-- Wagen ruhig stellen, bevor der Client die Physik uebernimmt: Restdrehungen vom
+-- Hinsetzen der Figur weg, und ein (fast) stehender Wagen steht danach ganz still.
+-- Wirkt nur, solange der Server die Physik rechnet (vor der Uebergabe).
+local function calmCart(cart: Model)
+	local done: { [BasePart]: boolean } = {}
+	for _, part in cart:GetDescendants() do
+		if part:IsA("BasePart") then
+			local root = part.AssemblyRootPart or part
+			if not done[root] and not root.Anchored then
+				done[root] = true
+				root.AssemblyAngularVelocity = Vector3.zero
+				if root.AssemblyLinearVelocity.Magnitude < 5 then
+					root.AssemblyLinearVelocity = Vector3.zero
+				end
+			end
+		end
+	end
+end
+
 local function seatPlayer(player: Player, cart: Model)
 	local seat = getSeat(cart)
 	for _ = 1, 10 do
@@ -194,6 +213,7 @@ local function seatPlayer(player: Player, cart: Model)
 			return
 		end
 		if seat.Occupant == humanoid then
+			calmCart(cart)
 			setOwner(cart, player)
 			return
 		end

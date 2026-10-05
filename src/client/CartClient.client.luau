@@ -284,6 +284,7 @@ local function onReset(spawnCFrame: CFrame)
 	RaceUI.hideMessage()
 	if controller then
 		controller:resetDrift() -- Neustart: Boost-Ladung leeren
+		controller:settle() -- und kurz ruhig stellen
 	end
 
 	local character = player.Character

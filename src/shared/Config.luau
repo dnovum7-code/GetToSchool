@@ -68,7 +68,14 @@ Config.Drive = {
 	-- "Kaputtes Rad": zufaelliges Ziehen zur Seite, typisch Einkaufswagen. 0 = aus.
 	WobbleStrength = 0.35, -- Radiant/Sekunde
 	WobbleFrequency = 0.8,
+	WobbleMinSpeed = 12, -- darunter kein Wackeln (z. B. beim Losfahren)
 	WobbleFullSpeed = 40, -- ab diesem Tempo voller Wackel-Effekt
+	WobbleFadeInTime = 2, -- nach dem Einsteigen blendet das Wackeln so lange (s) weich ein
+
+	-- Nach dem Einsteigen/Neustart so lange (s) Restdrehungen wegdaempfen, damit der Wagen
+	-- beim Losfahren nicht hin und her ruckelt.
+	SettleTime = 0.5,
+	SettleDamping = 10,
 
 	GroundCheckExtra = 0.6, -- wie weit unter den Raedern noch "Boden" erkannt wird
 }
