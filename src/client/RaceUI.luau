@@ -15,6 +15,9 @@ local subMessageLabel: TextLabel
 local timerLabel: TextLabel
 local bestLabel: TextLabel
 local speedLabel: TextLabel
+local speedometer: Frame
+local kmhLabel: TextLabel
+local speedBarFill: Frame
 local messageToken = 0
 
 local function makeLabel(props: { [string]: any }): TextLabel
@@ -87,6 +90,42 @@ function RaceUI.init()
 		Visible = Config.UI.ShowSpeed,
 	})
 
+	-- Tacho unten in der Mitte: Zahl in km/h und ein Balken
+	speedometer = Instance.new("Frame")
+	speedometer.Name = "Speedometer"
+	speedometer.AnchorPoint = Vector2.new(0.5, 1)
+	speedometer.Position = UDim2.new(0.5, 0, 1, -38)
+	speedometer.Size = UDim2.new(0, 220, 0, 58)
+	speedometer.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+	speedometer.BackgroundTransparency = 0.4
+	speedometer.Visible = false
+	speedometer.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 10)
+	corner.Parent = speedometer
+
+	kmhLabel = makeLabel({
+		Name = "Kmh",
+		Position = UDim2.new(0, 10, 0, 4),
+		Size = UDim2.new(1, -20, 0, 34),
+		Font = Enum.Font.Code,
+		Text = "0 km/h",
+	})
+	kmhLabel.Parent = speedometer
+
+	local barBackground = Instance.new("Frame")
+	barBackground.Name = "Bar"
+	barBackground.Position = UDim2.new(0, 10, 1, -14)
+	barBackground.Size = UDim2.new(1, -20, 0, 8)
+	barBackground.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+	barBackground.BorderSizePixel = 0
+	barBackground.Parent = speedometer
+	speedBarFill = Instance.new("Frame")
+	speedBarFill.Name = "Fill"
+	speedBarFill.Size = UDim2.fromScale(0, 1)
+	speedBarFill.BorderSizePixel = 0
+	speedBarFill.Parent = barBackground
+
 	-- Steuerungshilfe unten
 	makeLabel({
 		Name = "Help",
@@ -134,9 +173,21 @@ function RaceUI.setBest(seconds: number?)
 	bestLabel.Text = if seconds then "Bestzeit: " .. RaceUI.formatTime(seconds) else ""
 end
 
--- Tempo in Studs pro Sekunde
+-- Tempo in Studs pro Sekunde: Tacho (km/h) und kleine Studs-Anzeige aktualisieren
 function RaceUI.setSpeed(speed: number)
 	speedLabel.Text = string.format("%d studs/s", math.floor(speed + 0.5))
+	local kmh = speed * Config.UI.StudsToMeters * 3.6
+	kmhLabel.Text = string.format("%d km/h", math.floor(kmh + 0.5))
+	local fill = math.clamp(kmh / Config.UI.SpeedometerMaxKmh, 0, 1)
+	speedBarFill.Size = UDim2.fromScale(fill, 1)
+	-- gruen -> gelb -> rot
+	speedBarFill.BackgroundColor3 = Color3.fromHSV(0.33 * (1 - fill), 0.85, 0.95)
+end
+
+-- Tacho nur zeigen, solange man faehrt
+function RaceUI.setSpeedometerVisible(visible: boolean)
+	speedometer.Visible = visible
+	speedLabel.Visible = visible and Config.UI.ShowSpeed
 end
 
 function RaceUI.hideMessage()

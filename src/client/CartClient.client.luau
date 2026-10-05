@@ -34,6 +34,7 @@ local crashed = false
 local crashedAt = 0
 local previousVelocity = Vector3.zero -- Wagen-Tempo im letzten Frame (vor einem Aufprall)
 local ragdollLaunch = Vector3.zero -- Schwung fuer die Ragdoll, beim Crash berechnet
+local wasGrounded = true -- fuer die Landungs-Erkennung (Kamera-Wackeln)
 
 -- Zeitmessung: Der Server entscheidet Start und Ziel. Die laufende Zeit zaehlen wir
 -- hier nur zur Anzeige mit; das Endergebnis kommt vom Server.
@@ -320,6 +321,7 @@ end
 -- PreSimulation laeuft direkt vor jedem Physik-Schritt (wie FixedUpdate in Unity).
 RunService.PreSimulation:Connect(function(dt)
 	updateSeat()
+	RaceUI.setSpeedometerVisible(controller ~= nil)
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	EnterPrompt.update(controller == nil and not crashed and humanoid ~= nil and humanoid.Health > 0)
@@ -341,6 +343,16 @@ RunService.PreSimulation:Connect(function(dt)
 	local throttle, steer = readInput()
 	local telemetry = current:step(dt, throttle, steer)
 	RaceUI.setSpeed(telemetry.speed)
+
+	-- Harte Landung: Fallgeschwindigkeit kurz vor dem Aufsetzen bestimmt das Wackeln
+	if telemetry.grounded and not wasGrounded then
+		local fallSpeed = -previousVelocity.Y
+		local C = Config.Camera
+		if fallSpeed > C.LandingShakeMinSpeed then
+			ChaseCamera.addShake((fallSpeed - C.LandingShakeMinSpeed) * C.LandingShakePerSpeed)
+		end
+	end
+	wasGrounded = telemetry.grounded
 	if runPhase == "Running" then
 		RaceUI.setTimer(os.clock() - runStartedAt)
 	end

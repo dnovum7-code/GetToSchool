@@ -19,6 +19,8 @@ rayParams.FilterType = Enum.RaycastFilterType.Exclude
 local direction = -Vector3.zAxis -- geglaettete Blickrichtung (waagerecht)
 local position: Vector3? = nil -- geglaettete Kameraposition
 local fov = Config.Camera.BaseFov
+local landingShake = 0 -- zusaetzliches Wackeln nach harten Landungen (Grad), klingt ab
+local shakeTime = 0
 
 local function smoothing(rate: number, dt: number): number
 	-- bildratenunabhaengiges Lerp
@@ -78,7 +80,25 @@ local function update(dt: number)
 	fov += (targetFov - fov) * smoothing(4, dt)
 	camera.FieldOfView = fov
 
-	camera.CFrame = CFrame.lookAt(final, focus + direction * C.LookAhead)
+	-- Kamera-Wackeln: etwas bei hohem Tempo, mehr nach harten Landungen.
+	-- math.noise liefert weiches Rauschen (kein hektisches Zufalls-Zittern).
+	local speedShake = C.ShakeAtFullSpeed
+		* math.clamp((speed - C.ShakeSpeedStart) / math.max(C.FovFullSpeed - C.ShakeSpeedStart, 1), 0, 1)
+	landingShake *= math.exp(-C.ShakeDecay * dt)
+	local shake = math.min(speedShake + landingShake, C.ShakeMaxAngle)
+	shakeTime += dt * C.ShakeFrequency
+	local shakeRotation = CFrame.Angles(
+		math.rad(math.noise(shakeTime, 0.3) * 2 * shake),
+		math.rad(math.noise(shakeTime, 7.1) * 2 * shake),
+		math.rad(math.noise(shakeTime, 13.7) * shake)
+	)
+
+	camera.CFrame = CFrame.lookAt(final, focus + direction * C.LookAhead) * shakeRotation
+end
+
+-- Harte Landung: Kamera kurz wackeln lassen (Staerke in Grad).
+function ChaseCamera.addShake(amount: number)
+	landingShake = math.min(landingShake + amount, Config.Camera.ShakeMaxAngle)
 end
 
 -- Kamera an den Wagen haengen. `ignore`: Objekte, durch die die Kamera schauen darf.
@@ -93,6 +113,7 @@ end
 -- Ohne Glaettung direkt hinter den Wagen springen (z. B. nach einem Neustart).
 function ChaseCamera.snap()
 	position = nil
+	landingShake = 0
 	local part = target
 	if part then
 		direction = flatLook(part) or direction

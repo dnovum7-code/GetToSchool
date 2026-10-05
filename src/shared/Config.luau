@@ -79,6 +79,15 @@ Config.Camera = {
 	MaxFov = 90,
 	FovFullSpeed = 100, -- bei diesem Tempo ist MaxFov erreicht
 	CollisionPadding = 0.5, -- Abstand zu Waenden, damit die Kamera nicht hindurchschaut
+
+	-- Kamera-Wackeln (Winkel in Grad)
+	ShakeSpeedStart = 60, -- ab diesem Tempo beginnt das Wackeln ...
+	ShakeAtFullSpeed = 0.6, -- ... und ist bei FovFullSpeed so stark
+	LandingShakeMinSpeed = 25, -- harte Landung: ab dieser Fallgeschwindigkeit (Studs/s) wackelt es
+	LandingShakePerSpeed = 0.06, -- Wackeln pro Studs/s ueber LandingShakeMinSpeed
+	ShakeMaxAngle = 3, -- Obergrenze, damit niemandem schlecht wird
+	ShakeFrequency = 18, -- wie schnell es zittert
+	ShakeDecay = 4, -- wie schnell das Landungs-Wackeln abklingt (pro Sekunde)
 }
 
 -- Crash-Erkennung (laeuft auf dem Client des Fahrers).
@@ -128,7 +137,10 @@ Config.Exit = {
 -- Anzeige
 Config.UI = {
 	ResultDisplayTime = 3, -- so lange bleibt "ZIEL!" sichtbar
-	ShowSpeed = true,
+	ShowSpeed = true, -- kleine Anzeige in Studs/s (fuers Tunen)
+	-- Tacho: 1 Stud entspricht in Roblox etwa 0.28 m, also km/h = Studs/s * 0.28 * 3.6
+	StudsToMeters = 0.28,
+	SpeedometerMaxKmh = 120, -- bei diesem Tempo ist der Tacho-Balken voll
 }
 
 return Config
