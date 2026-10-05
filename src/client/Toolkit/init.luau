@@ -14,6 +14,7 @@
 local Collapses = require(script:WaitForChild("Collapses"))
 local Gates = require(script:WaitForChild("Gates"))
 local PathMovers = require(script:WaitForChild("PathMovers"))
+local Props = require(script:WaitForChild("Props"))
 local Spawners = require(script:WaitForChild("Spawners"))
 local ToolkitTypes = require(script:WaitForChild("ToolkitTypes"))
 local TriggerZones = require(script:WaitForChild("TriggerZones"))
@@ -26,6 +27,7 @@ local MODULES: { ToolkitTypes.Piece } = {
 	PathMovers,
 	Gates,
 	Collapses,
+	Props :: any,
 }
 
 function Toolkit.init()
@@ -39,6 +41,11 @@ function Toolkit.step(ctx: ToolkitTypes.Context)
 	for _, piece in MODULES do
 		piece.step(ctx)
 	end
+end
+
+-- Getroffene Props in diesem Lauf (Ergebnis-Screen)
+function Toolkit.getChaos(): number
+	return Props.getChaos()
 end
 
 -- kind: "Full" (T) oder "Checkpoint" (R / Crash)

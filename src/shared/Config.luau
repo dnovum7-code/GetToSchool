@@ -310,6 +310,15 @@ Config.Collapse = {
 	FallSpin = 1.5, -- leichtes Drehen beim Fallen (Radiant/s)
 }
 
+-- Prop (Tag "Prop", Part oder Modell): lose Gegenstaende (Kisten, Pylonen, Marktstaende), die
+-- der Wagen wegschiesst, ohne selbst zu crashen. Jeder Spieler hat seine eigenen (lokale
+-- Kopien). Zurueck an den Ursprung nur bei T; bei R bleiben sie liegen.
+Config.Props = {
+	Density = 0.4, -- leicht, damit sie schoen fliegen (Attribut "Density"; Wasser = 1)
+	KickBoost = 0.9, -- beim ersten Treffer: Anteil des Wagen-Tempos, den der Prop bekommt ...
+	KickUp = 18, -- ... plus so viel nach oben (Studs/s)
+}
+
 -- Zufallsereignisse: Parts/Modelle mit Tag "RandomEvent" sind pro Lauf aktiv oder nicht.
 -- Attribut "Chance" (0..1): Wahrscheinlichkeit, dass es aktiv ist.
 -- Attribut "Group" (Text): aus jeder Gruppe ist pro Lauf genau ein Element aktiv

@@ -100,6 +100,13 @@ function TrackPieces.init()
 		end)
 	end
 
+	-- Prop: auf dem Server fest (jeder Client ersetzt ihn bei sich durch eine lose Kopie)
+	TagList.watch("Prop", function(instance)
+		forEachPart(instance, function(part)
+			part.Anchored = true
+		end)
+	end)
+
 	-- Collapse: fest und befahrbar, bis der Client des Fahrers es (nur bei sich) einstuerzen laesst
 	TagList.watch("Collapse", function(instance)
 		forEachPart(instance, function(part)

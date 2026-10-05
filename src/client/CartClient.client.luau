@@ -123,6 +123,10 @@ local function showResult(result: RunResult)
 	)
 	table.insert(lines, `Leben uebrig: {result.lives} von {result.maxLives}`)
 	table.insert(lines, `Getroffene Objekte: {result.hits}`)
+	local chaos = Toolkit.getChaos()
+	if chaos > 0 then
+		table.insert(lines, `Chaos: {chaos} Gegenstaende umgefahren`)
+	end
 	if result.bestFlightName and result.bestFlightMeters then
 		table.insert(lines, `Weitester Flug: {result.bestFlightName} {result.bestFlightMeters} m`)
 	end
