@@ -33,6 +33,11 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
 - Commits nach jedem funktionierenden Schritt.
 - Git: Nur der Branch main. Keine eigenen Branches, direkt auf main
   committen und pushen. Vor jeder Aufgabe git pull.
+- Tuning: Ich stelle Werte im Tuning-Panel ein (Studio, F2; Mitte = Config-Wert,
+  Bereich 0 bis doppelt) und schicke dir die Ausgabe von „Werte kopieren“
+  (Zeilen „Abschnitt.Name: alt -> neu“). Du trägst die neuen Werte in
+  src/shared/Config.luau ein, committest und pushst. Welche Regler es gibt:
+  Config.TuningPanel. Fehlersuche bei Bodenbausteinen: Config.Debug.TrackPieces.
 
 ## Aktueller Meilenstein
 M2 – Erster Track: Baukasten aus getaggten Bausteinen (siehe README „Baukasten“),

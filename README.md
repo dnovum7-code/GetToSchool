@@ -67,7 +67,6 @@ selene src        # Linter (findet typische Fehler)
 | `src/client/OwnCart.luau` | Client | Helfer: eigenen Wagen finden, Bewegung stoppen |
 | `src/client/DevPanel.luau` | Client | Tuning-Panel (nur Studio, F2) |
 | `src/client/DriftEffects.luau` | Client | Funken und Reifenspuren beim Drift (nur lokal) |
-| `src/shared/TuningSliders.luau` | beiden | Welche Werte das Tuning-Panel zeigt |
 | `src/server/DevTuning.luau` | Server | Tuning-Werte, die der Server braucht (nur Studio) |
 | `src/shared/RaceTime.luau` | beiden | Zeit-Anzeige (1:23.45), Abstand (+0.45), Schulnote |
 | `src/shared/Attributes.luau` | beiden | Attribute sicher lesen (falscher Typ → Standardwert + Warnung) |
@@ -192,7 +191,7 @@ kompletter Neustart; der Timer zeigt Minuten, Sekunden und Hundertstel.
 | Tacho | Fahren | Unten Mitte: km/h und Balken (grün → rot). Nur sichtbar, solange man fährt |
 | Kamera-Wackeln | Schnell fahren (über ~60 Studs/s) / von einer Rampe springen | Leichtes Zittern bei Tempo, kurzes stärkeres Wackeln bei harter Landung |
 | Tuning-Panel | In Studio **F2** | Panel links mit Schiebereglern; Änderungen wirken sofort. „Kipp-Ballast“ verschiebt das Gewicht im Wagen (höher = kippeliger) |
-| Werte kopieren | Im Panel auf „Werte kopieren“ klicken | Im Output-Fenster stehen die Werte als Config-Code zum Übernehmen |
+| Werte kopieren | Im Panel auf „Werte kopieren“ klicken | Im Output-Fenster stehen nur die geänderten Werte (siehe „Tuning-Ablauf“) |
 
 ## M2 testen
 
@@ -236,8 +235,34 @@ kompletter Neustart; der Timer zeigt Minuten, Sekunden und Hundertstel.
 | Bestzeit speichern | Ziel erreichen, Studio stoppen, wieder Play | Bestzeit ist noch da. Voraussetzung in Studio: *Game Settings → Security → Enable Studio Access to API Services*. Sonst Warnung im Output und Bestzeit nur für die Sitzung |
 | Tuning-Panel | F2 | Neue Regler: Hoechsttempo (Motor), Bremskraft, Ausrollen, Drift-Seitenhalt, Drift-Lenkung, Max. Driftwinkel, Rueckstell-Staerke, Heck-Pendeln, Hopp-Hoehe, Hopp-Drehung |
 
-Das Tuning-Panel gibt es nur in Studio (`RunService:IsStudio()`). Im veröffentlichten Spiel
-erscheint es nicht, und der Server ignoriert dort Tuning-Anfragen.
+## Test nach zweitem Feedback (BoostPad, JumpPad, Tuning-Panel)
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| BoostPad | Über ein flaches, bündiges BoostPad fahren | Spürbarer Schub nach vorne (+40 Studs/s Standard) |
+| Debug-Modus | `Config.Debug.TrackPieces = true`, Play, über Pads fahren | Output: „Bodenbausteine in der Welt: BoostPad 1, …“, „Rad WheelFL erkennt: BoostPad "…"“ und „BoostPad "…" ausgeloest: +40 Studs/s (Standardwert), Richtung passt zur Fahrtrichtung“ |
+| Falsche Richtung | Pad um 180° drehen, drüberfahren (Debug an) | Wagen wird gebremst/zurückgeschoben; Output warnt „Pad zeigt nicht in Fahrtrichtung“ |
+| Mud / Ice bündig | Schlamm- oder Eis-Part bündig in die Straße legen | Wird erkannt (bremst bzw. rutscht) |
+| JumpPad | Über ein JumpPad fahren | Höherer Sprung als vorher (ca. 19 statt 12 Studs) |
+| Regler-Mitte | F2 | Jeder Regler steht in der Mitte (weißer Strich), rechts daneben der Wert aus der Config |
+| Schieben | Regler ziehen | Zahl ändert sich live (gelb = geändert), Wirkung sofort |
+| Eingabe | In das Feld „Wert“ eine Zahl tippen (auch außerhalb des Bereichs, Komma oder Punkt), Enter | Wert wird übernommen, Regler steht am Rand, wenn außerhalb |
+| Zurücksetzen | Knopf „R“ neben einem Regler | Wert zurück auf den Config-Wert, Regler wieder in der Mitte |
+| Werte kopieren | Ein paar Werte ändern, „Werte kopieren“ | Output zeigt nur die geänderten, z. B. `Drift.LateralGrip: 3.5 -> 4.2`; ohne Änderung „Keine Aenderungen.“ |
+
+## Tuning-Ablauf
+
+1. In Studio Play, **F2** öffnet das Panel. Jeder Regler startet in der Mitte = aktueller
+   Wert aus `Config.luau`, der Bereich geht von 0 bis zum Doppelten.
+2. Regler schieben oder genaue Werte eintippen und ausprobieren. Mit „R“ zurück.
+3. Zufrieden? „Werte kopieren“ klicken, die Zeilen aus dem Output (`Abschnitt.Name: alt -> neu`)
+   an Claude schicken. Claude trägt sie in `Config.luau` ein und pusht.
+4. Nach `git pull` und neuem Play stehen alle Regler wieder in der Mitte, die Mitte ist jetzt
+   der neue Wert. So kann man sich schrittweise herantasten.
+
+Welche Werte im Panel erscheinen und Sonder-Bereiche (z. B. für Winkel) stehen in
+`Config.TuningPanel`. Das Tuning-Panel gibt es nur in Studio (`RunService:IsStudio()`). Im
+veröffentlichten Spiel erscheint es nicht, und der Server ignoriert dort Tuning-Anfragen.
 
 **Tuning:** Werte in `src/shared/Config.luau` ändern, speichern, in Studio Stop + Play.
 Typische Stellschrauben:
