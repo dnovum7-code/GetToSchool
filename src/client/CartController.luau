@@ -15,6 +15,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local TrackSensors = require(script.Parent:WaitForChild("TrackSensors"))
 
 local CartController = {}
 CartController.__index = CartController
@@ -28,6 +29,9 @@ export type Telemetry = {
 	driftCharging: boolean, -- Driftzeit zaehlt gerade (fuer Funken)
 	boostLevel: number, -- 0, 1 oder 2 (aktuelle Ladung)
 	boosting: boolean,
+	onMud: boolean,
+	onIce: boolean,
+	padEvent: string?, -- "Boost" oder "Jump", wenn in diesem Frame ein Pad ausgeloest hat
 }
 
 type ControllerData = {
@@ -48,6 +52,7 @@ type ControllerData = {
 	boostTime: number, -- Restzeit des laufenden Schubs
 	boostAcceleration: number,
 	boostSpeedExtra: number, -- so viel darf man gerade ueber MaxSpeed fahren
+	padCooldowns: { [Instance]: number }, -- wann welches Pad zuletzt ausgeloest hat
 }
 
 export type Controller = typeof(setmetatable({} :: ControllerData, CartController))
@@ -94,6 +99,7 @@ function CartController.new(cart: Model, character: Model): Controller
 		boostTime = 0,
 		boostAcceleration = 0,
 		boostSpeedExtra = 0,
+		padCooldowns = {},
 	}, CartController)
 	return self
 end
@@ -125,13 +131,57 @@ function CartController.resetDrift(self: Controller)
 	self.boostSpeedExtra = 0
 end
 
--- throttle: -1 (S) .. 1 (W), steer: -1 (A) .. 1 (D), handbrake: Shift gedrueckt
+-- Ganzen Wagen (alle Teile, auch Raeder) um `delta` schneller machen
+local function addVelocity(cart: Model, delta: Vector3)
+	for _, part in cart:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.AssemblyLinearVelocity += delta
+		end
+	end
+end
+
+-- BoostPad / JumpPad unter den Raedern ausloesen. Gibt "Boost"/"Jump" oder nil zurueck.
+function CartController.applyPads(self: Controller, surface: TrackSensors.Surface): string?
+	local T = Config.Track
+	local now = os.clock()
+	local function ready(pad: Instance): boolean
+		local last = self.padCooldowns[pad]
+		if last and now - last < T.PadCooldown then
+			return false
+		end
+		self.padCooldowns[pad] = now
+		return true
+	end
+	local event: string? = nil
+	local boostPad = surface.boostPad
+	if boostPad and ready(boostPad) then
+		-- Schub in Blickrichtung des Pads; Hoechsttempo kurz um den Schub anheben
+		local strength = TrackSensors.numberAttribute(boostPad, "Strength", T.BoostPadStrength)
+		addVelocity(self.cart, TrackSensors.pieceCFrame(boostPad).LookVector * strength)
+		self.boostSpeedExtra = math.max(self.boostSpeedExtra, strength)
+		event = "Boost"
+	end
+	local jumpPad = surface.jumpPad
+	if jumpPad and ready(jumpPad) then
+		-- Tempo entlang der Oberseite des Pads auf `strength` setzen (immer gleich hoch)
+		local strength = TrackSensors.numberAttribute(jumpPad, "Strength", T.JumpPadStrength)
+		local up = TrackSensors.pieceCFrame(jumpPad).UpVector
+		local current = self.base.AssemblyLinearVelocity:Dot(up)
+		addVelocity(self.cart, up * (strength - current))
+		event = "Jump"
+	end
+	return event
+end
+
+-- throttle: -1 (S) .. 1 (W), steer: -1 (A) .. 1 (D), handbrake: Shift gedrueckt,
+-- surface: Streckenbausteine unter den Raedern (siehe TrackSensors)
 function CartController.step(
 	self: Controller,
 	dt: number,
 	throttle: number,
 	steer: number,
-	handbrake: boolean
+	handbrake: boolean,
+	surface: TrackSensors.Surface
 ): Telemetry
 	local D = Config.Drive
 	local DR = Config.Drift
@@ -147,6 +197,16 @@ function CartController.step(
 		self.mass, self.inertia = measure(self.cart, base)
 	end
 	local m = self.mass
+
+	local padEvent = self:applyPads(surface)
+	if padEvent then
+		velocity = base.AssemblyLinearVelocity
+	end
+	local onMud = surface.mudFraction > 0
+	local onIce = surface.iceFraction > 0
+	-- Eis: Seitenhalt und Lenkhilfe nur noch ein Bruchteil (anteilig nach Raedern auf Eis)
+	local gripScale = 1 + (surface.iceGrip - 1) * surface.iceFraction
+	local steerScale = 1 + (Config.Track.IceSteer - 1) * surface.iceFraction
 
 	local speed = velocity.Magnitude
 	local forwardSpeed = velocity:Dot(forward)
@@ -166,8 +226,10 @@ function CartController.step(
 
 	-- Driftzeit zaehlt nur am Boden, ab Mindesttempo und Mindest-Driftwinkel
 	-- (sonst koennte man den Boost im Stand "farmen").
+	-- Auf Schlamm pausiert die Ladung.
 	local driftCharging = handbrake
 		and grounded
+		and not onMud
 		and speed >= DR.MinSpeed
 		and math.abs(slipAngle) >= DR.MinAngle
 	if driftCharging then
@@ -213,6 +275,12 @@ function CartController.step(
 		-- Rollwiderstand
 		force -= forward * forwardSpeed * D.RollingResistance * m
 
+		-- Schlamm: bremst in alle Richtungen am Boden, anteilig nach Raedern im Schlamm
+		if onMud then
+			local groundVelocity = velocity - up * velocity:Dot(up)
+			force -= groundVelocity * surface.mudDrag * surface.mudFraction * m
+		end
+
 		-- Anschieben / Bremsen / Rueckwaerts
 		if throttle > 0 then
 			if forwardSpeed < D.MaxPushSpeed then
@@ -234,8 +302,9 @@ function CartController.step(
 		end
 
 		-- Seitenhalt, Variante 1 (normal): ein Halt im Schwerpunkt, bis zur Grip-Grenze
-		local maxGrip = D.MaxGripAcceleration
-		local comGrip = right * math.clamp(-lateralSpeed * D.LateralGrip, -maxGrip, maxGrip) * m
+		local maxGrip = D.MaxGripAcceleration * gripScale
+		local lateralGrip = D.LateralGrip * gripScale
+		local comGrip = right * math.clamp(-lateralSpeed * lateralGrip, -maxGrip, maxGrip) * m
 
 		-- Seitenhalt, Variante 2 (Drift): je eine Kraft an Vorder- und Hinterachse
 		local axleForce = Vector3.zero
@@ -254,8 +323,8 @@ function CartController.step(
 			local frontRight = CFrame.fromAxisAngle(up, wheelAngle):VectorToWorldSpace(right)
 			local halfMass = m / 2
 			local frontAccel =
-				math.clamp(-pointVelocity(frontPoint):Dot(frontRight) * D.LateralGrip, -maxGrip, maxGrip)
-			local rearGrip = D.LateralGrip * (1 + (DR.RearGrip - 1) * drift)
+				math.clamp(-pointVelocity(frontPoint):Dot(frontRight) * lateralGrip, -maxGrip, maxGrip)
+			local rearGrip = lateralGrip * (1 + (DR.RearGrip - 1) * drift)
 			local rearAccel = math.clamp(-pointVelocity(rearPoint):Dot(right) * rearGrip, -maxGrip, maxGrip)
 			local frontForce = frontRight * frontAccel * halfMass
 			local rearForce = right * rearAccel * halfMass
@@ -283,7 +352,7 @@ function CartController.step(
 		targetYawRate += wobble * D.WobbleStrength * math.clamp(absSpeed / D.WobbleFullSpeed, 0, 1)
 
 		local yawRate = angular:Dot(up)
-		local response = D.SteerResponse * (1 + (DR.SteerResponseFactor - 1) * drift)
+		local response = D.SteerResponse * (1 + (DR.SteerResponseFactor - 1) * drift) * steerScale
 		torque += up * (targetYawRate - yawRate) * response * self.inertia
 
 		-- Schutz gegen 180er: Ist der Driftwinkel zu gross, Blickrichtung zur Fahrtrichtung
@@ -310,6 +379,9 @@ function CartController.step(
 		driftCharging = driftCharging,
 		boostLevel = boostLevelFor(self.driftTime),
 		boosting = boosting,
+		onMud = onMud,
+		onIce = onIce,
+		padEvent = padEvent,
 	}
 end
 

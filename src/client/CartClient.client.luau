@@ -16,6 +16,7 @@ local DriftEffects = require(script.Parent:WaitForChild("DriftEffects"))
 local EnterPrompt = require(script.Parent:WaitForChild("EnterPrompt"))
 local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
+local TrackSensors = require(script.Parent:WaitForChild("TrackSensors"))
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local SchoolClock = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SchoolClock"))
@@ -210,13 +211,14 @@ local function requestRestartNow(kind: "Checkpoint" | "Full")
 	requestRestart:FireServer(kind)
 end
 
-local function onCrash(reason: string, base: BasePart)
+-- `text`: eigener Untertitel (z. B. Attribut "Message" eines Hazards)
+local function onCrash(reason: string, base: BasePart, text: string?)
 	crashed = true
 	if controller then
 		controller:resetDrift() -- Boost-Ladung geht beim Crash verloren
 	end
 	crashedAt = os.clock()
-	RaceUI.showMessage("CRASH!", Color3.fromRGB(255, 80, 60), CRASH_TEXTS[reason])
+	RaceUI.showMessage("CRASH!", Color3.fromRGB(255, 80, 60), text or CRASH_TEXTS[reason])
 
 	-- Schwung fuer die Ragdoll: Tempo von VOR dem Aufprall (sonst waere es ~0)
 	local C = Config.Crash
@@ -452,7 +454,18 @@ RunService.PreSimulation:Connect(function(dt)
 	local throttle, steer = readInput()
 	-- Handbremse nur, wenn nicht gerade im Chat getippt wird
 	local handbrake = handbrakeHeld and UserInputService:GetFocusedTextBox() == nil
-	local telemetry = current:step(dt, throttle, steer, handbrake)
+	local surface = TrackSensors.sampleGround(current.cart, current.rayParams)
+	local telemetry = current:step(dt, throttle, steer, handbrake, surface)
+
+	-- Bouncy: federt ab, ein harter Aufprall ist hier kein Crash
+	if TrackSensors.touching(current.cart, "Bouncy") then
+		crashDetector:relaxImpact(math.huge, Config.Track.BouncyCrashGrace)
+	end
+	-- Nach einem JumpPad: Landung darf haerter sein (bis zur Landung plus etwas Puffer)
+	if telemetry.padEvent == "Jump" then
+		local airTime = 2 * Config.Track.JumpPadStrength / math.max(workspace.Gravity, 1) + 1
+		crashDetector:relaxImpact(Config.Track.JumpLandingTolerance, airTime)
+	end
 	DriftEffects.update(dt, telemetry)
 	RaceUI.setSpeed(telemetry.speed)
 
@@ -465,6 +478,17 @@ RunService.PreSimulation:Connect(function(dt)
 		end
 	end
 	wasGrounded = telemetry.grounded
+
+	-- Hazard: sofortiger Crash bei Beruehrung
+	local hazard = if crashed then nil else TrackSensors.touching(current.cart, "Hazard")
+	if hazard then
+		local message = hazard:GetAttribute("Message")
+		onCrash(
+			"Hazard",
+			current.base,
+			if type(message) == "string" then message else Config.Track.HazardMessage
+		)
+	end
 
 	if not crashed then
 		local reason = crashDetector:update(dt, current.base)

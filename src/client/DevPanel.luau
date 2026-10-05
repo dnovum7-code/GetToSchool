@@ -98,10 +98,16 @@ function DevPanel.init()
 	gui.Enabled = false
 	gui.DisplayOrder = 10
 
-	local panel = Instance.new("Frame")
+	-- Scrollbar, damit auch viele Regler auf kleine Bildschirme passen
+	local contentHeight = 44 + ROW_HEIGHT * #TuningSliders + 48
+	local panel = Instance.new("ScrollingFrame")
 	panel.Name = "Panel"
 	panel.Position = UDim2.new(0, 16, 0, 100)
-	panel.Size = UDim2.new(0, PANEL_WIDTH, 0, 44 + ROW_HEIGHT * #TuningSliders + 48)
+	panel.Size = UDim2.new(0, PANEL_WIDTH + 8, 1, -120)
+	panel.CanvasSize = UDim2.new(1, 0, 0, contentHeight)
+	panel.ScrollingDirection = Enum.ScrollingDirection.Y
+	panel.ScrollBarThickness = 6
+	panel.BorderSizePixel = 0
 	panel.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
 	panel.BackgroundTransparency = 0.15
 	panel.Active = true -- Klicks gehen nicht durch das Panel in die Welt
@@ -154,8 +160,8 @@ function DevPanel.init()
 
 	local copyButton = Instance.new("TextButton")
 	copyButton.Name = "CopyValues"
-	copyButton.Position = UDim2.new(0, 12, 1, -40)
-	copyButton.Size = UDim2.new(1, -24, 0, 30)
+	copyButton.Position = UDim2.new(0, 12, 0, contentHeight - 40)
+	copyButton.Size = UDim2.new(0, PANEL_WIDTH - 24, 0, 30)
 	copyButton.BackgroundColor3 = Color3.fromRGB(60, 130, 80)
 	copyButton.TextColor3 = Color3.new(1, 1, 1)
 	copyButton.Font = Enum.Font.GothamBold

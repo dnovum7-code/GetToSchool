@@ -106,6 +106,32 @@ Config.Drift = {
 	SkidMarkWidth = 0.35,
 }
 
+-- Streckenbausteine: normale Parts mit Tag (CollectionService). Werte hier sind
+-- Standardwerte; einzelne Parts koennen sie per Attribut ueberschreiben (in Klammern).
+Config.Track = {
+	-- BoostPad: Schub in Blickrichtung (Vorderseite) des Parts (Attribut "Strength")
+	BoostPadStrength = 40, -- Studs/s Tempo-Zuwachs
+	-- JumpPad: schleudert nach oben, entlang der Oberseite des Parts (Attribut "Strength")
+	JumpPadStrength = 70, -- Studs/s nach oben (70 = ca. 12 Studs hoch)
+	PadCooldown = 0.5, -- so lange (s) wirkt dasselbe Pad nicht nochmal
+	-- Nach einem JumpPad zaehlt eine harte Landung erst ab dem x-fachen Crash.ImpactSpeedChange
+	JumpLandingTolerance = 2.5,
+
+	-- Mud: bremst stark, solange ein Rad drauf ist; Drift-Ladung pausiert (Attribut "Drag")
+	MudDrag = 3, -- Bremsen pro Sekunde (Anteil des Tempos)
+	-- Ice: kaum Seitenhalt, alles rutscht (Attribut "Grip")
+	IceGrip = 0.1, -- Anteil des normalen Seitenhalts
+	IceSteer = 0.4, -- Anteil der normalen Lenkhilfe auf Eis
+
+	-- Bouncy: federt ab statt Crash (Attribut "Bounciness", 0..1)
+	BouncyElasticity = 0.9,
+	BouncyCrashGrace = 0.4, -- so lange (s) nach Kontakt keine Aufprall-Crashs
+
+	-- Hazard: sofortiger Crash bei Beruehrung (Attribute "Message": Text, "Solid": true = fest)
+	HazardMessage = "Gefahrenzone!",
+	SensorPadding = 0.3, -- so viel (Studs) um den Wagen herum zaehlt schon als Beruehrung
+}
+
 -- Verfolgerkamera
 Config.Camera = {
 	Distance = 14,

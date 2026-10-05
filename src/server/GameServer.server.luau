@@ -9,6 +9,7 @@ local CartManager = require(script.Parent:WaitForChild("CartManager"))
 local DevTuning = require(script.Parent:WaitForChild("DevTuning"))
 local RaceManager = require(script.Parent:WaitForChild("RaceManager"))
 local Track = require(script.Parent:WaitForChild("Track"))
+local TrackPieces = require(script.Parent:WaitForChild("TrackPieces"))
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local requestRestart = remotes:WaitForChild("RequestRestart") :: RemoteEvent
@@ -28,6 +29,7 @@ CartManager.setSpawnResolver(function(_player)
 	return Track.getSpawn()
 end)
 RaceManager.start()
+TrackPieces.init() -- getaggte Streckenbausteine einstellen
 DevTuning.init(cartsFolder) -- Tuning-Panel (nur in Studio aktiv)
 
 -- Eingaben vom Client nie blind vertrauen: Der Client darf nur "bitte Neustart" sagen

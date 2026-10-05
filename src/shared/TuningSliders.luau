@@ -57,6 +57,11 @@ local sliders: { Slider } = {
 	},
 	{ label = "Boost-Schwelle 1 (s)", section = "Drift", key = "Level1Time", min = 0.2, max = 3, step = 0.1 },
 	{ label = "Boost-Schwelle 2 (s)", section = "Drift", key = "Level2Time", min = 0.5, max = 5, step = 0.1 },
+	-- Streckenbausteine (Standardwerte; Attribute an einzelnen Parts gehen vor)
+	{ label = "Schlamm-Bremse", section = "Track", key = "MudDrag", min = 0, max = 10, step = 0.1 },
+	{ label = "Eis-Seitenhalt", section = "Track", key = "IceGrip", min = 0, max = 1, step = 0.01 },
+	{ label = "BoostPad-Staerke", section = "Track", key = "BoostPadStrength", min = 0, max = 150, step = 1 },
+	{ label = "JumpPad-Staerke", section = "Track", key = "JumpPadStrength", min = 0, max = 200, step = 1 },
 	-- Spielzeit: Spielsekunden pro echter Sekunde (gilt ab dem naechsten Start)
 	{
 		label = "Spielzeit-Tempo",
