@@ -140,7 +140,7 @@ Config.Track = {
 	-- BoostPad: Schub in Blickrichtung (Vorderseite) des Parts (Attribut "Strength")
 	BoostPadStrength = 40, -- Studs/s Tempo-Zuwachs
 	-- JumpPad: schleudert nach oben, entlang der Oberseite des Parts (Attribut "Strength")
-	JumpPadStrength = 70, -- Studs/s nach oben (70 = ca. 12 Studs hoch)
+	JumpPadStrength = 86, -- Studs/s nach oben (86 = ca. 19 Studs hoch, +23 %)
 	PadCooldown = 0.5, -- Pads wirken nur beim Drauffahren; so lange (s) muss man weg gewesen sein
 	-- Erkennung der Bodenbausteine: Kasten an der Aufstandsflaeche jedes Rads (Studs)
 	FloorSensorAbove = 0.4, -- so weit ueber der Radunterseite

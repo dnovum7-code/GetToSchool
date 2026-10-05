@@ -119,7 +119,7 @@ geschrieben wie in der Tabelle). Mehrere Tags pro Part sind erlaubt (z. B. `Move
 | `FinishZone` | Ziel: beendet den Lauf, Ergebnis mit Note | `Grade6` … `Grade2` (Zahl, Sekunden) – 60 / 75 / 90 / 110 / 130; langsamer = Note 1 |
 | `Checkpoint` | Durchfahren speichert Position + Richtung. R / Crash → hierher | `Order` (Zahl) – keine. Mit Order zählt ein Checkpoint mit kleinerer Zahl als der letzte nicht |
 | `BoostPad` | Schub in Blickrichtung (Vorderseite) des Parts, beim Drauffahren | `Strength` (Zahl, Studs/s) – 40 |
-| `JumpPad` | Schleudert entlang der Oberseite des Parts nach oben | `Strength` (Zahl, Studs/s) – 70 (≈ 12 Studs hoch) |
+| `JumpPad` | Schleudert entlang der Oberseite des Parts nach oben | `Strength` (Zahl, Studs/s) – 86 (≈ 19 Studs hoch) |
 | `Mud` | Bremst stark, Drift-Ladung pausiert | `Drag` (Zahl, pro Sekunde) – 3 |
 | `Ice` | Kaum Seitenhalt und Lenkhilfe, alles rutscht | `Grip` (Zahl, 0–1) – 0.1 |
 | `Bouncy` | Federt ab statt Crash | `Bounciness` (Zahl, 0–1) – 0.9 |
