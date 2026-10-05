@@ -18,9 +18,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local Economy =
+	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression"):WaitForChild("Economy"))
 local RaceTime = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RaceTime"))
 local BestTimes = require(script.Parent:WaitForChild("BestTimes"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
+local Coins = require(script.Parent:WaitForChild("Coins"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local RandomEvents = require(script.Parent:WaitForChild("RandomEvents"))
 local Track = require(script.Parent:WaitForChild("Track"))
@@ -58,6 +61,10 @@ export type RunResult = {
 	isNewBest: boolean,
 	grade: number, -- 1-6, 6 = beste
 	noCheckpointRestart: boolean, -- ohne einen einzigen Checkpoint-Neustart geschafft
+	coinsReward: number, -- Belohnung im Ziel (gesamt)
+	coinsBase: number, -- davon Grundbetrag
+	coinsGradeBonus: number, -- davon Notenbonus
+	coinsCollected: number, -- in diesem Lauf eingesammelte Muenzen
 }
 
 local races: { [Player]: RaceState } = {}
@@ -111,6 +118,7 @@ function RaceManager.restart(player: Player)
 	race.splits = {}
 	race.runId += 1
 	race.lastRestart = os.clock()
+	Coins.resetRun(player) -- Muenzen erscheinen wieder (die eingesammelten behaelt man)
 	-- Neuer Lauf: Zufallsereignisse neu wuerfeln (vor "Reset", damit die Strecke steht)
 	runState:FireClient(player, "Events", RandomEvents.roll())
 	runState:FireClient(player, "Reset", spawnCFrame, false)
@@ -206,13 +214,26 @@ local function finish(player: Player, race: RaceState, finishZone: BasePart)
 	local time = os.clock() - race.startTime
 	race.phase = "Finished"
 	local isNewBest, previousBest = BestTimes.submit(player, race.trackId, time, race.splits)
+	local grade = RaceTime.gradeFor(time, finishZone)
+
+	-- Belohnung: Grundbetrag plus Bonus je nach Note
+	local reward, rewardBase, gradeBonus = Economy.finishReward(grade, Config.Coins)
+	local data = Profiles.get(player)
+	data.bestGrades[race.trackId] = math.max(data.bestGrades[race.trackId] or 0, grade)
+	data.stats.finishedRuns += 1
+	Profiles.addCoins(player, reward) -- speichert und meldet die Aenderung
+
 	local result: RunResult = {
 		time = time,
 		bestTime = if isNewBest or not previousBest then time else previousBest,
 		previousBest = previousBest,
 		isNewBest = isNewBest,
-		grade = RaceTime.gradeFor(time, finishZone),
+		grade = grade,
 		noCheckpointRestart = not race.usedCheckpointRestart,
+		coinsReward = reward,
+		coinsBase = rewardBase,
+		coinsGradeBonus = gradeBonus,
+		coinsCollected = Coins.getRunTotal(player),
 	}
 	runState:FireClient(player, "Finished", result)
 

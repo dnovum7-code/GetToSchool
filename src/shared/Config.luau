@@ -172,6 +172,24 @@ Config.Track = {
 	SensorPadding = 0.3, -- so viel (Studs) um den Wagen herum zaehlt schon als Beruehrung
 }
 
+-- Muenzen (Baustein "Coin": Part oder Modell mit Tag "Coin", Attribut "Value" = Wert).
+-- Eingesammelte Muenzen gehoeren sofort dem Spieler, auch nach Crash oder Abbruch. Die Muenze
+-- selbst erscheint erst beim kompletten Neustart (T) wieder.
+Config.Coins = {
+	DefaultValue = 1, -- Wert einer Muenze ohne Attribut "Value"
+	MaxValue = 100, -- Obergrenze fuer "Value" (Schutz vor Tippfehlern)
+	PickupRadius = 3.5, -- Client: so nah (Studs, plus halbe Muenzgroesse) muss die Wagenmitte kommen
+	-- Server-Pruefung: hoechstens so weit weg (Studs, plus halbe Muenzgroesse) ...
+	MaxPickupDistance = 12,
+	LatencyAllowance = 0.3, -- ... plus Tempo * diese Sekunden (der Server sieht den Wagen verspaetet)
+	SpinSpeed = 180, -- Drehung (Grad pro Sekunde, nur Anzeige)
+	BobHeight = 0.3, -- Auf und Ab (Studs)
+	BobSpeed = 2.5,
+	-- Belohnung im Ziel: Grundbetrag plus Bonus je nach Note (6 = beste)
+	FinishBase = 10,
+	GradeBonus = { [6] = 20, [5] = 12, [4] = 7, [3] = 4, [2] = 2, [1] = 0 },
+}
+
 -- Bewegte Hindernisse (Standardwerte; Attribute am Part/Modell gehen vor).
 -- Alle Zeiten in Sekunden, Winkel in Grad. Attribut "Phase" (Sekunden) verschiebt den Takt,
 -- damit nicht alle Hindernisse gleichzeitig loslegen.
@@ -205,6 +223,7 @@ Config.Sounds = {
 	Boost = { Id = "", Volume = 0.7 }, -- Drift-Boost und BoostPad
 	Crash = { Id = "", Volume = 0.8 },
 	Checkpoint = { Id = "", Volume = 0.6 },
+	Coin = { Id = "", Volume = 0.5 }, -- Muenze eingesammelt
 	Finish = { Id = "", Volume = 0.8 }, -- im Ziel
 }
 

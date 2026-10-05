@@ -26,6 +26,12 @@
         },
         "DevTuning": {
           "$className": "RemoteEvent"
+        },
+        "Progress": {
+          "$className": "RemoteEvent"
+        },
+        "CollectCoin": {
+          "$className": "RemoteEvent"
         }
       }
     },

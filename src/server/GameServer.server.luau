@@ -6,8 +6,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
+local Coins = require(script.Parent:WaitForChild("Coins"))
 local DevTuning = require(script.Parent:WaitForChild("DevTuning"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
+local ProgressSync = require(script.Parent:WaitForChild("ProgressSync"))
 local RaceManager = require(script.Parent:WaitForChild("RaceManager"))
 local RandomEvents = require(script.Parent:WaitForChild("RandomEvents"))
 local Track = require(script.Parent:WaitForChild("Track"))
@@ -26,6 +28,7 @@ cartsFolder.Name = "Carts"
 cartsFolder.Parent = workspace
 
 Profiles.init() -- Spielstaende laden/speichern (zuerst, damit beim Beitreten geladen wird)
+ProgressSync.init() -- Kopie des Spielstands an den Client (fuer die Anzeige)
 Track.init(cartsFolder)
 CartManager.init(cartsFolder)
 CartManager.setSpawnResolver(function(_player)
@@ -34,6 +37,7 @@ end)
 RaceManager.start()
 TrackPieces.init() -- getaggte Streckenbausteine einstellen
 RandomEvents.init() -- Zufallsereignisse durchnummerieren
+Coins.init() -- Muenzen einsammeln (Server prueft)
 DevTuning.init(cartsFolder) -- Tuning-Panel (nur in Studio aktiv)
 
 -- Eingaben vom Client nie blind vertrauen: Der Client darf nur "bitte Neustart" sagen

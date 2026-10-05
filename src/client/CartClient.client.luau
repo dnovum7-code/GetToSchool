@@ -10,11 +10,14 @@ local UserInputService = game:GetService("UserInputService")
 
 local CartController = require(script.Parent:WaitForChild("CartController"))
 local ChaseCamera = require(script.Parent:WaitForChild("ChaseCamera"))
+local CoinsClient = require(script.Parent:WaitForChild("CoinsClient"))
 local CrashDetector = require(script.Parent:WaitForChild("CrashDetector"))
 local DevPanel = require(script.Parent:WaitForChild("DevPanel"))
 local DriftEffects = require(script.Parent:WaitForChild("DriftEffects"))
 local EnterPrompt = require(script.Parent:WaitForChild("EnterPrompt"))
 local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
+local ProgressClient = require(script.Parent:WaitForChild("ProgressClient"))
+local ProgressUI = require(script.Parent:WaitForChild("ProgressUI"))
 local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
 local TrackSensors = require(script.Parent:WaitForChild("TrackSensors"))
 local Obstacles = require(script.Parent:WaitForChild("Obstacles"))
@@ -68,6 +71,10 @@ type RunResult = {
 	isNewBest: boolean,
 	grade: number,
 	noCheckpointRestart: boolean,
+	coinsReward: number,
+	coinsBase: number,
+	coinsGradeBonus: number,
+	coinsCollected: number,
 }
 local GOLD = Color3.fromRGB(255, 215, 80)
 local function showResult(result: RunResult)
@@ -98,6 +105,11 @@ local function showResult(result: RunResult)
 		lines,
 		if result.noCheckpointRestart then "Ohne Checkpoint-Neustart!" else "Mit Checkpoint-Neustart"
 	)
+	table.insert(
+		lines,
+		`Muenzen: +{result.coinsReward} im Ziel ({result.coinsBase} + {result.coinsGradeBonus} Notenbonus), `
+			.. `{result.coinsCollected} eingesammelt`
+	)
 	if result.isNewBest then
 		RaceUI.showResult("NEUE BESTZEIT!", GOLD, lines, result.grade, Config.UI.ResultDisplayTime)
 	else
@@ -118,6 +130,9 @@ local CRASH_TEXTS: { [string]: string } = {
 }
 
 RaceUI.init()
+ProgressUI.init() -- Muenzzaehler
+CoinsClient.init() -- Muenzen drehen und einsammeln
+ProgressClient.init() -- Spielstand-Kopie vom Server
 Obstacles.init() -- bewegte Hindernisse (Mover, Spinner, Pendulum)
 RandomEventsClient.init() -- Zufallsereignisse ein-/ausblenden
 SoundSystem.init()
@@ -350,6 +365,7 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 			-- kompletter Neustart: neuer Lauf. Beim Checkpoint-Neustart laeuft die Zeit weiter.
 			runPhase = "Ready"
 			RaceUI.hideResult()
+			CoinsClient.resetAll() -- Muenzen erscheinen wieder
 		end
 		onReset(spawnCFrame)
 	elseif kind == "Events" then
@@ -509,6 +525,9 @@ RunService.PreSimulation:Connect(function(dt)
 	local hop = hopRequested and UserInputService:GetFocusedTextBox() == nil
 	hopRequested = false
 	local telemetry = current:step(dt, throttle, steer, driftMode, hop, surface)
+	if not crashed then
+		CoinsClient.update(current.base)
+	end
 
 	-- Bouncy: federt ab, ein harter Aufprall ist hier kein Crash
 	if TrackSensors.touching(current.cart, "Bouncy") then
