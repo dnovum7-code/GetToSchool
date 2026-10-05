@@ -241,6 +241,13 @@ function RaceManager.hitLaunchable(player: Player, object: unknown)
 	end
 end
 
+-- Ist der Spieler gerade ausserhalb eines Laufs (Shop, Track-Wahl erlaubt)?
+-- Erlaubt: am Start vor dem Losfahren, nach dem Ziel, nach einem Abbruch.
+function RaceManager.isOutsideRun(player: Player): boolean
+	local phase = getRace(player).phase
+	return phase == "Ready" or phase == "Finished" or phase == "Aborted"
+end
+
 -- Helm-Stufe hat sich geaendert (Kauf): Ladungen neu berechnen
 function RaceManager.refreshShield(player: Player)
 	local race = getRace(player)

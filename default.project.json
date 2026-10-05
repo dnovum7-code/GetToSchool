@@ -35,6 +35,9 @@
         },
         "HitLaunchable": {
           "$className": "RemoteEvent"
+        },
+        "ShopRequest": {
+          "$className": "RemoteEvent"
         }
       }
     },

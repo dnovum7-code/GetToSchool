@@ -13,6 +13,7 @@ local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local ProgressSync = require(script.Parent:WaitForChild("ProgressSync"))
 local RaceManager = require(script.Parent:WaitForChild("RaceManager"))
 local RandomEvents = require(script.Parent:WaitForChild("RandomEvents"))
+local Shop = require(script.Parent:WaitForChild("Shop"))
 local Track = require(script.Parent:WaitForChild("Track"))
 local TrackPieces = require(script.Parent:WaitForChild("TrackPieces"))
 
@@ -41,6 +42,7 @@ TrackPieces.init() -- getaggte Streckenbausteine einstellen
 RandomEvents.init() -- Zufallsereignisse durchnummerieren
 Coins.init() -- Muenzen einsammeln (Server prueft)
 Launchables.init() -- Objekte zum Wegschleudern
+Shop.init() -- Kaeufe pruefen
 DevTuning.init(cartsFolder) -- Tuning-Panel (nur in Studio aktiv)
 
 -- Eingaben vom Client nie blind vertrauen: Der Client darf nur "bitte Neustart" sagen

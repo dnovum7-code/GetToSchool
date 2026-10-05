@@ -22,6 +22,7 @@ local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 local ProgressClient = require(script.Parent:WaitForChild("ProgressClient"))
 local ProgressUI = require(script.Parent:WaitForChild("ProgressUI"))
 local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
+local ShopUI = require(script.Parent:WaitForChild("ShopUI"))
 local TrackSensors = require(script.Parent:WaitForChild("TrackSensors"))
 local Obstacles = require(script.Parent:WaitForChild("Obstacles"))
 local RandomEventsClient = require(script.Parent:WaitForChild("RandomEventsClient"))
@@ -154,6 +155,10 @@ CoinsClient.init() -- Muenzen drehen und einsammeln
 LaunchablesClient.init() -- Objekte wegschleudern (Kuh, Muelltonne ...)
 ProgressClient.init() -- Spielstand-Kopie vom Server
 AbilityHud.init() -- Abilities unten links
+-- Shop (Taste B): nur ausserhalb eines Laufs (der Server prueft das auch)
+ShopUI.init(function()
+	return runPhase == "Ready" or runPhase == "Finished" or runPhase == "Aborted"
+end)
 ProgressClient.onChanged(function(snapshot)
 	Abilities.setLevels(snapshot.upgrades) -- gekaufte Upgrade-Stufen
 end)
@@ -615,6 +620,7 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		RaceUI.showMessage("Lauf abgebrochen", Color3.fromRGB(255, 200, 80), "R: Neustart", 2)
 	elseif kind == "Started" then
 		runPhase = "Running"
+		ShopUI.close() -- Lauf beginnt: Menue zu
 		runStartedAt = os.clock()
 	elseif kind == "Finished" then
 		local result: RunResult = ...
