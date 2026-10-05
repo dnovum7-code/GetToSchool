@@ -6,8 +6,9 @@
 -- Unity-Vergleich: wie AddForce/AddTorque in FixedUpdate, nur dass hier die Werte an
 -- Constraint-Objekten gesetzt werden, die bis zum naechsten Frame wirken.
 --
--- Drift (Handbremse): Die Lenkung bestimmt weiter, wie schnell sich der Wagen dreht (die
--- Front "zieht"), nur staerker als normal. Der Seitenhalt wird weicher, also laeuft die
+-- Drift (Standard-Modus; Shift = normal fahren, siehe Config.Drift.DriftByDefault): Die
+-- Lenkung bestimmt weiter, wie schnell sich der Wagen dreht (die Front "zieht"), nur
+-- staerker als normal. Der Seitenhalt wird weicher, also laeuft die
 -- Fahrtrichtung der Drehung hinterher und das Heck schwingt aus. Ueber der Winkelgrenze
 -- dreht der Wagen zurueck und haelt fester. Weil die Drehung immer geregelt bleibt, kann
 -- sich der Wagen nicht von selbst aufschaukeln (kein Dreher).
@@ -25,11 +26,13 @@ export type Telemetry = {
 	speed: number,
 	forwardSpeed: number,
 	grounded: boolean,
-	driftAmount: number, -- 0 = normal, 1 = Handbremse voll
+	driftAmount: number, -- 0 = normal, 1 = voller Drift-Modus
 	slipAngle: number, -- Grad zwischen Blick- und Fahrtrichtung
 	driftCharging: boolean, -- Driftzeit zaehlt gerade (fuer Funken)
+	skidding: boolean, -- rutscht sichtbar seitlich, also in einer Kurve (Reifenspuren, Quietschen)
 	boostLevel: number, -- 0, 1 oder 2 (aktuelle Ladung)
 	boosting: boolean,
+	boostStarted: boolean, -- in diesem Frame hat ein Drift-Boost begonnen
 	onMud: boolean,
 	onIce: boolean,
 	padEvent: string?, -- "Boost" oder "Jump", wenn in diesem Frame ein Pad ausgeloest hat
@@ -53,7 +56,8 @@ type ControllerData = {
 	-- Drift und Boost
 	driftAmount: number,
 	driftTime: number,
-	wasHandbrake: boolean,
+	wasDriftMode: boolean,
+	straightTime: number, -- so lange (s) faehrt der Wagen nach einem Drift schon wieder gerade
 	boostTime: number, -- Restzeit des laufenden Schubs
 	boostAcceleration: number,
 	padCooldowns: { [Instance]: number }, -- wann welches Pad zuletzt unter dem Wagen war
@@ -101,7 +105,8 @@ function CartController.new(cart: Model, character: Model): Controller
 		wobbleSeed = math.random() * 100,
 		driftAmount = 0,
 		driftTime = 0,
-		wasHandbrake = false,
+		wasDriftMode = false,
+		straightTime = 0,
 		boostTime = 0,
 		boostAcceleration = 0,
 		padCooldowns = {},
@@ -137,7 +142,8 @@ end
 function CartController.resetDrift(self: Controller)
 	self.driftAmount = 0
 	self.driftTime = 0
-	self.wasHandbrake = false
+	self.wasDriftMode = false
+	self.straightTime = 0
 	self.boostTime = 0
 	self.boostAcceleration = 0
 end
@@ -218,7 +224,7 @@ function CartController.applyPads(self: Controller, surface: TrackSensors.Surfac
 	return event, impulse
 end
 
--- throttle: -1 (S) .. 1 (W), steer: -1 (A) .. 1 (D), handbrake: Shift gedrueckt,
+-- throttle: -1 (S) .. 1 (W), steer: -1 (A) .. 1 (D), driftMode: Drift-Modus aktiv,
 -- hopPressed: Hopp-Taste (Leertaste) wurde in diesem Frame gedrueckt,
 -- surface: Streckenbausteine unter den Raedern (siehe TrackSensors)
 function CartController.step(
@@ -226,7 +232,7 @@ function CartController.step(
 	dt: number,
 	throttle: number,
 	steer: number,
-	handbrake: boolean,
+	driftMode: boolean,
 	hopPressed: boolean,
 	surface: TrackSensors.Surface
 ): Telemetry
@@ -284,18 +290,22 @@ function CartController.step(
 	-- Driftwinkel: positiv, wenn die Fahrtrichtung rechts von der Blickrichtung liegt
 	local slipAngle = if speed > 1 then math.deg(math.atan2(lateralSpeed, math.abs(forwardSpeed))) else 0
 
-	-- Handbremse weich ein- und ausblenden (0 = normal, 1 = voller Drift)
-	if handbrake then
+	-- Drift-Modus weich ein- und ausblenden (0 = normal, 1 = voller Drift)
+	if driftMode then
 		self.driftAmount = math.min(1, self.driftAmount + dt / math.max(DR.EngageTime, 0.01))
 	else
 		self.driftAmount = math.max(0, self.driftAmount - dt / math.max(DR.GripRecoverTime, 0.01))
 	end
 	local drift = self.driftAmount
+	-- Wie stark der Wagen gerade wirklich seitlich rutscht (0 = geradeaus, 1 = ab MinAngle).
+	-- Im Drift-Modus wirken Handbremse und Heck-Pendeln nur damit, also nur in Kurven.
+	local sliding = math.clamp(math.abs(slipAngle) / math.max(DR.MinAngle, 1), 0, 1)
+	local skidding = grounded and speed > 10 and math.abs(slipAngle) >= DR.SkidMinAngle
 
 	-- Driftzeit zaehlt nur am Boden, ab Mindesttempo und Mindest-Driftwinkel
 	-- (sonst koennte man den Boost im Stand "farmen").
 	-- Auf Schlamm pausiert die Ladung.
-	local driftCharging = handbrake
+	local driftCharging = driftMode
 		and grounded
 		and not onMud
 		and speed >= DR.MinSpeed
@@ -304,18 +314,30 @@ function CartController.step(
 		self.driftTime += dt
 	end
 
-	-- Handbremse losgelassen: Boost je nach Ladung, dann Ladung leeren
-	if self.wasHandbrake and not handbrake then
+	-- Drift zu Ende? Entweder der Modus wird verlassen (Shift), oder der Wagen faehrt am
+	-- Boden eine Weile wieder gerade bzw. zu langsam. In der Luft (Hopp) zaehlt das nicht,
+	-- so bleibt die Ladung beim Wechsel von einem Links- in einen Rechtsdrift erhalten.
+	if self.driftTime > 0 and grounded and not onMud and not driftCharging then
+		self.straightTime += dt
+	elseif driftCharging or not grounded then
+		self.straightTime = 0
+	end
+	local driftEnded = (self.wasDriftMode and not driftMode) or self.straightTime >= DR.ReleaseDelay
+	local boostStarted = false
+	if driftEnded then
+		-- Boost je nach Ladung, dann Ladung leeren
 		local level = boostLevelFor(self.driftTime)
 		if level > 0 then
 			local share = if level == 2 then DR.Level2Boost else DR.Level1Boost
 			local gain = share * D.MaxPushSpeed -- Tempo-Zuwachs in Studs/s (Anteil am Motor-Hoechsttempo)
 			self.boostTime = DR.BoostDuration
 			self.boostAcceleration = gain / math.max(DR.BoostDuration, 0.05)
+			boostStarted = true
 		end
 		self.driftTime = 0
+		self.straightTime = 0
 	end
-	self.wasHandbrake = handbrake
+	self.wasDriftMode = driftMode
 
 	local boosting = self.boostTime > 0
 	if boosting then
@@ -361,9 +383,9 @@ function CartController.step(
 			end
 		end
 
-		-- Handbremse bremst leicht
+		-- Rutschen bremst leicht (geradeaus nicht, sonst wuerde der Drift-Modus bergab bremsen)
 		if drift > 0 and math.abs(forwardSpeed) > 1 then
-			force -= forward * math.sign(forwardSpeed) * DR.HandbrakeDeceleration * drift * m
+			force -= forward * math.sign(forwardSpeed) * DR.HandbrakeDeceleration * drift * sliding * m
 		end
 
 		-- Driftwinkel ueber der Grenze? (0 = nein; 1 = 15 Grad oder mehr darueber)
@@ -400,10 +422,15 @@ function CartController.step(
 		local wobbleFade = math.clamp(self.time / math.max(D.WobbleFadeInTime, 0.01), 0, 1)
 		targetYawRate += wobble * D.WobbleStrength * wobbleSpeed * wobbleFade
 
-		-- Wirres Heck: im Drift kleines, unregelmaessiges Pendeln
+		-- Wirres Heck: im Drift kleines, unregelmaessiges Pendeln, nur solange der Wagen rutscht
+		-- (geradeaus kein zusaetzlicher Drall)
 		local tail =
 			math.clamp(math.noise(self.time * DR.TailWobbleFrequency, self.wobbleSeed + 17) * 2, -1, 1)
-		targetYawRate += tail * DR.TailWobble * drift * math.clamp(absSpeed / D.SteerFullSpeed, 0, 1)
+		targetYawRate += tail * DR.TailWobble * drift * sliding * math.clamp(
+			absSpeed / D.SteerFullSpeed,
+			0,
+			1
+		)
 
 		-- Winkelgrenze: zu weit ausgeschwungen -> Blickrichtung zur Fahrtrichtung zurueckdrehen.
 		-- Positiver Winkel = Fahrtrichtung liegt rechts = nach rechts drehen (negatives Y).
@@ -441,8 +468,10 @@ function CartController.step(
 		driftAmount = drift,
 		slipAngle = slipAngle,
 		driftCharging = driftCharging,
+		skidding = skidding,
 		boostLevel = boostLevelFor(self.driftTime),
 		boosting = boosting,
+		boostStarted = boostStarted,
 		onMud = onMud,
 		onIce = onIce,
 		padEvent = padEvent,

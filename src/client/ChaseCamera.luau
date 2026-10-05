@@ -20,6 +20,7 @@ local direction = -Vector3.zAxis -- geglaettete Blickrichtung (waagerecht)
 local position: Vector3? = nil -- geglaettete Kameraposition
 local fov = Config.Camera.BaseFov
 local landingShake = 0 -- zusaetzliches Wackeln nach harten Landungen (Grad), klingt ab
+local fovKick = 0 -- zusaetzliches Sichtfeld nach einem Boost (Grad), klingt ab
 local shakeTime = 0
 
 local function smoothing(rate: number, dt: number): number
@@ -78,7 +79,8 @@ local function update(dt: number)
 	local speed = part.AssemblyLinearVelocity.Magnitude
 	local targetFov = C.BaseFov + (C.MaxFov - C.BaseFov) * math.clamp(speed / C.FovFullSpeed, 0, 1)
 	fov += (targetFov - fov) * smoothing(4, dt)
-	camera.FieldOfView = fov
+	fovKick *= math.exp(-C.BoostFovDecay * dt)
+	camera.FieldOfView = fov + fovKick
 
 	-- Kamera-Wackeln: etwas bei hohem Tempo, mehr nach harten Landungen.
 	-- math.noise liefert weiches Rauschen (kein hektisches Zufalls-Zittern).
@@ -101,6 +103,11 @@ function ChaseCamera.addShake(amount: number)
 	landingShake = math.min(landingShake + amount, Config.Camera.ShakeMaxAngle)
 end
 
+-- Boost: Sichtfeld kurz weiter aufziehen (Schub spuerbar machen).
+function ChaseCamera.kickFov(amount: number)
+	fovKick = math.max(fovKick, amount)
+end
+
 -- Kamera an den Wagen haengen. `ignore`: Objekte, durch die die Kamera schauen darf.
 function ChaseCamera.start(part: BasePart, ignore: { Instance })
 	target = part
@@ -114,6 +121,7 @@ end
 function ChaseCamera.snap()
 	position = nil
 	landingShake = 0
+	fovKick = 0
 	local part = target
 	if part then
 		direction = flatLook(part) or direction

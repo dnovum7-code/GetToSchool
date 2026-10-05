@@ -43,10 +43,11 @@ Config.Drive = {
 	MaxReverseSpeed = 12,
 
 	-- Ausrollen ohne Gas: Rollwiderstand (pro Sekunde, Anteil des Tempos). Mit W: kein Rollwiderstand.
-	RollingResistance = 0.2,
+	RollingResistance = 0.063,
 	-- Leichter Luftwiderstand (waechst mit dem Tempo im Quadrat), wirkt immer.
-	-- Endtempo bergab ~ Wurzel(196 * sin(Hangwinkel) / AirDrag), z. B. 20 Grad -> ~210 Studs/s
-	AirDrag = 0.0015,
+	-- Endtempo bergab ~ Wurzel(196 * sin(Hangwinkel) / AirDrag), z. B. 10 Grad -> ~220 Studs/s;
+	-- ab ca. 13 Grad Gefaelle begrenzt TerminalSpeed
+	AirDrag = 0.00069,
 	-- Sicherheitsgrenze gegen Physik-Fehler (kein Gameplay-Limit)
 	TerminalSpeed = 250,
 
@@ -65,8 +66,9 @@ Config.Drive = {
 	SteerHighSpeedFactor = 0.55,
 	RollDamping = 1.5, -- daempft Wackeln/Kippbewegungen am Boden (0 = aus)
 
-	-- "Kaputtes Rad": zufaelliges Ziehen zur Seite, typisch Einkaufswagen. 0 = aus.
-	WobbleStrength = 0.35, -- Radiant/Sekunde
+	-- "Kaputtes Rad": zufaelliges, langsames Ziehen nach links oder rechts (der "Drall" nach
+	-- ein paar Metern), typisch Einkaufswagen. 0 = aus.
+	WobbleStrength = 0.15, -- Radiant/Sekunde
 	WobbleFrequency = 0.8,
 	WobbleMinSpeed = 12, -- darunter kein Wackeln (z. B. beim Losfahren)
 	WobbleFullSpeed = 40, -- ab diesem Tempo voller Wackel-Effekt
@@ -80,15 +82,18 @@ Config.Drive = {
 	GroundCheckExtra = 0.6, -- wie weit unter den Raedern noch "Boden" erkannt wird
 }
 
--- Drift mit Handbremse (Shift / Gamepad B). Laeuft auf dem Client des Fahrers.
+-- Drift. Laeuft auf dem Client des Fahrers.
+-- DriftByDefault = true: Der Wagen ist immer im Drift-Modus, Shift (Gamepad B) haelt ihn
+-- im normalen Fahrmodus. false: umgekehrt, Shift = Drift (Handbremse).
 -- Gefuehl: Einkaufswagen mit lenkenden Vorderraedern und "wirren" Hinterraedern. Die Front
 -- zieht den Wagen durch die Kurve (die Lenkung bestimmt, wie schnell er sich dreht), der
 -- Seitenhalt wird weicher, also schwingt das Heck aus. Ab MaxAngle drehen Lenkung und
 -- zusaetzlicher Halt zurueck: kein Dreher, auch nicht bei langem Driften.
 Config.Drift = {
+	DriftByDefault = true,
 	EngageTime = 0.15, -- so schnell (s) greift die Handbremse
 	GripRecoverTime = 0.3, -- so schnell (s) kommt der volle Halt nach dem Loslassen zurueck
-	HandbrakeDeceleration = 4, -- leichtes Abbremsen durch die Handbremse
+	HandbrakeDeceleration = 4, -- leichtes Abbremsen, nur solange der Wagen wirklich rutscht
 	LateralGrip = 3.5, -- Seitenhalt im Drift (normal: Drive.LateralGrip = 8). Kleiner = weiter ausschwingen
 	SteerRate = 2.4, -- Drehgeschwindigkeit im Drift (Radiant/s) - staerker als normal
 	SteerResponseFactor = 0.6, -- wie direkt die Drehung folgt (Anteil von Drive.SteerResponse); kleiner = weicher
@@ -98,23 +103,27 @@ Config.Drift = {
 	RecoverAngle = 30, -- maximaler Driftwinkel (Grad)
 	RecoverStrength = 25, -- wie hart die Grenze zurueckdreht (0 = aus)
 
-	-- "Wirres Heck": kleines, unregelmaessiges Pendeln im Drift
+	-- "Wirres Heck": kleines, unregelmaessiges Pendeln im Drift (nur solange der Wagen rutscht)
 	TailWobble = 0.5, -- Staerke (Radiant/s); 0 = aus
 	TailWobbleFrequency = 2.5, -- wie schnell es pendelt
 
-	-- Boost: Driftzeit zaehlt nur am Boden, ab Mindesttempo und Mindest-Driftwinkel
+	-- Boost: Driftzeit zaehlt nur am Boden, ab Mindesttempo und Mindest-Driftwinkel.
+	-- Der Boost kommt, sobald der Drift endet: Shift gedrueckt (bzw. losgelassen, wenn
+	-- DriftByDefault = false) oder der Wagen faehrt ReleaseDelay Sekunden lang wieder gerade.
 	MinSpeed = 25, -- Studs/s
 	MinAngle = 12, -- Grad
+	ReleaseDelay = 0.25, -- so lange (s) gerade fahren, bis der Drift als beendet gilt
 	Level1Time = 1.0, -- Sekunden Driftzeit fuer Stufe 1
 	Level2Time = 2.0, -- Sekunden Driftzeit fuer Stufe 2
-	Level1Boost = 0.15, -- Schub beim Loslassen: Anteil von Drive.MaxPushSpeed (0.15 = +15 %)
-	Level2Boost = 0.25,
-	BoostDuration = 0.4, -- so lange (s) wird geschoben
+	Level1Boost = 0.4, -- Tempo-Zuwachs: Anteil von Drive.MaxPushSpeed (0.4 = +40 % = +24 Studs/s)
+	Level2Boost = 0.7,
+	BoostDuration = 0.5, -- ueber so viele Sekunden wird der Zuwachs verteilt
 
 	-- Effekte (nur lokal sichtbar)
 	SparkColor = Color3.fromRGB(255, 240, 200), -- Funken ohne Boost-Ladung
 	Level1Color = Color3.fromRGB(80, 170, 255), -- Stufe 1: blau
 	Level2Color = Color3.fromRGB(255, 140, 40), -- Stufe 2: orange
+	SkidMinAngle = 8, -- Reifenspuren und Quietschen erst ab diesem Driftwinkel (Grad), also nur in Kurven
 	SkidMarkInterval = 0.05, -- alle x Sekunden ein Stueck Reifenspur pro Hinterrad
 	SkidMarkLifetime = 3, -- so lange (s) bis eine Spur verschwunden ist
 	MaxSkidMarks = 150, -- Obergrenze (Performance); die aeltesten werden wiederverwendet
@@ -122,13 +131,13 @@ Config.Drift = {
 }
 
 -- Hopp (wie Mario Kart): Leertaste (Gamepad A) laesst den Wagen kurz huepfen. In der Luft
--- dreht er sich schnell in Lenkrichtung; so wechselt man z. B. schnell von einem Links- in
--- einen Rechtsdrift (Shift dabei gedrueckt halten).
+-- dreht er sich in Lenkrichtung; so wechselt man z. B. schnell von einem Links- in einen
+-- Rechtsdrift. Die Drift-Ladung bleibt dabei erhalten.
 Config.Hop = {
 	Enabled = true,
-	Speed = 20, -- Sprung-Tempo nach oben (Studs/s); 20 = ca. 1 Stud hoch
+	Speed = 37.1, -- Sprung-Tempo nach oben (Studs/s); Hoehe ~ Speed^2 / 392, 37 = ca. 3.5 Studs
 	Cooldown = 0.35, -- Mindestabstand zwischen zwei Hopps (s)
-	TurnRate = 5, -- Drehgeschwindigkeit in der Luft (Radiant/s)
+	TurnRate = 1.57, -- Drehgeschwindigkeit in der Luft (Radiant/s)
 	TurnResponse = 12, -- wie direkt die Drehung in der Luft folgt
 	MinAirTime = 0.12, -- so lange (s) gilt der Wagen nach dem Hopp sicher als "in der Luft"
 	MaxAirTime = 0.6, -- spaetestens dann endet die Hopp-Drehung
@@ -224,6 +233,11 @@ Config.TuningPanel = {
 	{ label = "Hopp-Drehung", path = "Hop.TurnRate" },
 	{ label = "Boost-Schwelle 1 (s)", path = "Drift.Level1Time" },
 	{ label = "Boost-Schwelle 2 (s)", path = "Drift.Level2Time" },
+	{ label = "Drift-Boost Stufe 1", path = "Drift.Level1Boost" }, -- Anteil vom Motor-Hoechsttempo
+	{ label = "Drift-Boost Stufe 2", path = "Drift.Level2Boost" },
+	{ label = "Drift-Boost Dauer (s)", path = "Drift.BoostDuration" },
+	{ label = "Drift-Ende (s gerade)", path = "Drift.ReleaseDelay" },
+	{ label = "Wackelrad (Drall)", path = "Drive.WobbleStrength", span = 0.5 }, -- span: falls auf 0 gesetzt
 	{ label = "Schlamm-Bremse", path = "Track.MudDrag" },
 	{ label = "Eis-Seitenhalt", path = "Track.IceGrip" },
 	{ label = "BoostPad-Staerke", path = "Track.BoostPadStrength" },
@@ -258,6 +272,10 @@ Config.Camera = {
 	ShakeMaxAngle = 3, -- Obergrenze, damit niemandem schlecht wird
 	ShakeFrequency = 18, -- wie schnell es zittert
 	ShakeDecay = 4, -- wie schnell das Landungs-Wackeln abklingt (pro Sekunde)
+
+	-- Boost (Drift-Boost, BoostPad): Sichtfeld kurz weiter, damit man den Schub spuert
+	BoostFovKick = 10, -- Grad
+	BoostFovDecay = 2.5, -- wie schnell es zurueckgeht (pro Sekunde)
 }
 
 -- Crash-Erkennung (laeuft auf dem Client des Fahrers).

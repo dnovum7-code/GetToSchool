@@ -48,7 +48,6 @@ local wasGrounded = true -- fuer die Landungs-Erkennung (Kamera-Wackeln)
 local runPhase: "Ready" | "Running" | "Finished" | "Aborted" = "Ready"
 local runStartedAt = 0
 local finishedTime = 0 -- Endzeit des letzten Laufs (bleibt auf dem Timer stehen)
-local wasBoosting = false
 local wasBoostingForCrash = false
 
 -- Aktuelle Laufzeit (Sekunden) fuer den Timer im UI
@@ -130,7 +129,7 @@ end)
 local EXIT_ACTION = "GetToSchoolExit"
 local HANDBRAKE_ACTION = "GetToSchoolHandbrake"
 local HOP_ACTION = "GetToSchoolHop"
-local handbrakeHeld = false
+local shiftHeld = false -- Shift / Gamepad B: wechselt zwischen Drift und normal (Config.Drift.DriftByDefault)
 local hopRequested = false -- Hopp-Taste gedrueckt: Hopp im naechsten Physik-Frame
 
 -- Diese Zustaende wuerden die Figur aus dem Sitz werfen
@@ -159,7 +158,7 @@ local function deactivate()
 	ContextActionService:UnbindAction(EXIT_ACTION)
 	ContextActionService:UnbindAction(HANDBRAKE_ACTION)
 	ContextActionService:UnbindAction(HOP_ACTION)
-	handbrakeHeld = false
+	shiftHeld = false
 	DriftEffects.detach()
 	SoundSystem.detach()
 	local humanoid = activeHumanoid
@@ -194,15 +193,16 @@ local function activate(seat: BasePart, humanoid: Humanoid)
 	end, true, Enum.KeyCode.E, Enum.KeyCode.ButtonX)
 	ContextActionService:SetTitle(EXIT_ACTION, "Raus")
 
-	-- Handbremse / Drift: Shift (Gamepad B), Touch-Button "Drift". Hohe Prioritaet und
-	-- "Sink", damit Shift nicht nebenbei Roblox' ShiftLock umschaltet.
+	-- Shift (Gamepad B), Touch-Button: Standard ist Drift, gehalten = normal fahren
+	-- (umgekehrt, wenn Config.Drift.DriftByDefault = false). Hohe Prioritaet und "Sink",
+	-- damit Shift nicht nebenbei Roblox' ShiftLock umschaltet.
 	ContextActionService:BindActionAtPriority(
 		HANDBRAKE_ACTION,
 		function(_, inputState)
 			if inputState == Enum.UserInputState.Begin then
-				handbrakeHeld = true
+				shiftHeld = true
 			elseif inputState == Enum.UserInputState.End or inputState == Enum.UserInputState.Cancel then
-				handbrakeHeld = false
+				shiftHeld = false
 			end
 			return Enum.ContextActionResult.Sink
 		end,
@@ -212,7 +212,7 @@ local function activate(seat: BasePart, humanoid: Humanoid)
 		Enum.KeyCode.RightShift,
 		Enum.KeyCode.ButtonB
 	)
-	ContextActionService:SetTitle(HANDBRAKE_ACTION, "Drift")
+	ContextActionService:SetTitle(HANDBRAKE_ACTION, if Config.Drift.DriftByDefault then "Normal" else "Drift")
 
 	-- Hopp: Leertaste (Gamepad A), Touch-Button "Hopp". Hohe Prioritaet und "Sink", damit
 	-- Roblox' eigener Sprung die Taste im Wagen nicht bekommt.
@@ -502,12 +502,13 @@ RunService.PreSimulation:Connect(function(dt)
 		return
 	end
 	local throttle, steer = readInput()
-	-- Handbremse nur, wenn nicht gerade im Chat getippt wird
-	local handbrake = handbrakeHeld and UserInputService:GetFocusedTextBox() == nil
+	-- Shift zaehlt nur, wenn nicht gerade im Chat getippt wird
+	local shift = shiftHeld and UserInputService:GetFocusedTextBox() == nil
+	local driftMode = if Config.Drift.DriftByDefault then not shift else shift
 	local surface = TrackSensors.sampleGround(current.cart)
 	local hop = hopRequested and UserInputService:GetFocusedTextBox() == nil
 	hopRequested = false
-	local telemetry = current:step(dt, throttle, steer, handbrake, hop, surface)
+	local telemetry = current:step(dt, throttle, steer, driftMode, hop, surface)
 
 	-- Bouncy: federt ab, ein harter Aufprall ist hier kein Crash
 	if TrackSensors.touching(current.cart, "Bouncy") then
@@ -519,12 +520,11 @@ RunService.PreSimulation:Connect(function(dt)
 		crashDetector:relaxImpact(Config.Track.JumpLandingTolerance, airTime)
 	end
 	DriftEffects.update(dt, telemetry)
-	local drifting = telemetry.grounded and telemetry.driftAmount > 0.5 and telemetry.speed > 10
-	SoundSystem.update(telemetry.speed, telemetry.grounded, drifting)
-	if telemetry.padEvent == "Boost" or (telemetry.boosting and not wasBoosting) then
+	SoundSystem.update(telemetry.speed, telemetry.grounded, telemetry.skidding)
+	if telemetry.padEvent == "Boost" or telemetry.boostStarted then
 		SoundSystem.play("Boost")
+		ChaseCamera.kickFov(Config.Camera.BoostFovKick)
 	end
-	wasBoosting = telemetry.boosting
 	RaceUI.setSpeed(telemetry.speed)
 
 	-- Harte Landung: Fallgeschwindigkeit kurz vor dem Aufsetzen bestimmt das Wackeln

@@ -150,12 +150,8 @@ function DriftEffects.update(dt: number, telemetry: CartController.Telemetry?)
 		wheel.emitter.Color = ColorSequence.new(color)
 	end
 
-	-- Reifenspuren, solange die Handbremse greift und der Wagen rutscht
-	local marking = telemetry ~= nil
-		and currentCart ~= nil
-		and telemetry.grounded
-		and telemetry.driftAmount > 0.5
-		and telemetry.speed > 10
+	-- Reifenspuren nur, solange der Wagen seitlich rutscht (in Kurven), nicht geradeaus
+	local marking = telemetry ~= nil and currentCart ~= nil and telemetry.skidding
 	markTimer += dt
 	if marking and markTimer >= DR.SkidMarkInterval then
 		markTimer = 0
