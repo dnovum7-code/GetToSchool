@@ -53,8 +53,8 @@ requestEnter.OnServerEvent:Connect(function(player)
 	RaceManager.requestEnter(player)
 end)
 -- Crash-Meldung: wird nur angenommen, wenn der Spieler gerade wirklich faehrt.
-reportCrash.OnServerEvent:Connect(function(player)
-	RaceManager.reportCrash(player)
+reportCrash.OnServerEvent:Connect(function(player, reason)
+	RaceManager.reportCrash(player, reason)
 end)
 
 local function onCharacterAdded(player: Player, character: Model)

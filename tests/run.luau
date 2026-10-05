@@ -8,6 +8,7 @@ local TestLib = require("./TestLib")
 local SPECS = {
 	"./SaveDataSpec",
 	"./EconomySpec",
+	"./RunRulesSpec",
 }
 
 for _, path in SPECS do

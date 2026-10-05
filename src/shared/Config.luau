@@ -224,6 +224,10 @@ Config.Sounds = {
 	Crash = { Id = "", Volume = 0.8 },
 	Checkpoint = { Id = "", Volume = 0.6 },
 	Coin = { Id = "", Volume = 0.5 }, -- Muenze eingesammelt
+	Ragdoll = { Id = "", Volume = 0.8 }, -- Figur fliegt aus dem Wagen (z. B. lustiger Schrei)
+	GameOver = { Id = "", Volume = 0.8 },
+	LifeLost = { Id = "", Volume = 0.6 },
+	Shield = { Id = "", Volume = 0.7 }, -- Fahrradhelm faengt einen Crash ab
 	Finish = { Id = "", Volume = 0.8 }, -- im Ziel
 }
 
@@ -261,6 +265,10 @@ Config.TuningPanel = {
 	{ label = "Eis-Seitenhalt", path = "Track.IceGrip" },
 	{ label = "BoostPad-Staerke", path = "Track.BoostPadStrength" },
 	{ label = "JumpPad-Staerke", path = "Track.JumpPadStrength" },
+	{ label = "Leben pro Lauf", path = "Lives.PerRun", server = true }, -- gilt ab dem naechsten T
+	{ label = "Ragdoll-Flug hoch", path = "Crash.RagdollUpSpeed" },
+	{ label = "Ragdoll-Flug vorne", path = "Crash.RagdollForwardBoost" },
+	{ label = "Ragdoll schwebt (0..1)", path = "Crash.RagdollFloat", span = 0.45 },
 }
 
 -- Fehlersuche (nur in Studio wirksam)
@@ -304,20 +312,48 @@ Config.Crash = {
 	ImpactSpeedChange = 60, -- Tempoaenderung in einem Frame = harter Aufprall
 	KillY = -100, -- unter dieser Hoehe gilt der Wagen als abgestuerzt
 	GracePeriod = 0.5, -- nach einem Neustart so lange keine Crashs erkennen
-	RestartDelay = 1.2, -- so lange den Crash zeigen, dann Neustart (R ueberspringt das)
+	RestartDelay = 2.2, -- so lange den Crash zeigen (Figur fliegt), dann Neustart (R ueberspringt das)
 	-- Selbst verursachte Tempo-Spruenge (BoostPad, JumpPad, Drift-Boost, Hopp) sind kein Aufprall.
 	-- Danach ist die Aufprall-Erkennung so lange (s) um diesen Faktor toleranter:
 	SelfImpulseGrace = 0.3,
 	SelfImpulseTolerance = 2,
 
-	-- Ragdoll: Bei einem Crash fliegt die Figur schlaff aus dem Wagen.
+	-- Ragdoll: Bei einem Crash fliegt die Figur schlaff und voellig uebertrieben aus dem Wagen.
 	Ragdoll = true, -- false = Figur bleibt im Wagen sitzen
-	RagdollCarry = 0.8, -- Anteil des Wagen-Tempos, den die Figur mitnimmt
-	RagdollForwardBoost = 10, -- zusaetzlicher Schwung in Fahrtrichtung (Studs/s)
-	RagdollUpSpeed = 25, -- Schwung nach oben (Studs/s)
-	RagdollSpin = 6, -- zufaelliges Drehen (Radiant/s), fuer mehr Slapstick
+	RagdollCarry = 1.2, -- Anteil des Wagen-Tempos, den die Figur mitnimmt
+	RagdollForwardBoost = 45, -- zusaetzlicher Schwung in Fahrtrichtung (Studs/s)
+	RagdollUpSpeed = 80, -- Schwung nach oben (Studs/s)
+	RagdollSpin = 14, -- zufaelliges Drehen (Radiant/s), fuer mehr Slapstick
+	RagdollFloat = 0.45, -- so viel der Schwerkraft wird beim Flug aufgehoben (0..1): fliegt weiter
+	RagdollTrail = true, -- Luftspur hinter der fliegenden Figur
 	RagdollJointAngle = 60, -- wie weit Arme, Beine und Kopf schlackern duerfen (Grad)
 	ServerRestartTimeout = 4, -- Sicherheitsnetz: so lange (s) nach dem Crash startet der Server selbst neu
+}
+
+-- Leben ("Crashen macht Spass"): pro Lauf, Anzeige als kleine Schulranzen.
+-- Jeder Crash und jeder Treffer (Launchable) kostet eins; der Fahrradhelm faengt eins ab.
+-- Kompletter Neustart (T) fuellt die Leben wieder auf.
+Config.Lives = {
+	PerRun = 5,
+	GameOverTime = 4.5, -- so lange (s) den Game-Over-Screen zeigen, dann kompletter Neustart (T: sofort)
+	-- Zufaellig gewaehlte Texte fuer den Game-Over-Screen
+	GameOverTitles = { "NACHSITZEN!", "ZU SPAET!", "DER BUS IST WEG!", "AB INS SEKRETARIAT!" },
+	GameOverTexts = {
+		"Der Hausmeister hat dich mit der Schubkarre eingesammelt.",
+		"Die Lehrerin schreibt schon einen Brief an deine Eltern.",
+		"Dein Einkaufswagen braucht jetzt erst mal Urlaub.",
+		"Morgen einfach eine Stunde frueher aufstehen?",
+		"Die Kuh hat sich beim Rektor beschwert.",
+	},
+}
+
+-- Abilities (ueber Upgrades im Shop freischaltbar). Werte pro Stufe heissen Name1, Name2 ...
+Config.Abilities = {
+	-- Fahrradhelm: so viele Ladungen pro Stufe (jede faengt einen Crash/Treffer ab)
+	HelmetCharges1 = 1,
+	HelmetCharges2 = 2,
+	HelmetCharges3 = 3,
+	HelmetGrace = 1.0, -- nach einer Helm-Rettung so lange (s) keine neuen Crashs
 }
 
 -- Rennablauf (Server)

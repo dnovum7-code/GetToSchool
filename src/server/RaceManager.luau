@@ -20,6 +20,8 @@ local RunService = game:GetService("RunService")
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local Economy =
 	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression"):WaitForChild("Economy"))
+local RunRules =
+	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression"):WaitForChild("RunRules"))
 local RaceTime = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RaceTime"))
 local BestTimes = require(script.Parent:WaitForChild("BestTimes"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
@@ -32,7 +34,7 @@ local runState = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("RunStat
 
 local RaceManager = {}
 
-type Phase = "Ready" | "Running" | "Finished" | "Aborted"
+type Phase = "Ready" | "Running" | "Finished" | "Aborted" | "GameOver"
 
 type Checkpoint = {
 	part: BasePart,
@@ -51,6 +53,8 @@ type RaceState = {
 	splits: { [string]: number }, -- Zwischenzeiten dieses Laufs (Checkpoint -> Sekunden)
 	runId: number,
 	lastRestart: number,
+	life: RunRules.LifeState, -- Leben und Helm-Ladungen in diesem Lauf
+	hits: number, -- getroffene Objekte (Launchables) in diesem Lauf
 }
 
 -- Ergebnis eines Laufs, so wie es an den Client geht
@@ -83,6 +87,8 @@ local function getRace(player: Player): RaceState
 			splits = {},
 			runId = 0,
 			lastRestart = -math.huge,
+			life = RunRules.newRun(Config.Lives.PerRun, 0),
+			hits = 0,
 		}
 		races[player] = race
 	end
@@ -102,6 +108,18 @@ local function sendBest(player: Player, race: RaceState)
 	runState:FireClient(player, "Best", if best then best.time else nil)
 end
 
+-- Helm-Ladungen je nach gekaufter Stufe (Upgrade "Helmet")
+local function maxShieldFor(player: Player): number
+	local level = Profiles.get(player).upgrades.Helmet or 0
+	return math.max(0, math.floor(RunRules.levelValue(Config.Abilities, "HelmetCharges", level, 0)))
+end
+
+-- Leben und Helm an den Client schicken (Anzeige)
+local function sendLives(player: Player, race: RaceState)
+	local life = race.life
+	runState:FireClient(player, "Lives", life.lives, life.maxLives, life.shield, life.maxShield)
+end
+
 -- Kompletter Neustart (Taste T): Wagen an den Start, neuer Lauf, Zeit wieder auf 0.
 function RaceManager.restart(player: Player)
 	local spawnCFrame = CartManager.reset(player)
@@ -119,28 +137,83 @@ function RaceManager.restart(player: Player)
 	race.runId += 1
 	race.lastRestart = os.clock()
 	Coins.resetRun(player) -- Muenzen erscheinen wieder (die eingesammelten behaelt man)
+	race.life = RunRules.newRun(Config.Lives.PerRun, maxShieldFor(player)) -- Leben wieder voll
+	race.hits = 0
 	-- Neuer Lauf: Zufallsereignisse neu wuerfeln (vor "Reset", damit die Strecke steht)
 	runState:FireClient(player, "Events", RandomEvents.roll())
 	runState:FireClient(player, "Reset", spawnCFrame, false)
 	sendBest(player, race)
+	sendLives(player, race)
 end
 
--- Zurueck zum letzten Checkpoint (Taste R, nach Crash). Die Zeit laeuft weiter.
--- Ohne Checkpoint (oder wenn gerade kein Lauf laeuft) = kompletter Neustart.
+-- Zurueck zum letzten Checkpoint (Taste R, nach Crash). Die Zeit laeuft weiter, Leben und
+-- eingesammelte Muenzen bleiben. Ohne Checkpoint geht es zurueck an den Start (Zeit laeuft
+-- trotzdem weiter). Nach dem Ziel oder Abbruch: kompletter Neustart (neuer Lauf).
 function RaceManager.restartAtCheckpoint(player: Player)
 	local race = getRace(player)
-	local checkpoint = race.checkpoint
-	if race.phase ~= "Running" or not checkpoint then
+	if race.phase == "GameOver" then
+		return -- der Game-Over-Screen laeuft; danach startet der Server selbst neu
+	end
+	if race.phase ~= "Running" and race.phase ~= "Ready" then
 		RaceManager.restart(player)
 		return
 	end
-	local cframe = CartManager.reset(player, checkpoint.cframe)
+	local checkpoint = race.checkpoint
+	local cframe = CartManager.reset(player, if checkpoint then checkpoint.cframe else nil)
 	if not cframe then
 		return
 	end
-	race.usedCheckpointRestart = true
+	if checkpoint then
+		race.usedCheckpointRestart = true
+	end
 	race.lastRestart = os.clock()
 	runState:FireClient(player, "Reset", cframe, true)
+end
+
+-- Game Over (0 Leben): lustiger Screen beim Client, dann kompletter Neustart
+local function gameOver(player: Player, race: RaceState)
+	local wasRunning = race.phase == "Running"
+	race.phase = "GameOver"
+	local runId = race.runId
+	runState:FireClient(player, "GameOver", {
+		hits = race.hits,
+		coins = Coins.getRunTotal(player),
+		time = if wasRunning then os.clock() - race.startTime else nil,
+	})
+	task.delay(Config.Lives.GameOverTime, function()
+		if races[player] == race and race.runId == runId and race.phase == "GameOver" then
+			RaceManager.restart(player)
+		end
+	end)
+end
+
+-- Crash oder Treffer: kostet ein Leben (oder eine Helm-Ladung). Zaehlt nur waehrend eines
+-- Laufs (vor dem Start und waehrend der Fahrt). Rueckgabe: "Shielded", "LifeLost",
+-- "GameOver" (siehe RunRules.applyHit) oder nil.
+function RaceManager.applyHit(player: Player): string?
+	local race = getRace(player)
+	if race.phase ~= "Ready" and race.phase ~= "Running" then
+		return nil
+	end
+	local outcome: string = RunRules.applyHit(race.life)
+	sendLives(player, race)
+	if outcome == "GameOver" then
+		gameOver(player, race)
+	end
+	return outcome
+end
+
+-- Zaehler fuer getroffene Objekte (Ergebnis-Screen)
+function RaceManager.addHitObject(player: Player)
+	getRace(player).hits += 1
+end
+
+-- Helm-Stufe hat sich geaendert (Kauf): Ladungen neu berechnen
+function RaceManager.refreshShield(player: Player)
+	local race = getRace(player)
+	race.life.maxShield = maxShieldFor(player)
+	race.life.shield = race.life.maxShield
+	sendLives(player, race)
 end
 
 -- Neustart-Wunsch vom Client: "Checkpoint" (R, Crash) oder "Full" (T). Mit Spam-Schutz.
@@ -148,6 +221,9 @@ function RaceManager.requestRestart(player: Player, kind: unknown)
 	local race = getRace(player)
 	if os.clock() - race.lastRestart < Config.Race.MinRestartInterval then
 		return
+	end
+	if race.phase == "GameOver" and kind ~= "Full" then
+		return -- R waehrend Game Over: nichts; T startet sofort neu
 	end
 	if kind == "Full" then
 		RaceManager.restart(player)
@@ -192,6 +268,10 @@ local function checkCheckpoints(player: Player, race: RaceState, base: BasePart)
 		local cframe = Track.placeOnGround(CFrame.lookAt(position, position + direction), { instance })
 		race.checkpoint = { part = instance, cframe = cframe, order = order or lastOrder }
 		race.wrongCheckpoint = nil
+		-- Neuer Checkpoint: Fahrradhelm laedt sich wieder auf
+		if RunRules.rechargeShield(race.life) then
+			sendLives(player, race)
+		end
 
 		-- Zwischenzeit: beim ersten Durchfahren in diesem Lauf mit der Bestzeit vergleichen
 		local key = instance:GetFullName()
@@ -268,15 +348,30 @@ function RaceManager.requestEnter(player: Player)
 	CartManager.enter(player)
 end
 
--- Crash (vom Client gemeldet). Der Server prueft, ob der Spieler wirklich faehrt, und
--- laesst die Figur als Ragdoll herausfliegen. Den Neustart fragt der Client danach an.
-function RaceManager.reportCrash(player: Player)
+local CRASH_REASONS = { Tipped = true, Impact = true, Fell = true, Hazard = true }
+
+-- Crash (vom Client gemeldet, mit Grund). Der Server prueft, ob der Spieler wirklich faehrt.
+-- Kostet ein Leben, ausser der Helm faengt ihn ab ("Shielded": keine Ragdoll). Sonst fliegt
+-- die Figur als Ragdoll heraus; den Neustart am Checkpoint fragt der Client danach an.
+-- (Dem Client beim Crash zu glauben ist unbedenklich: er schadet damit nur sich selbst.)
+function RaceManager.reportCrash(player: Player, reason: unknown)
+	if type(reason) ~= "string" or not CRASH_REASONS[reason] or not CartManager.isSeated(player) then
+		return
+	end
+	local outcome = RaceManager.applyHit(player)
+	if outcome == "Shielded" then
+		runState:FireClient(player, "Shielded", reason, getRace(player).life.shield)
+		return
+	end
 	if CartManager.crash(player) then
 		runState:FireClient(player, "Ragdoll")
 	end
 end
 
 local function updatePlayer(player: Player, race: RaceState)
+	if race.phase == "GameOver" then
+		return -- nach dem Game-Over-Screen startet der Server selbst neu
+	end
 	-- Sicherheitsnetz: Liegt die Figur zu lange als Ragdoll herum (z. B. Neustart-Anfrage
 	-- des Clients verloren), startet der Server selbst neu.
 	local ragdollTime = CartManager.getRagdollTime(player)
@@ -341,6 +436,10 @@ function RaceManager.start()
 		local race = races[player]
 		if race then
 			sendBest(player, race)
+			-- Gekaufter Helm gilt sofort, wenn der Lauf noch nicht begonnen hat
+			if race.phase == "Ready" then
+				RaceManager.refreshShield(player)
+			end
 		end
 	end)
 end

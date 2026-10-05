@@ -4,6 +4,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local RaceTime = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RaceTime"))
@@ -27,6 +28,11 @@ local speedometer: Frame
 local kmhLabel: TextLabel
 local speedBarFill: Frame
 local messageToken = 0
+local gameOverFrame: Frame
+local gameOverTitle: TextLabel
+local gameOverText: TextLabel
+local gameOverInfo: TextLabel
+local gameOverConnection: RBXScriptConnection? = nil
 
 local function makeLabel(props: { [string]: any }): TextLabel
 	local label = Instance.new("TextLabel")
@@ -136,6 +142,50 @@ function RaceUI.init()
 		Text = "",
 	})
 	resultGrade.Parent = resultPanel
+
+	-- Game-Over-Screen: dunkler Hintergrund, wackelnder Titel
+	gameOverFrame = Instance.new("Frame")
+	gameOverFrame.Name = "GameOver"
+	gameOverFrame.Size = UDim2.fromScale(1, 1)
+	gameOverFrame.BackgroundColor3 = Color3.fromRGB(30, 10, 40)
+	gameOverFrame.BackgroundTransparency = 0.35
+	gameOverFrame.Visible = false
+	gameOverFrame.ZIndex = 5
+	gameOverFrame.Parent = gui
+	gameOverTitle = makeLabel({
+		Name = "Title",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.33),
+		Size = UDim2.fromScale(0.7, 0.16),
+		Text = "",
+		TextColor3 = Color3.fromRGB(255, 220, 60),
+		TextStrokeTransparency = 0,
+		ZIndex = 6,
+	})
+	gameOverTitle.Parent = gameOverFrame
+	gameOverText = makeLabel({
+		Name = "Text",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0.45),
+		Size = UDim2.fromScale(0.7, 0.06),
+		Font = Enum.Font.GothamMedium,
+		Text = "",
+		ZIndex = 6,
+	})
+	gameOverText.Parent = gameOverFrame
+	gameOverInfo = makeLabel({
+		Name = "Info",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0.54),
+		Size = UDim2.fromScale(0.5, 0.16),
+		Font = Enum.Font.Gotham,
+		TextScaled = false,
+		TextSize = 22,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Text = "",
+		ZIndex = 6,
+	})
+	gameOverInfo.Parent = gameOverFrame
 
 	-- Tempo unten rechts (hilft beim Tunen)
 	speedLabel = makeLabel({
@@ -277,6 +327,34 @@ function RaceUI.showResult(
 			resultPanel.Visible = false
 		end
 	end)
+end
+
+-- Game Over: grosser Titel (wackelt wie ein Gummiball), lustiger Text, ein paar Zahlen
+function RaceUI.showGameOver(title: string, text: string, lines: { string })
+	gameOverTitle.Text = title
+	gameOverText.Text = text
+	gameOverInfo.Text = table.concat(lines, "\n")
+	gameOverFrame.Visible = true
+	if gameOverConnection then
+		gameOverConnection:Disconnect()
+	end
+	local started = os.clock()
+	gameOverConnection = RunService.RenderStepped:Connect(function()
+		local t = os.clock() - started
+		-- erst reinploppen, dann schaukeln
+		local grow = math.min(t / 0.35, 1)
+		local bounce = 1 + 0.25 * math.sin(grow * math.pi) + 0.04 * math.sin(t * 5)
+		gameOverTitle.Size = UDim2.fromScale(0.7 * grow * bounce, 0.16 * grow * bounce)
+		gameOverTitle.Rotation = math.sin(t * 3) * 6
+	end)
+end
+
+function RaceUI.hideGameOver()
+	gameOverFrame.Visible = false
+	if gameOverConnection then
+		gameOverConnection:Disconnect()
+		gameOverConnection = nil
+	end
 end
 
 function RaceUI.hideResult()

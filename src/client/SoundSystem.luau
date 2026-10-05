@@ -13,7 +13,8 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 
 local SoundSystem = {}
 
-local ONE_SHOTS = { "Boost", "Crash", "Checkpoint", "Finish", "Coin" }
+local ONE_SHOTS =
+	{ "Boost", "Crash", "Checkpoint", "Finish", "Coin", "Ragdoll", "GameOver", "LifeLost", "Shield" }
 
 local oneShots: { [string]: Sound } = {}
 local engineSound: Sound? = nil

@@ -44,11 +44,17 @@ local crashed = false
 local crashedAt = 0
 local previousVelocity = Vector3.zero -- Wagen-Tempo im letzten Frame (vor einem Aufprall)
 local ragdollLaunch = Vector3.zero -- Schwung fuer die Ragdoll, beim Crash berechnet
+local crashToken = 0 -- damit ein alter verzoegerter Neustart nicht nach einem neuen Crash feuert
+local gameOver = false -- Game-Over-Screen laeuft (0 Leben)
+local helmetGraceUntil = 0 -- nach einer Helm-Rettung kurz keine neuen Crashs
+-- Leben und Helm-Ladungen (vom Server; die Helm-Ladung wird hier vorhergesagt, damit die
+-- Rettung ohne Verzoegerung passiert - der Server entscheidet trotzdem)
+local lifeState = { lives = Config.Lives.PerRun, maxLives = Config.Lives.PerRun, shield = 0, maxShield = 0 }
 local wasGrounded = true -- fuer die Landungs-Erkennung (Kamera-Wackeln)
 
 -- Zeitmessung: Der Server entscheidet Start und Ziel. Die laufende Zeit zaehlen wir
 -- hier nur zur Anzeige mit; das Endergebnis kommt vom Server.
-local runPhase: "Ready" | "Running" | "Finished" | "Aborted" = "Ready"
+local runPhase: "Ready" | "Running" | "Finished" | "Aborted" | "GameOver" = "Ready"
 local runStartedAt = 0
 local finishedTime = 0 -- Endzeit des letzten Laufs (bleibt auf dem Timer stehen)
 local wasBoostingForCrash = false
@@ -261,46 +267,158 @@ local function requestRestartNow(kind: "Checkpoint" | "Full")
 	requestRestart:FireServer(kind)
 end
 
--- `text`: eigener Untertitel (z. B. Attribut "Message" eines Hazards)
-local function onCrash(reason: string, base: BasePart, text: string?)
-	crashed = true
-	if controller then
-		controller:resetDrift() -- Boost-Ladung geht beim Crash verloren
-	end
-	crashedAt = os.clock()
-	RaceUI.showMessage("CRASH!", Color3.fromRGB(255, 80, 60), text or CRASH_TEXTS[reason])
-	SoundSystem.play("Crash")
-
-	-- Schwung fuer die Ragdoll: Tempo von VOR dem Aufprall (sonst waere es ~0)
+-- Schwung fuer die Ragdoll: Tempo von VOR dem Aufprall (sonst waere es ~0), plus Extra-Schwung
+local function computeRagdollLaunch(base: BasePart?)
 	local C = Config.Crash
-	local velocity = base.AssemblyLinearVelocity
+	local velocity = if base then base.AssemblyLinearVelocity else Vector3.zero
 	if previousVelocity.Magnitude > velocity.Magnitude then
 		velocity = previousVelocity
 	end
-	local forward = Vector3.new(base.CFrame.LookVector.X, 0, base.CFrame.LookVector.Z)
-	forward = if forward.Magnitude > 0.1 then forward.Unit else Vector3.zero
+	local forward = Vector3.zero
+	if base then
+		local look = Vector3.new(base.CFrame.LookVector.X, 0, base.CFrame.LookVector.Z)
+		forward = if look.Magnitude > 0.1 then look.Unit else Vector3.zero
+	end
 	ragdollLaunch = velocity * C.RagdollCarry
 		+ forward * C.RagdollForwardBoost
 		+ Vector3.yAxis * C.RagdollUpSpeed
-	if C.Ragdoll then
-		reportCrash:FireServer()
-	end
+end
 
-	-- Crash eine Weile zeigen, dann automatisch neu starten. R ueberspringt das.
-	task.delay(C.RestartDelay, function()
-		if crashed then
+-- Crash-Zustand: Fahren aus, nach einer Weile automatisch zum Checkpoint (R ueberspringt das)
+local function enterCrashed(base: BasePart?)
+	crashed = true
+	crashedAt = os.clock()
+	crashToken += 1
+	local token = crashToken
+	if controller then
+		controller:resetDrift() -- Boost-Ladung geht beim Crash verloren
+	end
+	computeRagdollLaunch(base)
+	task.delay(Config.Crash.RestartDelay, function()
+		if crashed and not gameOver and crashToken == token then
 			requestRestartNow("Checkpoint")
 		end
 	end)
 end
 
+-- Laeuft ein Lauf, in dem Leben zaehlen? (vor dem Start und waehrend der Fahrt)
+local function livesCount(): boolean
+	return runPhase == "Ready" or runPhase == "Running"
+end
+
+-- Der Fahrradhelm faengt den Crash ab: kein Leben weg, keine Ragdoll.
+-- Umgekippt: Wagen wird wieder aufgestellt. Harter Aufprall: einfach weiterfahren.
+-- Wasser/Abgrund (Hazard, Absturz): zurueck zum Checkpoint, aber ohne Lebensverlust.
+local function helmetSave(reason: string, base: BasePart)
+	lifeState.shield -= 1
+	ProgressUI.setLives(lifeState.lives, lifeState.maxLives, lifeState.shield, lifeState.maxShield)
+	helmetGraceUntil = os.clock() + Config.Abilities.HelmetGrace
+	crashDetector:reset()
+	RaceUI.showMessage("HELM!", Color3.fromRGB(90, 180, 255), "Der Fahrradhelm hat dich gerettet!", 1.2)
+	SoundSystem.play("Shield")
+	ChaseCamera.addShake(1.5)
+	if reason == "Tipped" then
+		local cart = OwnCart.find()
+		if cart then
+			local look = Vector3.new(base.CFrame.LookVector.X, 0, base.CFrame.LookVector.Z)
+			if look.Magnitude < 0.1 then
+				look = Vector3.new(base.CFrame.UpVector.X, 0, base.CFrame.UpVector.Z)
+			end
+			look = if look.Magnitude > 0.1 then look.Unit else -Vector3.zAxis
+			local position = base.Position + Vector3.new(0, 3, 0)
+			local keep = base.AssemblyLinearVelocity * Vector3.new(0.5, 0, 0.5)
+			cart:PivotTo(CFrame.lookAt(position, position + look))
+			for _, part in cart:GetDescendants() do
+				if part:IsA("BasePart") then
+					part.AssemblyAngularVelocity = Vector3.zero
+					part.AssemblyLinearVelocity = keep
+				end
+			end
+		end
+	elseif reason == "Hazard" or reason == "Fell" then
+		requestRestartNow("Checkpoint")
+	end
+end
+
+-- `text`: eigener Untertitel (z. B. Attribut "Message" eines Hazards)
+local function onCrash(reason: string, base: BasePart, text: string?)
+	reportCrash:FireServer(reason) -- Server zieht das Leben ab (oder die Helm-Ladung)
+	if livesCount() and lifeState.shield > 0 then
+		helmetSave(reason, base)
+		return
+	end
+	enterCrashed(base)
+	RaceUI.showMessage("CRASH!", Color3.fromRGB(255, 80, 60), text or CRASH_TEXTS[reason])
+	SoundSystem.play("Crash")
+end
+
+-- Fliegende Figur: Schwerkraft teilweise aufheben (fliegt weiter) und Luftspur
+local function addRagdollEffects(character: Model)
+	local C = Config.Crash
+	for _, part in character:GetDescendants() do
+		if part:IsA("BasePart") and not part.Massless and C.RagdollFloat > 0 then
+			local attachment = Instance.new("Attachment")
+			attachment.Name = "RagdollFloatAttachment"
+			attachment.Parent = part
+			local force = Instance.new("VectorForce")
+			force.Name = "RagdollFloat"
+			force.Attachment0 = attachment
+			force.RelativeTo = Enum.ActuatorRelativeTo.World
+			force.ApplyAtCenterOfMass = true
+			force.Force = Vector3.new(0, part.Mass * workspace.Gravity * math.clamp(C.RagdollFloat, 0, 1), 0)
+			force.Parent = part
+		end
+	end
+	local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+	if C.RagdollTrail and torso and torso:IsA("BasePart") then
+		local a0 = Instance.new("Attachment")
+		a0.Name = "RagdollTrailAttachment"
+		a0.Position = Vector3.new(0, 0.8, 0)
+		a0.Parent = torso
+		local a1 = Instance.new("Attachment")
+		a1.Name = "RagdollTrailAttachment"
+		a1.Position = Vector3.new(0, -0.8, 0)
+		a1.Parent = torso
+		local trail = Instance.new("Trail")
+		trail.Name = "RagdollTrail"
+		trail.Attachment0 = a0
+		trail.Attachment1 = a1
+		trail.Lifetime = 0.8
+		trail.FaceCamera = true
+		trail.LightEmission = 0.6
+		trail.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 210, 90))
+		trail.Transparency = NumberSequence.new(0.2, 1)
+		trail.Parent = torso
+	end
+end
+
+local function removeRagdollEffects(character: Model)
+	for _, item in character:GetDescendants() do
+		if
+			item.Name == "RagdollFloat"
+			or item.Name == "RagdollFloatAttachment"
+			or item.Name == "RagdollTrail"
+			or item.Name == "RagdollTrailAttachment"
+		then
+			item:Destroy()
+		end
+	end
+end
+
 -- Server hat die Ragdoll gebaut: Figur schlaff schalten und wegschleudern.
 -- (Unsere Figur rechnet dieser Client, deshalb setzen wir Zustand und Tempo hier.)
+-- Kommt die Ragdoll ohne eigenen Crash (z. B. Game Over durch einen Treffer, oder der
+-- Server kannte keine Helm-Ladung mehr), gilt das jetzt als Crash.
 local function onRagdoll()
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if not character or not humanoid then
 		return
+	end
+	if not crashed then
+		local cart = OwnCart.find()
+		local base = cart and cart:FindFirstChild("Base")
+		enterCrashed(if base and base:IsA("BasePart") then base else nil)
 	end
 	humanoid:ChangeState(Enum.HumanoidStateType.Physics) -- Humanoid steuert nichts mehr
 	local spin = Config.Crash.RagdollSpin
@@ -311,12 +429,48 @@ local function onRagdoll()
 			part.AssemblyAngularVelocity = randomSpin
 		end
 	end
+	addRagdollEffects(character)
+	SoundSystem.play("Ragdoll")
+end
+
+-- Leben/Helm vom Server
+local function onLives(lives: number, maxLives: number, shield: number, maxShield: number)
+	local lost = lives < lifeState.lives and maxLives == lifeState.maxLives
+	lifeState.lives, lifeState.maxLives = lives, maxLives
+	lifeState.shield, lifeState.maxShield = shield, maxShield
+	ProgressUI.setLives(lives, maxLives, shield, maxShield)
+	if lost and lives > 0 then
+		SoundSystem.play("LifeLost")
+		RaceUI.showToast(`-1 Leben (noch {lives})`, 2, Color3.fromRGB(255, 110, 100))
+	end
+end
+
+-- 0 Leben: lustiger Game-Over-Screen; der Server startet danach selbst neu (T: sofort)
+local function onGameOver(info: { hits: number, coins: number, time: number? })
+	gameOver = true
+	runPhase = "GameOver"
+	RaceUI.hideMessage()
+	local L = Config.Lives
+	local title = L.GameOverTitles[math.random(1, #L.GameOverTitles)]
+	local text = L.GameOverTexts[math.random(1, #L.GameOverTexts)]
+	local lines = {
+		`Getroffene Objekte: {info.hits}`,
+		`Muenzen in diesem Lauf: {info.coins} (die behaeltst du!)`,
+	}
+	if info.time then
+		table.insert(lines, "Gefahren: " .. RaceTime.format(info.time))
+	end
+	table.insert(lines, "")
+	table.insert(lines, "T: sofort neu starten")
+	RaceUI.showGameOver(title, text, lines)
+	SoundSystem.play("GameOver")
 end
 
 -- Antwort des Servers: Wagen steht wieder am Start.
 local function onReset(spawnCFrame: CFrame)
 	crashDetector:reset()
 	crashed = false
+	crashToken += 1
 	previousVelocity = Vector3.zero
 	RaceUI.hideMessage()
 	if controller then
@@ -326,6 +480,9 @@ local function onReset(spawnCFrame: CFrame)
 
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if character then
+		removeRagdollEffects(character)
+	end
 	if humanoid and humanoid:GetState() == Enum.HumanoidStateType.Physics then
 		-- aus der Ragdoll aufstehen, damit der Server uns wieder hinsetzen kann
 		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
@@ -364,7 +521,9 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		if not keepRunning then
 			-- kompletter Neustart: neuer Lauf. Beim Checkpoint-Neustart laeuft die Zeit weiter.
 			runPhase = "Ready"
+			gameOver = false
 			RaceUI.hideResult()
+			RaceUI.hideGameOver()
 			CoinsClient.resetAll() -- Muenzen erscheinen wieder
 		end
 		onReset(spawnCFrame)
@@ -388,6 +547,14 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		RaceUI.showToast("Falscher Checkpoint - falsche Reihenfolge!", 2)
 	elseif kind == "Ragdoll" then
 		onRagdoll()
+	elseif kind == "Lives" then
+		onLives(...)
+	elseif kind == "GameOver" then
+		onGameOver(...)
+	elseif kind == "Shielded" then
+		-- Server bestaetigt die Helm-Rettung; Ladungen kommen mit "Lives"
+		local _reason: string, shield: number = ...
+		lifeState.shield = shield
 	elseif kind == "Exited" then
 		onExited(...)
 	elseif kind == "Aborted" then
@@ -503,7 +670,7 @@ RunService.PreSimulation:Connect(function(dt)
 	EnterPrompt.update(controller == nil and not crashed and humanoid ~= nil and humanoid.Health > 0)
 
 	-- Sicherheitsnetz: falls die Neustart-Anfrage nach einem Crash verloren ging, nochmal fragen
-	if crashed and os.clock() - crashedAt > Config.Crash.RestartDelay + 1 then
+	if crashed and not gameOver and os.clock() - crashedAt > Config.Crash.RestartDelay + 1 then
 		crashedAt = os.clock()
 		requestRestartNow("Checkpoint")
 	end
@@ -557,7 +724,8 @@ RunService.PreSimulation:Connect(function(dt)
 	wasGrounded = telemetry.grounded
 
 	-- Hazard: sofortiger Crash bei Beruehrung
-	local hazard = if crashed then nil else TrackSensors.touching(current.cart, "Hazard")
+	local protected = os.clock() < helmetGraceUntil -- kurz nach einer Helm-Rettung
+	local hazard = if crashed or protected then nil else TrackSensors.touching(current.cart, "Hazard")
 	if hazard then
 		local message = hazard:GetAttribute("Message")
 		onCrash(
@@ -578,7 +746,7 @@ RunService.PreSimulation:Connect(function(dt)
 
 	if not crashed then
 		local reason = crashDetector:update(dt, current.base)
-		if reason then
+		if reason and not protected then
 			onCrash(reason, current.base)
 		end
 	end
