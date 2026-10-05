@@ -22,7 +22,7 @@ local RandomEventsClient = require(script.Parent:WaitForChild("RandomEventsClien
 local SoundSystem = require(script.Parent:WaitForChild("SoundSystem"))
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
-local SchoolClock = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SchoolClock"))
+local RaceTime = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RaceTime"))
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local requestRestart = remotes:WaitForChild("RequestRestart") :: RemoteEvent
@@ -47,58 +47,69 @@ local wasGrounded = true -- fuer die Landungs-Erkennung (Kamera-Wackeln)
 -- hier nur zur Anzeige mit; das Endergebnis kommt vom Server.
 local runPhase: "Ready" | "Running" | "Finished" | "Aborted" = "Ready"
 local runStartedAt = 0
-local runTimeScale = Config.Clock.TimeScale -- Spielsekunden pro echter Sekunde (vom Server)
-local bellRung = false -- Schulglocke in diesem Lauf schon gelaeutet?
+local finishedTime = 0 -- Endzeit des letzten Laufs (bleibt auf dem Timer stehen)
 local wasBoosting = false
 local wasBoostingForCrash = false
 
--- Aktuelle Spielzeit (Sekunden seit Mitternacht) fuer die Uhr im UI
-local finishedArrival = 0 -- Ankunftszeit des letzten Laufs (bleibt auf der Uhr stehen)
-
-local function currentGameTime(): number
+-- Aktuelle Laufzeit (Sekunden) fuer den Timer im UI
+local function currentRunTime(): number
 	if runPhase == "Running" then
-		return SchoolClock.startSeconds() + (os.clock() - runStartedAt) * runTimeScale
+		return os.clock() - runStartedAt
 	elseif runPhase == "Finished" then
-		return finishedArrival
+		return finishedTime
 	end
-	return SchoolClock.startSeconds()
+	return 0
 end
 
 -- Ergebnis-Screen. Die Werte hat der Server berechnet, hier wird nur angezeigt.
 type RunResult = {
-	arrival: number,
-	schoolTime: number,
-	onTime: boolean,
-	grade: number,
-	bestArrival: number,
+	time: number,
+	bestTime: number,
+	previousBest: number?,
 	isNewBest: boolean,
-	realTime: number,
+	grade: number,
 	noCheckpointRestart: boolean,
 }
+local GOLD = Color3.fromRGB(255, 215, 80)
 local function showResult(result: RunResult)
-	local title, color
-	if result.onTime then
-		title, color = Config.Clock.OnTimeTitle, Color3.fromRGB(120, 255, 120)
+	local lines = { "Zeit: " .. RaceTime.format(result.time) }
+	local previous = result.previousBest
+	if result.isNewBest and previous then
+		table.insert(
+			lines,
+			"Alte Bestzeit: "
+				.. RaceTime.format(previous)
+				.. "  ("
+				.. RaceTime.formatDelta(result.time - previous)
+				.. ")"
+		)
+	elseif result.isNewBest then
+		table.insert(lines, "Erste Zeit auf diesem Track!")
 	else
-		local messages = Config.Clock.LateMessages
-		title = if #messages > 0 then messages[math.random(1, #messages)] else "Zu spaet!"
-		color = Color3.fromRGB(255, 110, 80)
+		table.insert(
+			lines,
+			"Bestzeit: "
+				.. RaceTime.format(result.bestTime)
+				.. "  ("
+				.. RaceTime.formatDelta(result.time - result.bestTime)
+				.. ")"
+		)
 	end
-	local arrivalLine = "Ankunft: " .. SchoolClock.format(result.arrival, true)
-	if result.onTime then
-		arrivalLine ..= "  (puenktlich)"
+	table.insert(
+		lines,
+		if result.noCheckpointRestart then "Ohne Checkpoint-Neustart!" else "Mit Checkpoint-Neustart"
+	)
+	if result.isNewBest then
+		RaceUI.showResult("NEUE BESTZEIT!", GOLD, lines, result.grade, Config.UI.ResultDisplayTime)
 	else
-		arrivalLine ..= "  (" .. SchoolClock.formatDuration(result.arrival - result.schoolTime) .. " zu spaet)"
+		RaceUI.showResult(
+			"ZIEL!",
+			Color3.fromRGB(120, 255, 120),
+			lines,
+			result.grade,
+			Config.UI.ResultDisplayTime
+		)
 	end
-	local lines = {
-		arrivalLine,
-		"Bestzeit: " .. SchoolClock.format(result.bestArrival, true) .. (if result.isNewBest
-			then "  - Neue Bestzeit!"
-			else ""),
-		string.format("Fahrzeit: %.2f s", result.realTime),
-		if result.noCheckpointRestart then "Ohne Checkpoint-Neustart!" else "Mit Checkpoint-Neustart",
-	}
-	RaceUI.showResult(title, color, lines, result.grade, Config.UI.ResultDisplayTime)
 end
 
 local CRASH_TEXTS: { [string]: string } = {
@@ -325,9 +336,8 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 	if kind == "Reset" then
 		local spawnCFrame: CFrame, keepRunning: boolean = ...
 		if not keepRunning then
-			-- kompletter Neustart: neuer Lauf. Beim Checkpoint-Neustart laeuft die Uhr weiter.
+			-- kompletter Neustart: neuer Lauf. Beim Checkpoint-Neustart laeuft die Zeit weiter.
 			runPhase = "Ready"
-			bellRung = false
 			RaceUI.hideResult()
 		end
 		onReset(spawnCFrame)
@@ -335,8 +345,18 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		-- neuer Lauf: Server hat gewuerfelt, welche Zufallsereignisse aktiv sind
 		RandomEventsClient.setSelection(...)
 	elseif kind == "Checkpoint" then
-		RaceUI.showToast("Checkpoint!")
+		-- Abstand zur Bestzeit an diesem Checkpoint: gruen = schneller, rot = langsamer
+		local _elapsed: number, delta: number? = ...
+		if delta then
+			local color = if delta <= 0 then Color3.fromRGB(110, 255, 120) else Color3.fromRGB(255, 90, 80)
+			RaceUI.showToast("Checkpoint   " .. RaceTime.formatDelta(delta), 2, color)
+		else
+			RaceUI.showToast("Checkpoint!")
+		end
 		SoundSystem.play("Checkpoint")
+	elseif kind == "Best" then
+		local best: number? = ...
+		RaceUI.setBest(best)
 	elseif kind == "WrongCheckpoint" then
 		RaceUI.showToast("Falscher Checkpoint - falsche Reihenfolge!", 2)
 	elseif kind == "Ragdoll" then
@@ -347,15 +367,13 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		runPhase = "Aborted"
 		RaceUI.showMessage("Lauf abgebrochen", Color3.fromRGB(255, 200, 80), "R: Neustart", 2)
 	elseif kind == "Started" then
-		local timeScale: number = ...
 		runPhase = "Running"
 		runStartedAt = os.clock()
-		runTimeScale = timeScale
 	elseif kind == "Finished" then
 		local result: RunResult = ...
 		runPhase = "Finished"
-		finishedArrival = result.arrival
-		RaceUI.setBest(result.bestArrival)
+		finishedTime = result.time
+		RaceUI.setBest(result.bestTime)
 		showResult(result)
 		SoundSystem.play("Finish")
 	end
@@ -371,7 +389,7 @@ ContextActionService:BindAction("GetToSchoolRestart", function(_, inputState)
 end, true, Enum.KeyCode.R, Enum.KeyCode.ButtonY)
 ContextActionService:SetTitle("GetToSchoolRestart", "R")
 
--- Taste T (Gamepad: Steuerkreuz hoch): kompletter Neustart am Start, Uhr wieder 7:45
+-- Taste T (Gamepad: Steuerkreuz hoch): kompletter Neustart am Start, Zeit wieder 0
 ContextActionService:BindAction("GetToSchoolFullRestart", function(_, inputState)
 	if inputState == Enum.UserInputState.Begin then
 		requestRestartNow("Full")
@@ -447,17 +465,11 @@ end
 RunService.PreSimulation:Connect(function(dt)
 	updateSeat()
 	RaceUI.setSpeedometerVisible(controller ~= nil)
-	-- Schuluhr laeuft auch weiter, wenn man gerade nicht faehrt (z. B. als Ragdoll)
+	-- Timer laeuft auch weiter, wenn man gerade nicht faehrt (z. B. als Ragdoll)
 	if runPhase == "Aborted" then
-		RaceUI.setClockInvalid()
+		RaceUI.setTimerInvalid()
 	else
-		local gameTime = currentGameTime()
-		RaceUI.setClock(gameTime)
-		-- Schulglocke genau einmal pro Lauf, wenn es 8:00 wird
-		if runPhase == "Running" and not bellRung and gameTime >= SchoolClock.schoolSeconds() then
-			bellRung = true
-			SoundSystem.play("Bell")
-		end
+		RaceUI.setTimer(currentRunTime())
 	end
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")

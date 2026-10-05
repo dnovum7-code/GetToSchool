@@ -68,16 +68,6 @@ local sliders: { Slider } = {
 	{ label = "Eis-Seitenhalt", section = "Track", key = "IceGrip", min = 0, max = 1, step = 0.01 },
 	{ label = "BoostPad-Staerke", section = "Track", key = "BoostPadStrength", min = 0, max = 150, step = 1 },
 	{ label = "JumpPad-Staerke", section = "Track", key = "JumpPadStrength", min = 0, max = 200, step = 1 },
-	-- Spielzeit: Spielsekunden pro echter Sekunde (gilt ab dem naechsten Start)
-	{
-		label = "Spielzeit-Tempo",
-		section = "Clock",
-		key = "TimeScale",
-		min = 1,
-		max = 60,
-		step = 1,
-		server = true,
-	},
 }
 
 return sliders

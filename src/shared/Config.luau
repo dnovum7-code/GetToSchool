@@ -193,7 +193,6 @@ Config.Sounds = {
 	Boost = { Id = "", Volume = 0.7 }, -- Drift-Boost und BoostPad
 	Crash = { Id = "", Volume = 0.8 },
 	Checkpoint = { Id = "", Volume = 0.6 },
-	Bell = { Id = "", Volume = 0.8 }, -- Schulglocke um 8:00
 	Finish = { Id = "", Volume = 0.8 }, -- im Ziel
 }
 
@@ -256,37 +255,23 @@ Config.Race = {
 	AutoRestartAfterFinish = 5, -- Sekunden nach dem Ziel bis zum Neustart (0 = aus)
 	StartDistanceWithoutZone = 4, -- ohne Startzone: Zeit laeuft ab dieser Strecke
 	RespawnTime = 1, -- Wartezeit, falls der Charakter doch einmal stirbt
-}
 
--- Schulglocke: Spielzeit statt Stoppuhr. Jeder Lauf startet um StartTime, die Schule
--- beginnt um SchoolTime. Uhrzeiten als Text "H:MM" oder "H:MM:SS".
-Config.Clock = {
-	StartTime = "7:45",
-	SchoolTime = "8:00",
-	-- Spielsekunden pro echter Sekunde. 15 = die 15 Minuten bis 8:00 dauern 60 echte Sekunden.
-	-- Pro Track ueberschreibbar: Attribut "TimeScale" (Zahl) an der StartZone.
-	TimeScale = 15,
-	NervousShare = 0.2, -- in den letzten 20 % vor SchoolTime tickt die Uhr nervoes
-	-- Schulnoten (Schweizer System, 6 = beste): spaetestens um diese Uhrzeit ankommen.
-	-- Pro Track ueberschreibbar: Attribute "Grade6" ... "Grade2" (Text) an der FinishZone.
-	-- Spaeter als Grade2 = Note 1.
+	-- Schulnoten (Schweizer System, 6 = beste): Fahrzeit in Sekunden, die man hoechstens
+	-- brauchen darf. Pro Track ueberschreibbar: Attribute "Grade6" ... "Grade2" (Zahl) an
+	-- der FinishZone. Langsamer als Grade2 = Note 1.
 	GradeLimits = {
-		[6] = "7:53",
-		[5] = "7:56",
-		[4] = "8:00", -- 4 = genuegend: puenktlich
-		[3] = "8:02",
-		[2] = "8:05",
+		[6] = 60,
+		[5] = 75,
+		[4] = 90,
+		[3] = 110,
+		[2] = 130,
 	},
-	OnTimeTitle = "PUENKTLICH!",
-	-- Zufaellige Titel, wenn man zu spaet kommt
-	LateMessages = {
-		"Ab zum Rektor!",
-		"Nachsitzen!",
-		"Der Hund hat die Hausaufgaben gefressen?",
-		"Eintrag ins Klassenbuch!",
-		"Die Lehrerin schaut schon auf die Uhr...",
-		"Schon wieder du?!",
-	},
+
+	-- Bestzeiten: pro Spieler und Track dauerhaft gespeichert (DataStore).
+	-- Welcher Track: Attribut "TrackId" (Text) an der StartZone, sonst DefaultTrackId.
+	DefaultTrackId = "Track1",
+	BestTimesStore = "BestTimes_v1", -- Name des DataStores (aendern = alle Bestzeiten neu)
+	SaveBestTimes = true, -- false = Bestzeiten nur fuer die laufende Sitzung
 }
 
 -- Aus- und Einsteigen (Taste E / Gamepad X)

@@ -6,15 +6,14 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
-local SchoolClock = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SchoolClock"))
+local RaceTime = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RaceTime"))
 
 local RaceUI = {}
 
 local gui: ScreenGui
 local messageLabel: TextLabel
 local subMessageLabel: TextLabel
-local clockLabel: TextLabel
-local clockScale: UIScale
+local timerLabel: TextLabel
 local bestLabel: TextLabel
 local toastLabel: TextLabel
 local toastToken = 0
@@ -68,17 +67,15 @@ function RaceUI.init()
 		Visible = false,
 	})
 
-	-- Schuluhr oben in der Mitte, Bestzeit darunter
-	clockLabel = makeLabel({
-		Name = "Clock",
+	-- Timer oben in der Mitte, Bestzeit darunter
+	timerLabel = makeLabel({
+		Name = "Timer",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 50),
 		Size = UDim2.new(0, 260, 0, 48),
 		Font = Enum.Font.Code,
-		Text = SchoolClock.format(SchoolClock.startSeconds()),
+		Text = RaceTime.format(0),
 	})
-	clockScale = Instance.new("UIScale") -- fuer das nervoese Pulsieren
-	clockScale.Parent = clockLabel
 	bestLabel = makeLabel({
 		Name = "Best",
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -88,7 +85,7 @@ function RaceUI.init()
 		Text = "",
 		TextColor3 = Color3.fromRGB(255, 220, 120),
 	})
-	-- Kurzer Hinweis unter der Uhr (z. B. "Checkpoint!")
+	-- Kurzer Hinweis unter dem Timer (z. B. "Checkpoint  -0.45")
 	toastLabel = makeLabel({
 		Name = "Toast",
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -219,51 +216,27 @@ function RaceUI.showMessage(text: string, color: Color3, subText: string?, durat
 end
 
 local WHITE = Color3.new(1, 1, 1)
-local NERVOUS = Color3.fromRGB(255, 200, 60)
-local LATE = Color3.fromRGB(255, 70, 60)
 
--- Schuluhr anzeigen. `gameSeconds` = Spielzeit (Sekunden seit Mitternacht).
--- In den letzten Config.Clock.NervousShare vor Schulbeginn: gelb -> rot und Pulsieren.
-function RaceUI.setClock(gameSeconds: number)
-	local start, school = SchoolClock.startSeconds(), SchoolClock.schoolSeconds()
-	if gameSeconds >= school then
-		clockLabel.Text = SchoolClock.format(gameSeconds) .. "  zu spaet!"
-		clockLabel.TextColor3 = LATE
-		clockScale.Scale = 1
-		return
-	end
-	clockLabel.Text = SchoolClock.format(gameSeconds)
-	local progress = (gameSeconds - start) / math.max(school - start, 1)
-	local nervousStart = 1 - Config.Clock.NervousShare
-	if progress >= nervousStart then
-		-- 0 am Anfang der nervoesen Phase, 1 kurz vor der Glocke
-		local nervous =
-			math.clamp((progress - nervousStart) / math.max(Config.Clock.NervousShare, 0.01), 0, 1)
-		clockLabel.TextColor3 = NERVOUS:Lerp(LATE, nervous)
-		local pulseSpeed = 6 + 10 * nervous
-		clockScale.Scale = 1 + (0.04 + 0.08 * nervous) * math.abs(math.sin(os.clock() * pulseSpeed))
-	else
-		clockLabel.TextColor3 = WHITE
-		clockScale.Scale = 1
-	end
+-- Laufende Zeit (Sekunden) anzeigen, z. B. "1:23.45"
+function RaceUI.setTimer(seconds: number)
+	timerLabel.Text = RaceTime.format(seconds)
 end
 
 -- Lauf ungueltig (z. B. ausgestiegen)
-function RaceUI.setClockInvalid()
-	clockLabel.Text = "--:--"
-	clockLabel.TextColor3 = WHITE
-	clockScale.Scale = 1
+function RaceUI.setTimerInvalid()
+	timerLabel.Text = "-:--.--"
 end
 
-function RaceUI.setBest(arrival: number?)
-	bestLabel.Text = if arrival then "Bestzeit: " .. SchoolClock.format(arrival, true) else ""
+function RaceUI.setBest(seconds: number?)
+	bestLabel.Text = if seconds then "Bestzeit: " .. RaceTime.format(seconds) else ""
 end
 
--- Kurzer Hinweis unter der Uhr
-function RaceUI.showToast(text: string, duration: number?)
+-- Kurzer Hinweis unter dem Timer (Farbe optional, Standard hellblau)
+function RaceUI.showToast(text: string, duration: number?, color: Color3?)
 	toastToken += 1
 	local token = toastToken
 	toastLabel.Text = text
+	toastLabel.TextColor3 = color or Color3.fromRGB(140, 230, 255)
 	toastLabel.Visible = true
 	task.delay(duration or 1.5, function()
 		if toastToken == token then

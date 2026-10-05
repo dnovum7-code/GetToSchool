@@ -1,13 +1,14 @@
 --!strict
 -- Rennablauf pro Spieler, komplett auf dem Server (autoritativ):
 --   Ready    Wagen steht am Start. Die Zeit startet, sobald er die Startzone verlaesst.
---   Running  Spielzeit laeuft (ab 7:45). Erreicht der Wagen die Zielzone, ist der Lauf beendet.
+--   Running  Zeit laeuft (ab 0:00.00). Erreicht der Wagen die Zielzone, ist der Lauf beendet.
 --   Finished Ergebnis wird angezeigt, danach automatischer Neustart.
 --   Aborted  Spieler ist waehrend des Laufs ausgestiegen: Zeit ungueltig, weiter mit R.
 --
 -- Checkpoints: Faehrt der Wagen waehrend des Laufs durch ein Part mit Tag "Checkpoint",
 -- merken wir uns Position und Richtung. Neustart nach Crash und Taste R gehen dorthin
--- zurueck (Spielzeit laeuft weiter), Taste T startet komplett neu.
+-- zurueck (Zeit laeuft weiter), Taste T startet komplett neu. An jedem Checkpoint bekommt
+-- der Spieler den Abstand zu seiner Bestzeit (Zwischenzeit) angezeigt.
 --
 -- Der Server misst die Zeit selbst (os.clock) und schaut sich jeden Frame die Position
 -- des Wagens an. Der Client kann also keine Zeit "melden", er bekommt sie nur gesagt.
@@ -17,7 +18,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
-local SchoolClock = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SchoolClock"))
+local RaceTime = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RaceTime"))
+local BestTimes = require(script.Parent:WaitForChild("BestTimes"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
 local RandomEvents = require(script.Parent:WaitForChild("RandomEvents"))
 local Track = require(script.Parent:WaitForChild("Track"))
@@ -41,21 +43,19 @@ type RaceState = {
 	wrongCheckpoint: Instance?, -- zuletzt gemeldeter Checkpoint in falscher Reihenfolge
 	spawnPosition: Vector3,
 	startTime: number, -- os.clock() beim Verlassen der Startzone
-	timeScale: number, -- Spielsekunden pro echter Sekunde in diesem Lauf
+	trackId: string, -- fuer welchen Track die Bestzeit gilt
+	splits: { [string]: number }, -- Zwischenzeiten dieses Laufs (Checkpoint -> Sekunden)
 	runId: number,
-	bestArrival: number?, -- beste Ankunftszeit (Sekunden seit Mitternacht, Spielzeit)
 	lastRestart: number,
 }
 
 -- Ergebnis eines Laufs, so wie es an den Client geht
 export type RunResult = {
-	arrival: number, -- Ankunft (Spielzeit, Sekunden seit Mitternacht)
-	schoolTime: number,
-	onTime: boolean,
-	grade: number, -- 1-6, 6 = beste
-	bestArrival: number,
+	time: number, -- Fahrzeit in Sekunden
+	bestTime: number, -- Bestzeit (nach diesem Lauf)
+	previousBest: number?, -- Bestzeit vor diesem Lauf (nil = erster Lauf)
 	isNewBest: boolean,
-	realTime: number, -- echte Sekunden
+	grade: number, -- 1-6, 6 = beste
 	noCheckpointRestart: boolean, -- ohne einen einzigen Checkpoint-Neustart geschafft
 }
 
@@ -71,9 +71,9 @@ local function getRace(player: Player): RaceState
 			wrongCheckpoint = nil,
 			spawnPosition = Vector3.zero,
 			startTime = 0,
-			timeScale = Config.Clock.TimeScale,
+			trackId = Config.Race.DefaultTrackId,
+			splits = {},
 			runId = 0,
-			bestArrival = nil,
 			lastRestart = -math.huge,
 		}
 		races[player] = race
@@ -81,7 +81,20 @@ local function getRace(player: Player): RaceState
 	return race
 end
 
--- Kompletter Neustart (Taste T): Wagen an den Start, neuer Lauf, Uhr wieder auf 7:45.
+-- Welcher Track? Attribut "TrackId" an der StartZone, sonst Config.Race.DefaultTrackId
+local function currentTrackId(): string
+	local startZone = Track.findZone(Config.Race.StartZoneTag)
+	local id = startZone and startZone:GetAttribute("TrackId")
+	return if type(id) == "string" and id ~= "" then id else Config.Race.DefaultTrackId
+end
+
+-- Bestzeit des Spielers fuer seinen aktuellen Track an den Client schicken (fuer die Anzeige)
+local function sendBest(player: Player, race: RaceState)
+	local best = BestTimes.get(player, race.trackId)
+	runState:FireClient(player, "Best", if best then best.time else nil)
+end
+
+-- Kompletter Neustart (Taste T): Wagen an den Start, neuer Lauf, Zeit wieder auf 0.
 function RaceManager.restart(player: Player)
 	local spawnCFrame = CartManager.reset(player)
 	if not spawnCFrame then
@@ -93,14 +106,17 @@ function RaceManager.restart(player: Player)
 	race.usedCheckpointRestart = false
 	race.wrongCheckpoint = nil
 	race.spawnPosition = spawnCFrame.Position
+	race.trackId = currentTrackId()
+	race.splits = {}
 	race.runId += 1
 	race.lastRestart = os.clock()
 	-- Neuer Lauf: Zufallsereignisse neu wuerfeln (vor "Reset", damit die Strecke steht)
 	runState:FireClient(player, "Events", RandomEvents.roll())
 	runState:FireClient(player, "Reset", spawnCFrame, false)
+	sendBest(player, race)
 end
 
--- Zurueck zum letzten Checkpoint (Taste R, nach Crash). Die Spielzeit laeuft weiter.
+-- Zurueck zum letzten Checkpoint (Taste R, nach Crash). Die Zeit laeuft weiter.
 -- Ohne Checkpoint (oder wenn gerade kein Lauf laeuft) = kompletter Neustart.
 function RaceManager.restartAtCheckpoint(player: Player)
 	local race = getRace(player)
@@ -167,28 +183,34 @@ local function checkCheckpoints(player: Player, race: RaceState, base: BasePart)
 		local cframe = Track.placeOnGround(CFrame.lookAt(position, position + direction), { instance })
 		race.checkpoint = { part = instance, cframe = cframe, order = order or lastOrder }
 		race.wrongCheckpoint = nil
-		runState:FireClient(player, "Checkpoint")
+
+		-- Zwischenzeit: beim ersten Durchfahren in diesem Lauf mit der Bestzeit vergleichen
+		local key = instance:GetFullName()
+		local elapsed = os.clock() - race.startTime
+		local delta: number? = nil
+		if race.splits[key] == nil then
+			race.splits[key] = elapsed
+			local best = BestTimes.get(player, race.trackId)
+			local bestSplit = best and best.splits[key]
+			if bestSplit then
+				delta = elapsed - bestSplit
+			end
+		end
+		runState:FireClient(player, "Checkpoint", elapsed, delta)
 		return
 	end
 end
 
 local function finish(player: Player, race: RaceState, finishZone: BasePart)
-	local realTime = os.clock() - race.startTime
-	local arrival = SchoolClock.startSeconds() + realTime * race.timeScale
-	local isNewBest = race.bestArrival == nil or arrival < (race.bestArrival :: number)
-	if isNewBest then
-		race.bestArrival = arrival
-	end
+	local time = os.clock() - race.startTime
 	race.phase = "Finished"
-	local schoolTime = SchoolClock.schoolSeconds()
+	local isNewBest, previousBest = BestTimes.submit(player, race.trackId, time, race.splits)
 	local result: RunResult = {
-		arrival = arrival,
-		schoolTime = schoolTime,
-		onTime = arrival < schoolTime,
-		grade = SchoolClock.gradeFor(arrival, finishZone),
-		bestArrival = race.bestArrival :: number,
+		time = time,
+		bestTime = if isNewBest or not previousBest then time else previousBest,
+		previousBest = previousBest,
 		isNewBest = isNewBest,
-		realTime = realTime,
+		grade = RaceTime.gradeFor(time, finishZone),
 		noCheckpointRestart = not race.usedCheckpointRestart,
 	}
 	runState:FireClient(player, "Finished", result)
@@ -270,9 +292,7 @@ local function updatePlayer(player: Player, race: RaceState)
 		if leftStart then
 			race.phase = "Running"
 			race.startTime = os.clock()
-			-- Tempo der Spielzeit: Attribut an der StartZone oder Config
-			race.timeScale = SchoolClock.timeScaleFor(startZone)
-			runState:FireClient(player, "Started", race.timeScale)
+			runState:FireClient(player, "Started")
 		end
 	elseif race.phase == "Running" then
 		checkCheckpoints(player, race, base)
@@ -294,6 +314,19 @@ function RaceManager.start()
 	Players.PlayerRemoving:Connect(function(player)
 		races[player] = nil
 	end)
+	-- Bestzeiten laden, sobald ein Spieler beitritt, und dann gleich anzeigen
+	local function load(player: Player)
+		BestTimes.load(player, function()
+			local race = races[player]
+			if race then
+				sendBest(player, race)
+			end
+		end)
+	end
+	Players.PlayerAdded:Connect(load)
+	for _, player in Players:GetPlayers() do
+		load(player)
+	end
 end
 
 return RaceManager

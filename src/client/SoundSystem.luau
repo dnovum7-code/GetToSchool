@@ -1,6 +1,6 @@
 --!strict
 -- Einfaches Sound-System (nur auf diesem Client).
---   Einmal-Sounds (Boost, Crash, Checkpoint, Glocke, Ziel): SoundSystem.play("Crash")
+--   Einmal-Sounds (Boost, Crash, Checkpoint, Ziel): SoundSystem.play("Crash")
 --   Dauer-Sounds am eigenen Wagen (Rollen, Drift-Quietschen): attach/detach/update
 -- Die IDs stehen in Config.Sounds. Fehlt eine ID, gibt es diesen Sound einfach nicht.
 --
@@ -13,7 +13,7 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 
 local SoundSystem = {}
 
-local ONE_SHOTS = { "Boost", "Crash", "Checkpoint", "Bell", "Finish" }
+local ONE_SHOTS = { "Boost", "Crash", "Checkpoint", "Finish" }
 
 local oneShots: { [string]: Sound } = {}
 local engineSound: Sound? = nil
