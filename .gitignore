@@ -1,0 +1,21 @@
+# Von Rojo gebaute Place-/Model-Dateien (die Welt liegt im veroeffentlichten Roblox-Place)
+/*.rbxl
+/*.rbxlx
+/*.rbxm
+/*.rbxmx
+/build/
+
+# Lock-Dateien, die Studio neben geoeffneten Place-Dateien anlegt
+*.rbxl.lock
+*.rbxlx.lock
+
+# Generiert von "rojo sourcemap" (fuer luau-lsp)
+sourcemap.json
+
+# Editor / Betriebssystem
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
