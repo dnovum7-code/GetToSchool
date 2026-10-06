@@ -18,6 +18,7 @@ local DevPanel = require(script.Parent:WaitForChild("DevPanel"))
 local DriftEffects = require(script.Parent:WaitForChild("DriftEffects"))
 local EnterPrompt = require(script.Parent:WaitForChild("EnterPrompt"))
 local AchievementUI = require(script.Parent:WaitForChild("AchievementUI"))
+local ComboUI = require(script.Parent:WaitForChild("ComboUI"))
 local ControlsInfo = require(script.Parent:WaitForChild("ControlsInfo"))
 local GarageUI = require(script.Parent:WaitForChild("GarageUI"))
 local GhostClient = require(script.Parent:WaitForChild("GhostClient"))
@@ -191,6 +192,7 @@ AchievementUI.init() -- Erfolge (Reiter im Menue, Popup)
 SettingsUI.init() -- Einstellungen und Steuerung (Reiter im Menue)
 Onboarding.init() -- einmalige Hinweise beim ersten Lauf
 Tricks.init() -- Lufttricks (Anzeige)
+ComboUI.init() -- Kuh-Kombo-Anzeige
 ProgressClient.onChanged(function(snapshot)
 	Abilities.setLevels(snapshot.upgrades) -- gekaufte Upgrade-Stufen
 	Settings.load(snapshot) -- gespeicherte Einstellungen (einmal nach dem Laden)

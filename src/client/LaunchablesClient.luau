@@ -19,6 +19,7 @@ local LaunchMath =
 local TagList = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("TagList"))
 local LocalClone = require(script.Parent:WaitForChild("LocalClone"))
 local LocalHide = require(script.Parent:WaitForChild("LocalHide"))
+local ComboUI = require(script.Parent:WaitForChild("ComboUI"))
 local SoundSystem = require(script.Parent:WaitForChild("SoundSystem"))
 local TrackSensors = require(script.Parent:WaitForChild("TrackSensors"))
 
@@ -35,6 +36,8 @@ export type LaunchInfo = {
 	meters: number,
 	bonus: number,
 	isRecord: boolean,
+	combo: number, -- Treffer in Folge (Kuh-Kombo)
+	multiplier: number,
 }
 
 type Pending = {
@@ -321,6 +324,7 @@ function LaunchablesClient.onLaunch(object: Instance?, info: LaunchInfo)
 	table.insert(flying, flight)
 	labelFlight = flight
 	setLabel(`{info.name}: 0 m`)
+	ComboUI.show(info.combo or 1, info.multiplier or 1, info.bonus) -- "3x KOMBO!"
 end
 
 -- Server hat den Treffer nicht anerkannt: Objekt wieder zeigen

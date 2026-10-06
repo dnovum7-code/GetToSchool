@@ -275,6 +275,14 @@ Config.Cosmetics = {
 	} :: { CosmeticDef },
 }
 
+-- Kuh-Kombo: mehrere Treffer (Launchables) kurz hintereinander = Multiplikator fuer die
+-- Bonus-Muenzen, grosse Anzeige "3x KOMBO!". Logik: Progression/Combo.
+Config.Combo = {
+	Window = 2.5, -- so lange (s) nach einem Treffer zaehlt der naechste zur Kombo
+	MaxMultiplier = 5,
+	StepBonus = 4, -- Extra-Muenzen pro Kombo-Stufe (auch ohne weiten Flug)
+}
+
 -- Lufttricks: in der Luft Q/E (Gamepad LB, Touch "Trick") = um die Hochachse drehen.
 -- Saubere Landung = Muenzen, schiefe Landung = Crash. Logik: Progression/TrickMath.
 Config.Tricks = {
@@ -546,6 +554,7 @@ Config.Sounds = {
 	Achievement = { Id = "", Volume = 0.8 }, -- Erfolg freigeschaltet (Fanfare)
 	Music = { Id = "", Volume = 0.35 }, -- Hintergrundmusik (laeuft dauernd; Lautstaerke in den Einstellungen)
 	Trick = { Id = "", Volume = 0.7 }, -- saubere Trick-Landung
+	Combo = { Id = "", Volume = 0.8 }, -- Kombo (2x, 3x ...)
 }
 
 -- Tuning-Panel (nur in Studio, Taste F2): welche Werte als Regler erscheinen.
@@ -584,6 +593,8 @@ Config.TuningPanel = {
 	{ label = "JumpPad-Staerke", path = "Track.JumpPadStrength" },
 	{ label = "Leben pro Lauf", path = "Lives.PerRun", server = true }, -- gilt ab dem naechsten T
 	{ label = "Geist-Durchsicht", path = "Ghost.Transparency", span = 0.4 }, -- 0.2 .. 1, ab dem naechsten Start
+	{ label = "Kombo-Zeitfenster (s)", path = "Combo.Window", server = true },
+	{ label = "Kombo-Extra pro Stufe", path = "Combo.StepBonus", server = true },
 	{ label = "Trick-Drehtempo", path = "Tricks.SpinSpeed" },
 	{ label = "Trick: sauber bis (Grad)", path = "Tricks.CleanAngle", span = 25 },
 	{ label = "Trick: Crash ab (Grad)", path = "Tricks.CrashAngle", span = 25 },
@@ -958,6 +969,7 @@ Config.Homework = {
 
 -- Erfolge: Popup beim Freischalten, Liste im Menue (B -> Erfolge). Arten (type):
 -- SkyLaunch, Flight (meters), AllCoins (track), Flawless, BeatGhost, HomeworkDay,
+-- Combo (goal = Treffer in Folge), Trick (goal = halbe Drehungen),
 -- Finishes (goal), Launches (goal), DriftTotal (goal, Sekunden), AllGrades (grade),
 -- AllVehicles. Text-Platzhalter: {goal} {meters} {track} {grade}.
 -- badge: Roblox-Badge-Id (im Creator Dashboard anlegen, Zahl hier eintragen); 0 = kein Badge.
@@ -1064,6 +1076,22 @@ Config.Achievements = {
 			name = "Streber",
 			description = "Erledige alle Hausaufgaben eines Tages",
 			type = "HomeworkDay",
+			badge = 0,
+		},
+		{
+			id = "Combo3",
+			name = "Kuh-Lawine",
+			description = "Schaffe eine {goal}x Kombo",
+			type = "Combo",
+			goal = 3,
+			badge = 0,
+		},
+		{
+			id = "Trick720",
+			name = "Wirbelwind",
+			description = "Lande einen 720er sauber",
+			type = "Trick",
+			goal = 4,
 			badge = 0,
 		},
 	} :: { AchievementDef },

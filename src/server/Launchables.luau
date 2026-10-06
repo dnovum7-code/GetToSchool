@@ -12,6 +12,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Attributes = require(Shared:WaitForChild("Attributes"))
 local Config = require(Shared:WaitForChild("Config"))
 local Vehicles = require(Shared:WaitForChild("Vehicles"))
+local Combo = require(Shared:WaitForChild("Progression"):WaitForChild("Combo"))
 local LaunchMath = require(Shared:WaitForChild("Progression"):WaitForChild("LaunchMath"))
 local TagList = require(Shared:WaitForChild("TagList"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
@@ -28,11 +29,14 @@ export type LaunchInfo = {
 	spin: number, -- Radiant/s
 	name: string, -- Anzeigename ("Kuh")
 	meters: number, -- Flugweite
-	bonus: number, -- Muenzbonus
+	bonus: number, -- Muenzbonus (mit Kombo)
 	isRecord: boolean, -- neuer persoenlicher Rekord fuer diesen Namen
+	combo: number, -- Treffer in Folge (1 = keine Kombo)
+	multiplier: number, -- Kombo-Multiplikator
 }
 
 local hitThisRun: { [Player]: { [Instance]: boolean } } = {}
+local combos: { [Player]: Combo.State } = {}
 local random = Random.new()
 local nextId = 0
 
@@ -123,7 +127,14 @@ function Launchables.tryLaunch(player: Player, object: unknown): LaunchInfo?
 	local sky = LaunchMath.isSky(random:NextNumber(), skyChance)
 	local flight = LaunchMath.plan(flat.Magnitude, power, sky, L)
 	local meters = LaunchMath.meters(flight.distance, Config.UI.StudsToMeters)
-	local bonus = LaunchMath.bonus(meters, L)
+	-- Kuh-Kombo: Treffer kurz hintereinander erhoehen den Multiplikator
+	local comboState = combos[player]
+	if not comboState then
+		comboState = Combo.new()
+		combos[player] = comboState
+	end
+	local comboCount = Combo.hit(comboState, os.clock(), Config.Combo)
+	local bonus = Combo.bonus(LaunchMath.bonus(meters, L), comboCount, Config.Combo)
 	local name = Launchables.displayName(instance)
 
 	-- Rekord und Bonus in den Spielstand
@@ -135,7 +146,10 @@ function Launchables.tryLaunch(player: Player, object: unknown): LaunchInfo?
 	end
 	data.stats.objectsLaunched += 1
 	Leaderboards.submitFlight(player, meters) -- Bestenliste "Weitester Kuh-Wurf"
-	PlayerEvents.fire(player, { type = "Launch", name = name, meters = meters, sky = sky })
+	PlayerEvents.fire(
+		player,
+		{ type = "Launch", name = name, meters = meters, sky = sky, combo = comboCount }
+	)
 	if bonus > 0 then
 		Profiles.addCoins(player, bonus) -- meldet die Aenderung
 	else
@@ -150,6 +164,8 @@ function Launchables.tryLaunch(player: Player, object: unknown): LaunchInfo?
 		meters = meters,
 		bonus = bonus,
 		isRecord = isRecord and previous ~= nil, -- der allererste Wurf ist noch kein "Rekord"
+		combo = comboCount,
+		multiplier = Combo.multiplier(comboCount, Config.Combo),
 	}
 end
 
@@ -162,6 +178,7 @@ function Launchables.init()
 	TagList.watch("Launchable", prepare)
 	Players.PlayerRemoving:Connect(function(player)
 		hitThisRun[player] = nil
+		combos[player] = nil
 	end)
 end
 

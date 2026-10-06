@@ -187,6 +187,8 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/client/ControlsInfo.luau` | Client | Steuerung als Text je Gerät (Tabelle, Hilfezeile, Hinweise) |
 | `src/client/Onboarding.luau` | Client | Einmalige Einstiegs-Hinweise (Fahren, Drift, Neustart) |
 | `src/shared/Progression/TrickMath.luau` | beiden | Reine Logik (getestet): Lufttricks zählen und Landung bewerten |
+| `src/shared/Progression/Combo.luau` | beiden | Reine Logik (getestet): Kuh-Kombo zählen, Multiplikator, Bonus |
+| `src/client/ComboUI.luau` | Client | Große Anzeige „3x KOMBO!“ mit ablaufendem Zeitbalken |
 | `src/client/Tricks.luau`, `src/server/Tricks.luau` | beide | Lufttricks: drehen, Anzeige, Crash bei schiefer Landung / Münzen prüfen und gutschreiben |
 | `src/server/PlayerEvents.luau` | Server | Verteilt Ereignisse (Ziel, Wurf, Münzen, Drift) an Hausaufgaben und Erfolge; prüft die Drift-Meldungen |
 | `src/shared/Progression/Achievements.luau` | beiden | Reine Logik (getestet): Erfolge prüfen, Fortschritt |
@@ -781,6 +783,10 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Gamepad / Touch | LB bzw. Knopf „Trick“ in der Luft | Dreht in Lenkrichtung (ohne Lenkung: rechts) |
 | Spam-Schutz | Viele Tricks schnell hintereinander | Höchstens 90 Trick-Münzen pro Minute (`Config.Tricks.MaxCoinsPerMinute`) |
 | Tuning | F2 → „Trick-Drehtempo“, „Trick: sauber bis“, „Trick: Crash ab“ | Wirkt sofort |
+| Kuh-Kombo | Testfläche → Kuh-Reihe (4 Kühe), alle in einem Rutsch umfahren | Ab der 2. Kuh groß „2x KOMBO! +…“, dann 3x, 4x (Farbe wird wärmer), Zeitbalken läuft ab; Kamera wackelt stärker |
+| Kombo-Bonus | Münzzähler beobachten | Pro Treffer: Flugbonus × Multiplikator + 4 pro Stufe (`Config.Combo`) |
+| Kombo vorbei | 3 s Pause, nächste Kuh | Wieder ohne Kombo (1x) |
+| Erfolge | 3x Kombo / 720er sauber | „Kuh-Lawine“ bzw. „Wirbelwind“ |
 
 ## Tuning-Ablauf
 

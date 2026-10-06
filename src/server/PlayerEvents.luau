@@ -23,6 +23,7 @@ export type Event = {
 	name: string?, -- Launch: DisplayName
 	meters: number?, -- Launch: Flugweite
 	sky: boolean?, -- Launch: ins All
+	combo: number?, -- Launch: Treffer in Folge (Kuh-Kombo)
 	trackId: string?, -- Finish
 	time: number?, -- Finish
 	grade: number?, -- Finish

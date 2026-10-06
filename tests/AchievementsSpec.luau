@@ -17,6 +17,8 @@ local DEFS: { Achievements.Def } = {
 	{ id = "Garage", name = "Fuhrpark", description = "", type = "AllVehicles" },
 	{ id = "Launch50", name = "Kuh-Fluesterer", description = "", type = "Launches", goal = 50 },
 	{ id = "Homework", name = "Streber", description = "", type = "HomeworkDay" },
+	{ id = "Combo3", name = "Kuh-Lawine", description = "", type = "Combo", goal = 3 },
+	{ id = "Trick720", name = "Wirbelwind", description = "", type = "Trick", goal = 4 },
 }
 
 local function facts(overrides: { [string]: any }?): Achievements.Facts
@@ -109,6 +111,18 @@ describe("Achievements (Erfolge)", function()
 		local current, goal = Achievements.progress(DEFS[8], facts({ driftSeconds = 12.7 }))
 		expect(current).toBe(12)
 		expect(goal).toBe(300)
+	end)
+
+	it("Kombo und Lufttrick", function()
+		local unlocked = {}
+		Achievements.check(DEFS, unlocked, facts({ event = { type = "Launch", combo = 2, meters = 10 } }))
+		expect(unlocked.Combo3).toBeNil()
+		Achievements.check(DEFS, unlocked, facts({ event = { type = "Launch", combo = 3, meters = 10 } }))
+		expect(unlocked.Combo3).toBe(true)
+		Achievements.check(DEFS, unlocked, facts({ event = { type = "Trick", amount = 2 } }))
+		expect(unlocked.Trick720).toBeNil()
+		Achievements.check(DEFS, unlocked, facts({ event = { type = "Trick", amount = 4 } }))
+		expect(unlocked.Trick720).toBe(true)
 	end)
 
 	it("Texte", function()

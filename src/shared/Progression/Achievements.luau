@@ -10,6 +10,8 @@
 --     "Flawless"    Lauf ohne Lebensverlust beendet
 --     "BeatGhost"   eigene Bestzeit geschlagen (es gab schon eine)
 --     "HomeworkDay" alle Hausaufgaben eines Tages erledigt
+--     "Combo"       Kuh-Kombo mit mindestens `goal` Treffern in Folge
+--     "Trick"       Lufttrick mit mindestens `goal` halben Drehungen sauber gelandet
 --   Zaehler/Zustand (werden immer geprueft, mit Fortschritt im Menue):
 --     "Finishes"    `goal` Laeufe beendet
 --     "Launches"    `goal` Objekte weggeschleudert
@@ -32,7 +34,9 @@ export type Def = {
 }
 
 export type Event = {
-	type: string, -- "Launch", "Finish", "HomeworkDone"
+	type: string, -- "Launch", "Finish", "HomeworkDone", "Trick"
+	amount: number?, -- Trick: halbe Drehungen
+	combo: number?, -- Launch: Treffer in Folge
 	sky: boolean?,
 	meters: number?,
 	trackId: string?,
@@ -99,6 +103,10 @@ function Achievements.isMet(def: Def, facts: Facts): boolean
 			and event.hadPrevious == true
 	elseif kind == "HomeworkDay" then
 		return event ~= nil and event.type == "HomeworkDone"
+	elseif kind == "Combo" then
+		return event ~= nil and event.type == "Launch" and (event.combo or 0) >= (def.goal or 2)
+	elseif kind == "Trick" then
+		return event ~= nil and event.type == "Trick" and (event.amount or 0) >= (def.goal or 1)
 	elseif kind == "AllGrades" and #facts.trackIds == 0 then
 		return false
 	end

@@ -849,6 +849,10 @@ for i = 0, 7 do
 		Parent = flat,
 	})
 end
+-- Kuh-Kombo: vier Kuehe hintereinander (alle in 2,5 s treffen = 4x KOMBO)
+for i = 0, 3 do
+	cow(flat, CFrame.new(FLAT_CENTER + Vector3.new(-60, 0, 120 - i * 30)))
+end
 -- Trick-Schanze links: JumpPad (Sprung ~19 Studs), Lufttricks mit Q/E
 part({
 	Name = "TrickJumpPad",
@@ -896,7 +900,7 @@ do
 	label.TextScaled = true
 	label.TextWrapped = true
 	label.Text =
-		"Testflaeche: A/D = Drift (Standard) · Shift halten = normal lenken · Leertaste = Hopp · Slalom geradeaus, Drift-Kreis rechts, Trick-Schanze links (Q/E in der Luft) · T = Start"
+		"Testflaeche: A/D = Drift (Standard) · Shift halten = normal lenken · Leertaste = Hopp · Slalom geradeaus, Drift-Kreis rechts, Trick-Schanze links (Q/E in der Luft), Kuh-Reihe fuer die Kombo · T = Start"
 	label.Parent = gui
 end
 

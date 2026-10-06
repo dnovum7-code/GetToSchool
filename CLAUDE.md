@@ -49,6 +49,9 @@ visuelle Extras; noch nicht in Studio getestet):
   Logik Progression/TrickMath, Client src/client/Tricks (Drehmoment nach der Fahrphysik,
   Landung bewerten, Landehilfe), Server src/server/Tricks (Münzen, Spam-Schutz),
   Crash-Grund BadLanding. Werte: Config.Tricks.
+- Kuh-Kombo: Treffer innerhalb Config.Combo.Window erhöhen den Multiplikator (Server in
+  server/Launchables, Logik Progression/Combo), Bonus = Flugbonus × Multiplikator +
+  StepBonus pro Stufe; Anzeige src/client/ComboUI. Erfolge „Kuh-Lawine“, „Wirbelwind“.
 M4 – Wiederspielwert (gebaut, noch nicht in Studio getestet; Testliste im README
 „Wichtigste Studio-Tests M4“):
 - Geist vom besten Lauf: Server zeichnet jeden Lauf auf (src/server/Ghosts, kompakt mit
