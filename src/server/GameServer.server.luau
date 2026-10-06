@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local Achievements = require(script.Parent:WaitForChild("Achievements"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
+local DailySpin = require(script.Parent:WaitForChild("DailySpin"))
 local Coins = require(script.Parent:WaitForChild("Coins"))
 local Cosmetics = require(script.Parent:WaitForChild("Cosmetics"))
 local DevTuning = require(script.Parent:WaitForChild("DevTuning"))
@@ -58,6 +59,7 @@ Cosmetics.init() -- Lackiererei: Farben und Spur
 Achievements.init() -- Erfolge (Popup, Badges)
 PlayerSettings.init() -- Einstellungen und Einstiegs-Hinweise speichern
 Tricks.init() -- Lufttricks: Muenzen fuer saubere Landungen
+DailySpin.init() -- taegliches Gluecksrad und Powerups
 Leaderboards.init() -- Bestenlisten (Global, Server, Freunde)
 PlayerEvents.init() -- Ereignisse (Ziel, Wurf, Drift ...) fuer Hausaufgaben und Erfolge
 Homework.init() -- Hausaufgaben (taegliche Aufgaben)

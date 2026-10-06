@@ -188,6 +188,8 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/client/Onboarding.luau` | Client | Einmalige Einstiegs-Hinweise (Fahren, Drift, Neustart) |
 | `src/shared/Progression/TrickMath.luau` | beiden | Reine Logik (getestet): Lufttricks zählen und Landung bewerten |
 | `src/shared/Progression/Combo.luau` | beiden | Reine Logik (getestet): Kuh-Kombo zählen, Multiplikator, Bonus |
+| `src/shared/Progression/DailySpin.luau` | beiden | Reine Logik (getestet): Glücksrad würfeln, Gewinne, Powerups pro Lauf verbrauchen |
+| `src/server/DailySpin.luau`, `src/client/SpinUI.luau` | beide | Glücksrad: Server würfelt und schreibt gut / Reiter mit drehendem Rad |
 | `src/client/ComboUI.luau` | Client | Große Anzeige „3x KOMBO!“ mit ablaufendem Zeitbalken |
 | `src/client/Tricks.luau`, `src/server/Tricks.luau` | beide | Lufttricks: drehen, Anzeige, Crash bei schiefer Landung / Münzen prüfen und gutschreiben |
 | `src/server/PlayerEvents.luau` | Server | Verteilt Ereignisse (Ziel, Wurf, Münzen, Drift) an Hausaufgaben und Erfolge; prüft die Drift-Meldungen |
@@ -787,6 +789,10 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Kombo-Bonus | Münzzähler beobachten | Pro Treffer: Flugbonus × Multiplikator + 4 pro Stufe (`Config.Combo`) |
 | Kombo vorbei | 3 s Pause, nächste Kuh | Wieder ohne Kombo (1x) |
 | Erfolge | 3x Kombo / 720er sauber | „Kuh-Lawine“ bzw. „Wirbelwind“ |
+| Glücksrad | B → „Gluecksrad“ → „Drehen! (gratis)“ | Rad dreht sich ~4 s (Klick-Geräusch mit Id), bleibt unter dem Zeiger stehen, „Gewonnen: …“; Knopf zeigt danach „Nächstes Drehen in … Std“ |
+| Einmal pro Tag | Nochmal drehen | Geht nicht („Heute schon gedreht“); zum Testen `Config.Debug.FreeSpins = true` |
+| Powerups | Extra-Leben / Helm / Start-Turbo gewinnen, losfahren | Beim Verlassen der Startzone „Powerup: 🎒 Extra-Schulranzen“; 6 Ranzen bzw. ein Helm mehr; Start-Turbo gibt Schub. Im Reiter steht, was noch übrig ist |
+| Speichern | Gewinnen, Stop, Play | Powerups und „heute schon gedreht“ bleiben |
 
 ## Tuning-Ablauf
 

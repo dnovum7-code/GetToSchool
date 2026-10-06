@@ -275,6 +275,101 @@ Config.Cosmetics = {
 	} :: { CosmeticDef },
 }
 
+-- Taegliches Gluecksrad (Menue B -> Gluecksrad): einmal pro Tag gratis drehen (Wechsel wie
+-- die Hausaufgaben, Config.Homework.ResetHourUtc). Gewinne: Muenzen oder Powerups, die beim
+-- naechsten Lauf automatisch wirken (je Lauf eins von jeder Sorte). weight = Wahrscheinlichkeit.
+export type SpinSegmentDef = {
+	id: string,
+	text: string,
+	kind: string, -- "Coins" oder "Item"
+	amount: number,
+	item: string?,
+	weight: number,
+	color: Color3,
+}
+Config.DailySpin = {
+	Enabled = true,
+	SpinTime = 4, -- so lange (s) dreht sich das Rad in der Anzeige
+	MaxItems = 9, -- hoechstens so viele von jedem Powerup
+	Items = {
+		ExtraLife = { name = "Extra-Schulranzen", description = "+1 Leben im naechsten Lauf", icon = "🎒" },
+		ExtraShield = { name = "Ersatz-Helm", description = "+1 Helm-Ladung im naechsten Lauf", icon = "⛑" },
+		StartBoost = { name = "Start-Turbo", description = "Schub beim Losfahren", icon = "🚀" },
+	},
+	ItemOrder = { "ExtraLife", "ExtraShield", "StartBoost" },
+	StartBoostSpeed = 45, -- Start-Turbo: so viel Tempo (Studs/s) kommt dazu ...
+	StartBoostDuration = 1.2, -- ... verteilt auf so viele Sekunden
+	Segments = {
+		{
+			id = "Coins20",
+			text = "20",
+			kind = "Coins",
+			amount = 20,
+			weight = 24,
+			color = Color3.fromRGB(255, 200, 60),
+		},
+		{
+			id = "Life",
+			text = "Extra-Leben",
+			kind = "Item",
+			item = "ExtraLife",
+			amount = 1,
+			weight = 14,
+			color = Color3.fromRGB(90, 190, 110),
+		},
+		{
+			id = "Coins50",
+			text = "50",
+			kind = "Coins",
+			amount = 50,
+			weight = 16,
+			color = Color3.fromRGB(255, 160, 50),
+		},
+		{
+			id = "Shield",
+			text = "Helm",
+			kind = "Item",
+			item = "ExtraShield",
+			amount = 1,
+			weight = 14,
+			color = Color3.fromRGB(80, 150, 230),
+		},
+		{
+			id = "Coins30",
+			text = "30",
+			kind = "Coins",
+			amount = 30,
+			weight = 18,
+			color = Color3.fromRGB(255, 200, 60),
+		},
+		{
+			id = "Boost",
+			text = "Start-Turbo x2",
+			kind = "Item",
+			item = "StartBoost",
+			amount = 2,
+			weight = 10,
+			color = Color3.fromRGB(230, 90, 90),
+		},
+		{
+			id = "Coins100",
+			text = "100",
+			kind = "Coins",
+			amount = 100,
+			weight = 6,
+			color = Color3.fromRGB(255, 130, 40),
+		},
+		{
+			id = "Jackpot",
+			text = "500!",
+			kind = "Coins",
+			amount = 500,
+			weight = 1,
+			color = Color3.fromRGB(200, 90, 230),
+		},
+	} :: { SpinSegmentDef },
+}
+
 -- Kuh-Kombo: mehrere Treffer (Launchables) kurz hintereinander = Multiplikator fuer die
 -- Bonus-Muenzen, grosse Anzeige "3x KOMBO!". Logik: Progression/Combo.
 Config.Combo = {
@@ -555,6 +650,8 @@ Config.Sounds = {
 	Music = { Id = "", Volume = 0.35 }, -- Hintergrundmusik (laeuft dauernd; Lautstaerke in den Einstellungen)
 	Trick = { Id = "", Volume = 0.7 }, -- saubere Trick-Landung
 	Combo = { Id = "", Volume = 0.8 }, -- Kombo (2x, 3x ...)
+	SpinTick = { Id = "", Volume = 0.4 }, -- Gluecksrad klickt
+	SpinWin = { Id = "", Volume = 0.8 }, -- Gluecksrad: Gewinn
 }
 
 -- Tuning-Panel (nur in Studio, Taste F2): welche Werte als Regler erscheinen.
@@ -643,6 +740,8 @@ Config.Debug = {
 	Toolkit = false,
 	-- true = Einstiegs-Hinweise bei jedem Play zeigen (sonst nur einmal pro Spieler)
 	ShowHintsAlways = false,
+	-- true = Gluecksrad beliebig oft drehen (zum Testen)
+	FreeSpins = false,
 }
 
 -- Einstieg: einmalige Hinweise beim ersten Lauf (Fahren, Drift, Neustart). Texte passen sich

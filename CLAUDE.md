@@ -52,6 +52,11 @@ visuelle Extras; noch nicht in Studio getestet):
 - Kuh-Kombo: Treffer innerhalb Config.Combo.Window erhöhen den Multiplikator (Server in
   server/Launchables, Logik Progression/Combo), Bonus = Flugbonus × Multiplikator +
   StepBonus pro Stufe; Anzeige src/client/ComboUI. Erfolge „Kuh-Lawine“, „Wirbelwind“.
+- Glücksrad: einmal pro Tag (Tageswechsel wie Hausaufgaben), Config.DailySpin (Felder,
+  Gewichte, Items), Server würfelt (server/DailySpin, Shop-Anfrage "Spin"), Reiter
+  „Gluecksrad“ (src/client/SpinUI). Powerups (Extra-Leben, Ersatz-Helm, Start-Turbo) werden
+  beim Start des nächsten Laufs verbraucht (PlayerEvents "RunStarted",
+  RaceManager.addRunBonus). Spielstand: spinDay, items. Debug.FreeSpins zum Testen.
 M4 – Wiederspielwert (gebaut, noch nicht in Studio getestet; Testliste im README
 „Wichtigste Studio-Tests M4“):
 - Geist vom besten Lauf: Server zeichnet jeden Lauf auf (src/server/Ghosts, kompakt mit

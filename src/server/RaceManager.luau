@@ -281,6 +281,15 @@ function RaceManager.isOutsideRun(player: Player): boolean
 	return phase == "Ready" or phase == "Finished" or phase == "Aborted"
 end
 
+-- Powerups (Gluecksrad) fuer den laufenden Lauf: Extra-Leben / Helm-Ladungen
+function RaceManager.addRunBonus(player: Player, lives: number, shield: number)
+	local race = getRace(player)
+	race.life.lives += lives
+	race.life.maxLives += lives
+	race.life.shield += shield
+	sendLives(player, race)
+end
+
 -- Laeuft gerade ein Lauf (Zeit laeuft)?
 function RaceManager.isRunning(player: Player): boolean
 	return getRace(player).phase == "Running"
@@ -576,6 +585,7 @@ local function updatePlayer(player: Player, race: RaceState)
 			race.phase = "Running"
 			race.startTime = os.clock()
 			race.startPosition = position
+			PlayerEvents.fire(player, { type = "RunStarted", trackId = race.trackId }) -- z. B. Powerups
 			local vehicle = if cart then cart:GetAttribute("VehicleId") else nil
 			Ghosts.start(player, race.trackId, if type(vehicle) == "string" then vehicle else "")
 			runState:FireClient(player, "Started")

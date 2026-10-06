@@ -28,6 +28,7 @@ local Onboarding = require(script.Parent:WaitForChild("Onboarding"))
 local PaintShopUI = require(script.Parent:WaitForChild("PaintShopUI"))
 local Settings = require(script.Parent:WaitForChild("Settings"))
 local SettingsUI = require(script.Parent:WaitForChild("SettingsUI"))
+local SpinUI = require(script.Parent:WaitForChild("SpinUI"))
 local LaunchablesClient = require(script.Parent:WaitForChild("LaunchablesClient"))
 local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 local ProgressClient = require(script.Parent:WaitForChild("ProgressClient"))
@@ -189,7 +190,29 @@ HomeworkUI.init() -- Hausaufgaben (Reiter im Menue)
 GarageUI.init() -- Fahrzeuge (Reiter im Menue)
 PaintShopUI.init() -- Farben und Spur (Reiter im Menue)
 AchievementUI.init() -- Erfolge (Reiter im Menue, Popup)
+SpinUI.init() -- taegliches Gluecksrad (Reiter im Menue)
 SettingsUI.init() -- Einstellungen und Steuerung (Reiter im Menue)
+-- Powerups aus dem Gluecksrad wirken beim Losfahren (Leben/Helm zaehlt der Server)
+remotes:WaitForChild("Progress").OnClientEvent:Connect(function(kind: string, used: unknown)
+	if kind ~= "Powerups" or type(used) ~= "table" then
+		return
+	end
+	local names = {}
+	for _, id in used :: { any } do
+		local def = (Config.DailySpin.Items :: any)[id]
+		if def then
+			table.insert(names, `{def.icon} {def.name}`)
+		end
+		if id == "StartBoost" and controller then
+			controller:startBoost(Config.DailySpin.StartBoostSpeed, Config.DailySpin.StartBoostDuration)
+			SoundSystem.play("Boost")
+			ChaseCamera.kickFov(Config.Camera.BoostFovKick)
+		end
+	end
+	if #names > 0 then
+		RaceUI.showToast("Powerup: " .. table.concat(names, ", "), 3, Color3.fromRGB(120, 220, 255))
+	end
+end)
 Onboarding.init() -- einmalige Hinweise beim ersten Lauf
 Tricks.init() -- Lufttricks (Anzeige)
 ComboUI.init() -- Kuh-Kombo-Anzeige

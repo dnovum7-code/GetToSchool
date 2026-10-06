@@ -84,6 +84,8 @@ export type Data = {
 	achievements: { [string]: boolean }, -- freigeschaltete Erfolge
 	settings: Settings,
 	hintsSeen: { [string]: boolean }, -- Einstiegs-Hinweise, die schon gezeigt wurden
+	spinDay: number, -- Tag des letzten Gluecksrad-Drehens (-1 = noch nie)
+	items: { [string]: number }, -- Powerups aus dem Gluecksrad (Id -> Anzahl)
 }
 
 local DEFAULT_VEHICLE = "ShoppingCart"
@@ -105,6 +107,8 @@ function SaveData.new(): Data
 		achievements = {},
 		settings = table.clone(SaveData.SETTINGS_DEFAULTS),
 		hintsSeen = {},
+		spinDay = -1,
+		items = {},
 	}
 end
 
@@ -255,6 +259,8 @@ function SaveData.sanitize(raw: { [any]: any }): Data
 		end
 	end
 	data.hintsSeen = sanitizeFlags(raw.hintsSeen)
+	data.spinDay = wholeNumber(raw.spinDay, -1) or -1
+	data.items = sanitizeNumberMap(raw.items, 0, 99, true)
 	data.homework = sanitizeHomework(raw.homework)
 	local cosmetics = if type(raw.cosmetics) == "table" then raw.cosmetics else {}
 	local vehicleColors: { [string]: string } = {}
@@ -356,6 +362,10 @@ function SaveData.merge(stored: Data, session: Data): Data
 	end
 	for id in session.hintsSeen do
 		result.hintsSeen[id] = true
+	end
+	result.spinDay = math.max(result.spinDay, session.spinDay)
+	for id, count in session.items do
+		result.items[id] = math.min((result.items[id] or 0) + count, 99)
 	end
 	-- Kosmetik: Gekauftes zusammen, Auswahl aus der Sitzung
 	for id in session.cosmetics.colors do
