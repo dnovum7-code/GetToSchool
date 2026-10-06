@@ -43,8 +43,8 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
   Config.TuningPanel. Fehlersuche bei Bodenbausteinen: Config.Debug.TrackPieces.
 
 ## Aktueller Meilenstein
-M5 – Spaß-Extras (in Arbeit; Reihenfolge: Lufttricks, Kuh-Kombo, tägliches Glücksrad,
-visuelle Extras; noch nicht in Studio getestet):
+M5 – Spaß-Extras (gebaut, noch nicht in Studio getestet; Testliste im README
+„Wichtigste Studio-Tests M5“):
 - Lufttricks: Q/E in der Luft (Gamepad LB, Touch „Trick“) drehen um die Hochachse;
   Logik Progression/TrickMath, Client src/client/Tricks (Drehmoment nach der Fahrphysik,
   Landung bewerten, Landehilfe), Server src/server/Tricks (Münzen, Spam-Schutz),
@@ -136,11 +136,8 @@ Checkpoints, Hindernisse, Zufallsereignisse, Sound; drei Feedback-Runden: Drift 
 Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 
 ## Später
-- M5 – Spaß-Extras (nach M4): Lufttricks (Q/E in der Luft drehen, Münzen bei sauberer
-  Landung, Crash bei schiefer Landung; E am Boden bleibt Aussteigen), Kuh-Kombo
-  (Multiplikator für Bonus-Münzen, große Anzeige „3x KOMBO!“), tägliches Glücksrad
-  (Items/Powerups), weitere visuelle Effekte. Alle Werte in die Config, wichtige ins
-  Tuning-Panel.
+- Noch offen: nichts geplant. Nächster Schritt ist das Testen in Studio (Testlisten im
+  README: M2.5/M3, M4, M5) und Feedback einarbeiten.
 
 ## Steuerung
 | Aktion | Tastatur | Gamepad | Touch |

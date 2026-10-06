@@ -800,6 +800,18 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Konfetti | Ins Ziel fahren | Konfetti fällt von oben; bei neuer Bestzeit doppelt so viel |
 | Effekte aus | Einstellungen → „Extra-Effekte“ aus | Nichts davon mehr zu sehen |
 
+### Wichtigste Studio-Tests M5 (nach Wichtigkeit)
+
+1. **Spiel startet ohne Fehler**, Menü hat zusätzlich den Reiter „Gluecksrad“.
+2. **E am Boden steigt weiterhin aus** (die Trick-Taste darf Aussteigen nicht stören).
+3. **Lufttrick**: JumpPad, in der Luft Q/E – Drehung, saubere Landung gibt Münzen,
+   quer landen = Crash; normale Sprünge ohne Q/E bleiben unverändert.
+4. **Kuh-Kombo**: Kuh-Reihe auf der Testfläche – „2x/3x/4x KOMBO!“, Bonus steigt.
+5. **Glücksrad**: drehen, Rad hält am gemeldeten Feld, Gewinn kommt an, nur einmal pro Tag;
+   Powerups wirken beim nächsten Start (6 Ranzen, Helm, Start-Turbo).
+6. **Visuelle Extras**: Speed-Linien, Staub, Boost-Flammen, Konfetti – und abschaltbar.
+7. **Gamepad/Touch**: LB bzw. „Trick“-Knopf in der Luft; Glücksrad mit Gamepad bedienbar.
+
 ## Tuning-Ablauf
 
 1. In Studio Play, **F2** öffnet das Panel. Jeder Regler startet in der Mitte = aktueller
