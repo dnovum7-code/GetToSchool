@@ -181,6 +181,9 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/shared/Vehicles.luau` | beiden | Fahrzeuge aus `Config.Vehicles`, Fahrwerte eines Wagens (`Vehicles.forCart`) |
 | `src/server/Garage.luau` | Server | Fahrzeuge kaufen und wählen |
 | `src/client/GarageUI.luau` | Client | Reiter „Garage“ im Menü |
+| `src/shared/Progression/Cosmetics.luau` | beiden | Reine Logik (getestet): Farbe pro Fahrzeug, Spur, besessen? |
+| `src/server/Cosmetics.luau` | Server | Lackiererei: Farben/Spuren kaufen, wählen, am Wagen anwenden |
+| `src/client/PaintShopUI.luau` | Client | Reiter „Lackiererei“ im Menü |
 
 Unity-Vergleich: `*.server.luau` / `*.client.luau` sind wie MonoBehaviours, die von selbst
 starten. Alle anderen `.luau`-Dateien sind ModuleScripts, also normale Klassen/Bibliotheken,
@@ -426,11 +429,12 @@ an den Boden geschweißt (wie ein Kind-Objekt ohne eigenen Rigidbody in Unity).
    in `Config.Vehicles` (z. B. Bürostuhl 3.2 × 3.2 Studs).
 3. Model so benennen wie die Fahrzeug-Id (`ShoppingCart`, `OfficeChair`, `SchoolDesk`) und
    in einen Ordner `ReplicatedStorage/VehicleModels` legen (Rojo lässt ihn in Ruhe).
-4. Optional als Attribute am Model: `HideWheels` (Bool) = die Kugel-Räder unsichtbar machen
+4. Lackiererei: Parts mit dem Attribut `Paint` (Bool) = true bekommen die gewählte Farbe.
+5. Optional als Attribute am Model: `HideWheels` (Bool) = die Kugel-Räder unsichtbar machen
    (wenn dein Modell eigene Räder hat), `HideBase` (Bool) = den Boden unsichtbar machen.
    An einzelnen Parts: `Collide` (Bool) = dieses Teil stößt mit Hindernissen zusammen
    (sonst gehen alle Teile des Modells durch alles hindurch, nur die Physik-Teile stoßen).
-5. Play: Das Modell ersetzt den Platzhalter. Alle Teile werden automatisch masselos, nicht
+6. Play: Das Modell ersetzt den Platzhalter. Alle Teile werden automatisch masselos, nicht
    verankert und an den Boden geschweißt; Skripte im Modell werden entfernt.
 
 Fahrwerte ändern: `Config.Vehicles.<Id>` – `set` = fester Wert (z. B. Größe), `scale` =
@@ -714,6 +718,11 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Speichern | Fahrzeug wählen, Stop, Play | Startet im zuletzt gewählten Fahrzeug |
 | Geist mit Fahrzeug | Mit dem Schultisch Bestzeit fahren, T | Geist hat die Größe des Schultischs |
 | Fahrzeug-Tuning | F2 → „Buerostuhl: Lenkung x“ usw. | Wirkt sofort auf den gefahrenen Wagen |
+| Lackiererei | B → „Lackiererei“ | Farbkacheln (Original, Rot, Blau gratis; andere mit Preis), darunter Spuren |
+| Farbe | „Feuerwehrrot“ klicken | Korb des Wagens wird rot (sieht man hinter dem Menü), Kachel hat Rahmen |
+| Farbe pro Fahrzeug | Garage → Bürostuhl, Lackiererei → Blau; zurück zum Einkaufswagen | Einkaufswagen bleibt rot, Bürostuhl ist blau |
+| Spur | Mit genug Münzen „Kreidestaub“ kaufen, fahren | Weißes Band hinter dem Wagen; andere Spieler sehen es auch. „Keine“ schaltet ab |
+| Speichern | Farbe/Spur wählen, Stop, Play | Wagen hat wieder Farbe und Spur |
 
 ## Tuning-Ablauf
 

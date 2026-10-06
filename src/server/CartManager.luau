@@ -58,6 +58,12 @@ function CartManager.setVehicleResolver(resolver: (player: Player) -> string)
 	vehicleResolver = resolver
 end
 
+-- Wird nach jedem neu gebauten Wagen aufgerufen (z. B. Lackierung anwenden)
+local builtCallbacks: { (player: Player, cart: Model) -> () } = {}
+function CartManager.onCartBuilt(callback: (player: Player, cart: Model) -> ())
+	table.insert(builtCallbacks, callback)
+end
+
 local function getState(player: Player): PlayerState
 	local state = states[player]
 	if not state then
@@ -261,6 +267,9 @@ local function createCart(player: Player, state: PlayerState, at: CFrame): Model
 		state.cart:Destroy()
 	end
 	local cart = CartBuilder.build(player, at, vehicleResolver(player))
+	for _, callback in builtCallbacks do
+		callback(player, cart)
+	end
 	cart.Parent = cartsFolder
 	state.cart = cart
 	watchSeat(player, state, cart)

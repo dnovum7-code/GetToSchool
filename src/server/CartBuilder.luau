@@ -120,7 +120,7 @@ local function buildCartLook(model: Model, base: BasePart, cframe: CFrame, c: ty
 		},
 	}
 	for _, def in fixedParts do
-		visual(model, base, cframe, {
+		local part = visual(model, base, cframe, {
 			Name = def.name,
 			Size = def.size,
 			Offset = CFrame.new(def.offset),
@@ -128,6 +128,7 @@ local function buildCartLook(model: Model, base: BasePart, cframe: CFrame, c: ty
 			Material = Enum.Material.Metal,
 			Transparency = 0.35, -- "Gitter"-Optik, man sieht den Fahrer
 		})
+		part:SetAttribute("Paint", true) -- Lackiererei faerbt den Korb
 	end
 	-- Roter Schiebegriff (Zylinder liegt entlang der X-Achse)
 	visual(model, base, cframe, {
@@ -147,20 +148,22 @@ local function buildChairLook(model: Model, base: BasePart, cframe: CFrame, c: t
 	local black = Color3.fromRGB(35, 35, 40)
 	base.Color = black
 	base.Material = Enum.Material.SmoothPlastic
-	visual(model, base, cframe, {
+	local cushion = visual(model, base, cframe, {
 		Name = "Cushion",
 		Size = Vector3.new(w, 0.4, l),
 		Offset = CFrame.new(0, t / 2 + 0.2, 0),
 		Color = fabric,
 		Material = Enum.Material.Fabric,
 	})
-	visual(model, base, cframe, {
+	cushion:SetAttribute("Paint", true)
+	local backrest = visual(model, base, cframe, {
 		Name = "Backrest",
 		Size = Vector3.new(w * 0.9, 2.6, 0.35),
 		Offset = CFrame.new(0, t / 2 + 1.6, l / 2 - 0.1) * CFrame.Angles(math.rad(-8), 0, 0),
 		Color = fabric,
 		Material = Enum.Material.Fabric,
 	})
+	backrest:SetAttribute("Paint", true)
 	for _, side in { -1, 1 } do
 		visual(model, base, cframe, {
 			Name = "Armrest",
@@ -217,20 +220,22 @@ local function buildDeskLook(model: Model, base: BasePart, cframe: CFrame, c: ty
 	local deskDepth = l * 0.45
 	local deskZ = -l / 2 + deskDepth / 2 + 0.1
 	local deskY = t / 2 + 2.4
-	visual(model, base, cframe, {
+	local top = visual(model, base, cframe, {
 		Name = "DeskTop",
 		Size = Vector3.new(w + 0.6, 0.25, deskDepth),
 		Offset = CFrame.new(0, deskY, deskZ),
 		Color = wood,
 		Material = Enum.Material.Wood,
 	})
-	visual(model, base, cframe, {
+	top:SetAttribute("Paint", true)
+	local tray = visual(model, base, cframe, {
 		Name = "BookTray",
 		Size = Vector3.new(w * 0.8, 0.5, deskDepth * 0.8),
 		Offset = CFrame.new(0, deskY - 0.6, deskZ),
 		Color = metal,
 		Material = Enum.Material.Metal,
 	})
+	tray:SetAttribute("Paint", true)
 	for _, x in { -1, 1 } do
 		for _, z in { -1, 1 } do
 			visual(model, base, cframe, {
@@ -294,6 +299,78 @@ local function addCustomModel(model: Model, base: BasePart, cframe: CFrame, vehi
 	end
 	model:SetAttribute("HideWheels", template:GetAttribute("HideWheels") == true)
 	return true
+end
+
+-- Aussehen aus der Lackiererei: Farbe (nil = Original) und Spur (nil = keine).
+-- Gefaerbt werden Teile mit Attribut Paint = true; ihr Original merkt sich der Wagen.
+export type TrailLook = {
+	colors: { Color3 }?,
+	rainbow: boolean?,
+	lifetime: number?,
+	lightEmission: number?,
+}
+
+function CartBuilder.applyLook(cart: Model, color: Color3?, material: Enum.Material?, trail: TrailLook?)
+	for _, part in cart:GetDescendants() do
+		if part:IsA("BasePart") and part:GetAttribute("Paint") == true then
+			local original = part:GetAttribute("OriginalColor")
+			if typeof(original) ~= "Color3" then
+				part:SetAttribute("OriginalColor", part.Color)
+				part:SetAttribute("OriginalMaterial", part.Material.Name)
+				original = part.Color
+			end
+			local originalMaterial = (Enum.Material :: any)[part:GetAttribute("OriginalMaterial") or "Plastic"]
+			part.Color = color or original :: Color3
+			part.Material = material or originalMaterial or part.Material
+		end
+	end
+
+	-- Spur: Band zwischen zwei Punkten hinten links und rechts am Boden
+	local base = cart:FindFirstChild("Base")
+	if not base or not base:IsA("BasePart") then
+		return
+	end
+	local old = base:FindFirstChild("CosmeticTrail")
+	if old then
+		old:Destroy()
+	end
+	for _, name in { "TrailLeft", "TrailRight" } do
+		local attachment = base:FindFirstChild(name)
+		if attachment then
+			attachment:Destroy()
+		end
+	end
+	if not trail then
+		return
+	end
+	local size = base.Size
+	local left = Instance.new("Attachment")
+	left.Name = "TrailLeft"
+	left.Position = Vector3.new(-size.X / 2 + 0.2, 0, size.Z / 2)
+	left.Parent = base
+	local right = Instance.new("Attachment")
+	right.Name = "TrailRight"
+	right.Position = Vector3.new(size.X / 2 - 0.2, 0, size.Z / 2)
+	right.Parent = base
+	local effect = Instance.new("Trail")
+	effect.Name = "CosmeticTrail"
+	effect.Attachment0 = left
+	effect.Attachment1 = right
+	effect.Lifetime = trail.lifetime or 0.7
+	effect.LightEmission = trail.lightEmission or 0
+	effect.MinLength = 0.2
+	effect.Transparency = NumberSequence.new(0.15, 1)
+	if trail.rainbow then
+		local keypoints = {}
+		for i = 0, 6 do
+			table.insert(keypoints, ColorSequenceKeypoint.new(i / 6, Color3.fromHSV(i / 6, 0.8, 1)))
+		end
+		effect.Color = ColorSequence.new(keypoints)
+	else
+		local colors = trail.colors or { Color3.new(1, 1, 1) }
+		effect.Color = ColorSequence.new(colors[1], colors[2] or colors[1])
+	end
+	effect.Parent = base
 end
 
 -- Erzeugt einen neuen Wagen an `cframe` (Mitte des Bodens) fuer `owner`.

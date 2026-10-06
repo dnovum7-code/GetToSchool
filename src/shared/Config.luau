@@ -208,6 +208,73 @@ Config.Vehicles = {
 	},
 }
 
+-- Kosmetik (Menue B -> Lackiererei): Farbe pro Fahrzeug und eine Spur hinter dem Wagen.
+-- Farben: color = nil -> Originalfarbe; material optional (z. B. Neon). Eingefaerbt werden die
+-- Hauptteile des Fahrzeugs (eigene Modelle: Parts mit Attribut Paint = true).
+-- Spuren: colors = Anfang/Ende (oder rainbow = true), lifetime = Laenge in Sekunden.
+-- price 0 = kostenlos; gekauft ist gekauft (fuer alle Fahrzeuge).
+export type CosmeticDef = {
+	id: string,
+	name: string,
+	price: number,
+	color: Color3?,
+	material: Enum.Material?,
+	colors: { Color3 }?,
+	rainbow: boolean?,
+	lifetime: number?,
+	lightEmission: number?,
+}
+Config.Cosmetics = {
+	Colors = {
+		{ id = "Standard", name = "Original", price = 0 },
+		{ id = "Red", name = "Feuerwehrrot", price = 0, color = Color3.fromRGB(215, 45, 45) },
+		{ id = "Blue", name = "Himmelblau", price = 0, color = Color3.fromRGB(70, 150, 235) },
+		{ id = "Green", name = "Turnhallengruen", price = 40, color = Color3.fromRGB(60, 175, 80) },
+		{ id = "Pink", name = "Kaugummi-Pink", price = 60, color = Color3.fromRGB(240, 110, 190) },
+		{ id = "Black", name = "Mitternacht", price = 80, color = Color3.fromRGB(30, 30, 40) },
+		{
+			id = "Gold",
+			name = "Gold",
+			price = 400,
+			color = Color3.fromRGB(240, 190, 50),
+			material = Enum.Material.Foil,
+		},
+		{
+			id = "Neon",
+			name = "Neon",
+			price = 600,
+			color = Color3.fromRGB(80, 255, 200),
+			material = Enum.Material.Neon,
+		},
+	} :: { CosmeticDef },
+	Trails = {
+		{
+			id = "Chalk",
+			name = "Kreidestaub",
+			price = 150,
+			colors = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(180, 180, 190) },
+			lifetime = 0.9,
+			lightEmission = 0,
+		},
+		{
+			id = "Sparkle",
+			name = "Glitzerspur",
+			price = 300,
+			colors = { Color3.fromRGB(255, 230, 120), Color3.fromRGB(255, 120, 220) },
+			lifetime = 0.6,
+			lightEmission = 1,
+		},
+		{
+			id = "Rainbow",
+			name = "Regenbogen",
+			price = 600,
+			rainbow = true,
+			lifetime = 0.8,
+			lightEmission = 0.6,
+		},
+	} :: { CosmeticDef },
+}
+
 -- Streckenbausteine: normale Parts mit Tag (CollectionService). Werte hier sind
 -- Standardwerte; einzelne Parts koennen sie per Attribut ueberschreiben (in Klammern).
 Config.Track = {

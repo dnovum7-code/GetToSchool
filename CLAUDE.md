@@ -66,6 +66,8 @@ Kosmetik, Erfolge, Einstellungen/Einstieg; noch nicht in Studio getestet):
   Progression/VehicleStats. Wagen trägt Attribut VehicleId; Fahrwerte immer über
   Vehicles.forCart(cart) bzw. controller.stats lesen, nicht direkt Config.Drive.
   Garage (Reiter, server/Garage), eigene Modelle in ReplicatedStorage/VehicleModels/<Id>.
+- Kosmetik: Config.Cosmetics (Farben pro Fahrzeug, Spuren), Reiter „Lackiererei“,
+  server/Cosmetics wendet sie per CartBuilder.applyLook an (Parts mit Attribut Paint).
 M3 – Progression (gebaut, noch nicht in Studio getestet):
 - Münzen: Baustein `Coin`, Server prüft das Einsammeln (Abstand), Zielbelohnung
   (Grundbetrag + Notenbonus), Münzen bleiben nach Crash/Abbruch. Eingesammelte Münzen erscheinen

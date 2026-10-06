@@ -43,6 +43,14 @@ export type HomeworkState = {
 	bonusDone: boolean, -- Bonus fuer "alle erledigt" schon bekommen
 }
 
+-- Kosmetik: Farben (pro Fahrzeug gewaehlt) und Spur
+export type Cosmetics = {
+	colors: { [string]: boolean }, -- gekaufte Farben (kostenlose stehen nicht drin)
+	trails: { [string]: boolean }, -- gekaufte Spuren
+	vehicleColors: { [string]: string }, -- Fahrzeug-Id -> Farb-Id
+	trail: string, -- gewaehlte Spur ("" = keine)
+}
+
 export type Data = {
 	version: number,
 	coins: number,
@@ -55,6 +63,7 @@ export type Data = {
 	launchRecords: { [string]: number }, -- Objektname (z. B. "Kuh") -> weitester Flug in Metern
 	stats: Stats,
 	homework: HomeworkState,
+	cosmetics: Cosmetics,
 }
 
 local DEFAULT_VEHICLE = "ShoppingCart"
@@ -72,6 +81,7 @@ function SaveData.new(): Data
 		launchRecords = {},
 		stats = { finishedRuns = 0, coinsCollected = 0, objectsLaunched = 0 },
 		homework = SaveData.newHomework(),
+		cosmetics = { colors = {}, trails = {}, vehicleColors = {}, trail = "" },
 	}
 end
 
@@ -195,6 +205,21 @@ function SaveData.sanitize(raw: { [any]: any }): Data
 		objectsLaunched = wholeNumber(stats.objectsLaunched, 0) or 0,
 	}
 	data.homework = sanitizeHomework(raw.homework)
+	local cosmetics = if type(raw.cosmetics) == "table" then raw.cosmetics else {}
+	local vehicleColors: { [string]: string } = {}
+	if type(cosmetics.vehicleColors) == "table" then
+		for vehicle, color in cosmetics.vehicleColors do
+			if type(vehicle) == "string" and type(color) == "string" then
+				vehicleColors[vehicle] = color
+			end
+		end
+	end
+	data.cosmetics = {
+		colors = sanitizeFlags(cosmetics.colors),
+		trails = sanitizeFlags(cosmetics.trails),
+		vehicleColors = vehicleColors,
+		trail = if type(cosmetics.trail) == "string" then cosmetics.trail else "",
+	}
 	return data
 end
 
@@ -274,6 +299,19 @@ function SaveData.merge(stored: Data, session: Data): Data
 	result.stats.finishedRuns += session.stats.finishedRuns
 	result.stats.coinsCollected += session.stats.coinsCollected
 	result.stats.objectsLaunched += session.stats.objectsLaunched
+	-- Kosmetik: Gekauftes zusammen, Auswahl aus der Sitzung
+	for id in session.cosmetics.colors do
+		result.cosmetics.colors[id] = true
+	end
+	for id in session.cosmetics.trails do
+		result.cosmetics.trails[id] = true
+	end
+	for vehicle, color in session.cosmetics.vehicleColors do
+		result.cosmetics.vehicleColors[vehicle] = color
+	end
+	if session.cosmetics.trail ~= "" then
+		result.cosmetics.trail = session.cosmetics.trail
+	end
 	-- Hausaufgaben: der neuere Tag gewinnt, am selben Tag zaehlt der groessere Fortschritt
 	local kept, fresh = result.homework, session.homework
 	if fresh.day > kept.day then

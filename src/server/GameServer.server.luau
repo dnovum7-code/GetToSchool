@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
 local Coins = require(script.Parent:WaitForChild("Coins"))
+local Cosmetics = require(script.Parent:WaitForChild("Cosmetics"))
 local DevTuning = require(script.Parent:WaitForChild("DevTuning"))
 local Garage = require(script.Parent:WaitForChild("Garage"))
 local Homework = require(script.Parent:WaitForChild("Homework"))
@@ -49,6 +50,7 @@ Launchables.init() -- Objekte zum Wegschleudern
 Shop.init() -- Kaeufe pruefen
 TrackUnlocks.init() -- Strecken freischalten und waehlen
 Garage.init() -- Fahrzeuge kaufen und waehlen
+Cosmetics.init() -- Lackiererei: Farben und Spur
 Leaderboards.init() -- Bestenlisten (Global, Server, Freunde)
 Homework.init() -- Hausaufgaben (taegliche Aufgaben)
 DevTuning.init(cartsFolder) -- Tuning-Panel (nur in Studio aktiv)
