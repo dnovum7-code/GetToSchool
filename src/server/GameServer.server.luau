@@ -9,6 +9,7 @@ local CartManager = require(script.Parent:WaitForChild("CartManager"))
 local Coins = require(script.Parent:WaitForChild("Coins"))
 local DevTuning = require(script.Parent:WaitForChild("DevTuning"))
 local Launchables = require(script.Parent:WaitForChild("Launchables"))
+local Leaderboards = require(script.Parent:WaitForChild("Leaderboards"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local ProgressSync = require(script.Parent:WaitForChild("ProgressSync"))
 local RaceManager = require(script.Parent:WaitForChild("RaceManager"))
@@ -45,6 +46,7 @@ Coins.init() -- Muenzen einsammeln (Server prueft)
 Launchables.init() -- Objekte zum Wegschleudern
 Shop.init() -- Kaeufe pruefen
 TrackUnlocks.init() -- Strecken freischalten und waehlen
+Leaderboards.init() -- Bestenlisten (Global, Server, Freunde)
 DevTuning.init(cartsFolder) -- Tuning-Panel (nur in Studio aktiv)
 
 -- Eingaben vom Client nie blind vertrauen: Der Client darf nur "bitte Neustart" sagen

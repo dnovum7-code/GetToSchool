@@ -22,11 +22,15 @@ local Economy =
 	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression"):WaitForChild("Economy"))
 local RunRules =
 	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression"):WaitForChild("RunRules"))
+local RunValidation = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression"):WaitForChild("RunValidation")
+)
 local RaceTime = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RaceTime"))
 local BestTimes = require(script.Parent:WaitForChild("BestTimes"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
 local Coins = require(script.Parent:WaitForChild("Coins"))
 local Ghosts = require(script.Parent:WaitForChild("Ghosts"))
+local Leaderboards = require(script.Parent:WaitForChild("Leaderboards"))
 local Launchables = require(script.Parent:WaitForChild("Launchables"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local RandomEvents = require(script.Parent:WaitForChild("RandomEvents"))
@@ -58,6 +62,8 @@ type RaceState = {
 	life: RunRules.LifeState, -- Leben und Helm-Ladungen in diesem Lauf
 	hits: number, -- getroffene Objekte (Launchables) in diesem Lauf
 	bestFlight: { name: string, meters: number }?, -- weitester Flug in diesem Lauf
+	visits: { RunValidation.Visit }, -- Checkpoints in diesem Lauf (fuer die Plausibilitaet)
+	startPosition: Vector3, -- wo der Wagen die Startzone verlassen hat
 }
 
 -- Ergebnis eines Laufs, so wie es an den Client geht
@@ -77,6 +83,7 @@ export type RunResult = {
 	hits: number, -- getroffene Objekte
 	bestFlightName: string?, -- weitester Flug in diesem Lauf (z. B. "Kuh") ...
 	bestFlightMeters: number?, -- ... und wie weit
+	leaderboardNote: string?, -- Lauf zaehlt nicht fuer die globale Bestenliste: warum
 }
 
 local races: { [Player]: RaceState } = {}
@@ -98,6 +105,8 @@ local function getRace(player: Player): RaceState
 			life = RunRules.newRun(Config.Lives.PerRun, 0),
 			hits = 0,
 			bestFlight = nil,
+			visits = {},
+			startPosition = Vector3.zero,
 		}
 		races[player] = race
 	end
@@ -150,6 +159,7 @@ function RaceManager.restart(player: Player)
 	race.wrongCheckpoint = nil
 	race.spawnPosition = spawnCFrame.Position
 	race.splits = {}
+	race.visits = {}
 	race.runId += 1
 	race.lastRestart = os.clock()
 	Coins.resetRun(player) -- Lauf-Summe auf 0 (Muenzen erscheinen erst nach dem Ziel wieder)
@@ -341,6 +351,12 @@ local function checkCheckpoints(player: Player, race: RaceState, base: BasePart)
 		local delta: number? = nil
 		if race.splits[key] == nil then
 			race.splits[key] = elapsed
+			table.insert(race.visits, {
+				key = key,
+				order = order,
+				at = elapsed,
+				position = { position.X, position.Y, position.Z },
+			})
 			local best = BestTimes.get(player, race.trackId)
 			local bestSplit = best and best.splits[key]
 			if bestSplit then
@@ -352,7 +368,65 @@ local function checkCheckpoints(player: Player, race: RaceState, base: BasePart)
 	end
 end
 
-local function finish(player: Player, race: RaceState, finishZone: BasePart)
+-- Checkpoints der Strecke fuer die Plausibilitaet. Optional: Attribut Optional = true oder
+-- in einem RandomEvent (der Server weiss nicht, ob es beim Spieler aktiv war).
+local function trackCheckpoints(trackId: string): { RunValidation.TrackCheckpoint }
+	local result = {}
+	for _, instance in Track.getCheckpoints(trackId) do
+		if not instance:IsA("BasePart") or not instance:IsDescendantOf(workspace) then
+			continue
+		end
+		local optional = instance:GetAttribute("Optional") == true
+		local ancestor: Instance? = instance
+		while ancestor and ancestor ~= workspace and not optional do
+			optional = ancestor:HasTag("RandomEvent")
+			ancestor = ancestor.Parent
+		end
+		local order = instance:GetAttribute("Order")
+		table.insert(result, {
+			key = instance:GetFullName(),
+			order = if type(order) == "number" then order else nil,
+			optional = optional,
+		})
+	end
+	return result
+end
+
+local function minTimeFor(trackId: string): number
+	for _, def in Config.Tracks do
+		if def.id == trackId and type(def.minTime) == "number" then
+			return def.minTime
+		end
+	end
+	return Config.Leaderboard.MinTime
+end
+
+-- Lauf plausibel? Dann in die globale Bestenliste. Sonst: Grund fuer die Anzeige.
+local function submitToLeaderboard(player: Player, race: RaceState, time: number, position: Vector3): string?
+	local LB = Config.Leaderboard
+	local ok, reason = RunValidation.check(
+		{
+			time = time,
+			startPosition = { race.startPosition.X, race.startPosition.Y, race.startPosition.Z },
+			finishPosition = { position.X, position.Y, position.Z },
+			visits = race.visits,
+		},
+		trackCheckpoints(race.trackId),
+		{
+			minTime = minTimeFor(race.trackId),
+			minGap = LB.MinCheckpointGap,
+			maxSpeed = LB.MaxSpeed,
+		}
+	)
+	if ok then
+		Leaderboards.submitTime(player, race.trackId, time)
+		return nil
+	end
+	local text = RunValidation.REASONS[reason or ""] or "unplausibel"
+	return `Nicht in der Bestenliste: {text}`
+end
+
+local function finish(player: Player, race: RaceState, finishZone: BasePart, position: Vector3)
 	local time = os.clock() - race.startTime
 	race.phase = "Finished"
 	local isNewBest, previousBest = BestTimes.submit(player, race.trackId, time, race.splits)
@@ -381,6 +455,7 @@ local function finish(player: Player, race: RaceState, finishZone: BasePart)
 		hits = race.hits,
 		bestFlightName = if race.bestFlight then race.bestFlight.name else nil,
 		bestFlightMeters = if race.bestFlight then race.bestFlight.meters else nil,
+		leaderboardNote = submitToLeaderboard(player, race, time, position),
 	}
 	runState:FireClient(player, "Finished", result)
 	-- Ziel erreicht: die eingesammelten Muenzen dieser Strecke erscheinen wieder
@@ -481,6 +556,7 @@ local function updatePlayer(player: Player, race: RaceState)
 		if leftStart then
 			race.phase = "Running"
 			race.startTime = os.clock()
+			race.startPosition = position
 			Ghosts.start(player, race.trackId)
 			runState:FireClient(player, "Started")
 		end
@@ -489,7 +565,7 @@ local function updatePlayer(player: Player, race: RaceState)
 		checkCheckpoints(player, race, base)
 		local finishZone = Track.findZone(race.trackId, Config.Race.FinishZoneTag)
 		if finishZone and Track.isInZone(finishZone, position) then
-			finish(player, race, finishZone)
+			finish(player, race, finishZone, position)
 		end
 	end
 end

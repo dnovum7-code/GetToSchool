@@ -49,6 +49,14 @@ Kosmetik, Erfolge, Einstellungen/Einstieg; noch nicht in Studio getestet):
   src/shared/Progression/GhostCodec), speichert bei neuer Bestzeit (eigener DataStore
   Config.Ghost.StoreName, Schlüssel pro Spieler und Strecke), Client spielt ihn ab dem Start
   halbdurchsichtig ab (src/client/GhostClient). Abschaltbar über src/client/Settings ("Ghost").
+- Bestenlisten: OrderedDataStore pro Strecke + „Weitester Kuh-Wurf“ (src/server/Leaderboards,
+  Config.Leaderboard; in Studio eigene Listen mit Suffix, ohne API im Arbeitsspeicher).
+  Ansichten Global / Server / Freunde, Reiter „Bestenliste“ im Menü, Bretter in der Welt
+  (Tag Leaderboard). Plausibilität vor dem globalen Eintrag (src/shared/Progression/
+  RunValidation): Mindestzeit (Config.Tracks minTime), alle Checkpoints (gleiche Order =
+  alternative Wege, Optional = true, in RandomEvent = optional), Reihenfolge, Mindestzeit
+  zwischen Checkpoints, Höchsttempo pro Abschnitt (Luftlinie). Unplausibel = nur persönlich.
+- Menü: Reiter melden sich mit ShopUI.addTab an (eigene Module zeichnen mit ShopUI.card ...).
 M3 – Progression (gebaut, noch nicht in Studio getestet):
 - Münzen: Baustein `Coin`, Server prüft das Einsammeln (Abstand), Zielbelohnung
   (Grundbetrag + Notenbonus), Münzen bleiben nach Crash/Abbruch. Eingesammelte Münzen erscheinen
@@ -93,11 +101,6 @@ Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 - M4 – Wiederspielwert (nach M2.5, Reihenfolge einhalten): Geist vom besten Lauf, globale
   Bestenlisten, Hausaufgaben (tägliche Aufgaben), Fahrzeuge (Garage), Kosmetik, Erfolge
   (Badge-IDs vorbereiten), Einstellungen und Einstieg. Jeweils Lune-Tests für die Logik.
-- Globale Bestenlisten: Weil Hindernisse auf dem Client laufen, prüft der Server jede Zeit,
-  bevor sie in die globale Bestenliste kommt: alle Checkpoints in der richtigen Reihenfolge
-  durchfahren, Mindestzeit pro Track, Mindestzeit zwischen Checkpoints (Werte in der Config).
-  Unplausible Zeiten zählen nur persönlich, nicht global. Zusätzlich Ansicht „Server“
-  (Spieler im selben Server) und „Freunde“.
 - M5 – Spaß-Extras (nach M4): Lufttricks (Q/E in der Luft drehen, Münzen bei sauberer
   Landung, Crash bei schiefer Landung; E am Boden bleibt Aussteigen), Kuh-Kombo
   (Multiplikator für Bonus-Münzen, große Anzeige „3x KOMBO!“), tägliches Glücksrad

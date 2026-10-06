@@ -18,6 +18,7 @@ local DevPanel = require(script.Parent:WaitForChild("DevPanel"))
 local DriftEffects = require(script.Parent:WaitForChild("DriftEffects"))
 local EnterPrompt = require(script.Parent:WaitForChild("EnterPrompt"))
 local GhostClient = require(script.Parent:WaitForChild("GhostClient"))
+local LeaderboardClient = require(script.Parent:WaitForChild("LeaderboardClient"))
 local LaunchablesClient = require(script.Parent:WaitForChild("LaunchablesClient"))
 local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 local ProgressClient = require(script.Parent:WaitForChild("ProgressClient"))
@@ -92,6 +93,7 @@ type RunResult = {
 	hits: number,
 	bestFlightName: string?,
 	bestFlightMeters: number?,
+	leaderboardNote: string?,
 }
 local GOLD = Color3.fromRGB(255, 215, 80)
 local function showResult(result: RunResult)
@@ -136,6 +138,9 @@ local function showResult(result: RunResult)
 		`Muenzen: +{result.coinsReward} im Ziel ({result.coinsBase} + {result.coinsGradeBonus} Notenbonus), `
 			.. `{result.coinsCollected} eingesammelt`
 	)
+	if result.leaderboardNote then
+		table.insert(lines, result.leaderboardNote) -- Zeit zaehlt nur persoenlich
+	end
 	if result.isNewBest then
 		RaceUI.showResult("NEUE BESTZEIT!", GOLD, lines, result.grade, Config.UI.ResultDisplayTime)
 	else
@@ -168,6 +173,7 @@ GhostClient.init() -- Geist vom besten Lauf
 ShopUI.init(function()
 	return runPhase == "Ready" or runPhase == "Finished" or runPhase == "Aborted"
 end)
+LeaderboardClient.init() -- Bestenlisten (Reiter im Menue, Bretter in der Welt)
 ProgressClient.onChanged(function(snapshot)
 	Abilities.setLevels(snapshot.upgrades) -- gekaufte Upgrade-Stufen
 end)

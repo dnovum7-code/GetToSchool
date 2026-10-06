@@ -18,6 +18,9 @@
         "HitLaunchable": {
           "$className": "RemoteEvent"
         },
+        "Leaderboard": {
+          "$className": "RemoteEvent"
+        },
         "Progress": {
           "$className": "RemoteEvent"
         },

@@ -19,6 +19,7 @@ export type UnlockRule = {
 export type TrackDef = {
 	id: string,
 	name: string,
+	minTime: number?, -- fuer die Bestenliste (siehe RunValidation), hier nicht benutzt
 	unlock: UnlockRule?,
 }
 

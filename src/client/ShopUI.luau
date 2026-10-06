@@ -2,6 +2,8 @@
 -- Menue "Pausen-Kiosk" (Taste B, Gamepad Select, oder Knopf oben rechts): Upgrades kaufen,
 -- Strecken waehlen/freischalten, Flug-Rekorde ansehen. Nur ausserhalb eines Laufs.
 -- Der Client fragt nur; ob ein Kauf klappt, entscheidet der Server (siehe server/Shop).
+-- Weitere Reiter (Bestenliste, Hausaufgaben ...) melden sich mit ShopUI.addTab an und
+-- zeichnen mit ShopUI.card / ShopUI.label / ShopUI.button.
 
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
@@ -37,14 +39,22 @@ export type TrackEntry = {
 	bestGrade: number?,
 }
 
-type Tab = "Upgrades" | "Tracks" | "Records"
+type TabDef = {
+	id: string,
+	text: string,
+	render: (ProgressClient.Snapshot) -> (),
+	onShow: (() -> ())?, -- wird aufgerufen, wenn der Reiter sichtbar wird
+}
 
 local gui: ScreenGui
 local panel: Frame
 local content: ScrollingFrame
+local tabBar: ScrollingFrame
 local coinLabel: TextLabel
 local tabButtons: { [string]: TextButton } = {}
-local currentTab: Tab = "Upgrades"
+local tabDefs: { TabDef } = {}
+local currentTab = "Upgrades"
+local shownTab: string? = nil -- zuletzt sichtbarer Reiter (fuer onShow)
 local PANEL_SIZE = Vector2.new(700, 480)
 local canOpen: () -> boolean = function()
 	return true
@@ -284,7 +294,7 @@ local function renderRecords(snapshot: ProgressClient.Snapshot)
 end
 
 local function render()
-	if not panel.Visible then
+	if not panel or not panel.Visible then
 		return
 	end
 	clearContent()
@@ -302,14 +312,91 @@ local function render()
 		return
 	end
 	coinLabel.Text = tostring(snapshot.coins)
-	if currentTab == "Upgrades" then
-		renderUpgrades(snapshot)
-	elseif currentTab == "Tracks" then
-		renderTracks(snapshot)
-	else
-		renderRecords(snapshot)
+	for _, def in tabDefs do
+		if def.id == currentTab then
+			def.render(snapshot)
+			if shownTab ~= currentTab then
+				shownTab = currentTab
+				if def.onShow then
+					task.spawn(def.onShow)
+				end
+			end
+			return
+		end
 	end
 end
+
+local function makeTabButton(def: TabDef, order: number)
+	local tabButton = button(tabBar, {
+		Name = def.id,
+		LayoutOrder = order,
+		Size = UDim2.fromOffset(124, 34),
+		BackgroundColor3 = GREY,
+		Text = def.text,
+	})
+	tabButtons[def.id] = tabButton
+	tabButton.Activated:Connect(function()
+		currentTab = def.id
+		render()
+	end)
+end
+
+-- Neuen Reiter anmelden. `renderTab(snapshot)` zeichnet mit ShopUI.card/label/button,
+-- `onShow()` (optional) laeuft, wenn der Reiter sichtbar wird (z. B. Daten anfragen).
+function ShopUI.addTab(
+	id: string,
+	text: string,
+	renderTab: (ProgressClient.Snapshot) -> (),
+	onShow: (() -> ())?
+)
+	local def = { id = id, text = text, render = renderTab, onShow = onShow }
+	table.insert(tabDefs, def)
+	if tabBar then
+		makeTabButton(def, #tabDefs)
+	end
+end
+
+-- Neu zeichnen (z. B. wenn Daten vom Server ankommen)
+function ShopUI.refresh()
+	render()
+end
+
+-- Welcher Reiter ist offen? (nil = Menue zu)
+function ShopUI.openTab(): string?
+	return if panel and panel.Visible then currentTab else nil
+end
+
+-- Zeichen-Helfer fuer Reiter aus anderen Modulen
+function ShopUI.card(height: number, order: number): Frame
+	return card(height, order)
+end
+-- Zeile mit Knoepfen nebeneinander (scrollt seitlich, wenn sie nicht passt)
+function ShopUI.buttonRow(height: number, order: number): ScrollingFrame
+	local frame = card(height, order)
+	frame.BackgroundTransparency = 1
+	local row = Instance.new("ScrollingFrame")
+	row.Size = UDim2.fromScale(1, 1)
+	row.BackgroundTransparency = 1
+	row.BorderSizePixel = 0
+	row.ScrollBarThickness = 3
+	row.ScrollingDirection = Enum.ScrollingDirection.X
+	row.AutomaticCanvasSize = Enum.AutomaticSize.X
+	row.CanvasSize = UDim2.new()
+	row.Parent = frame
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.Padding = UDim.new(0, 6)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = row
+	return row
+end
+function ShopUI.label(parent: Instance, props: { [string]: any }): TextLabel
+	return label(parent, props)
+end
+function ShopUI.button(parent: Instance, props: { [string]: any }): TextButton
+	return button(parent, props)
+end
+ShopUI.COLORS = { DARK = DARK, CARD = CARD, ACCENT = ACCENT, GREEN = GREEN, GREY = GREY }
 
 -- Panel passend zum Bildschirm verkleinern (Handy quer: nur ca. 390 Pixel hoch)
 local function fitScale(): number
@@ -359,6 +446,7 @@ end
 
 function ShopUI.close()
 	panel.Visible = false
+	shownTab = nil
 	local selected = GuiService.SelectedObject
 	if selected and selected:IsDescendantOf(panel) then
 		GuiService.SelectedObject = nil
@@ -449,23 +537,28 @@ function ShopUI.init(check: () -> boolean)
 	})
 	closeButton.Activated:Connect(ShopUI.close)
 
-	local tabs: { { id: Tab, text: string } } = {
-		{ id = "Upgrades", text = "Upgrades" },
-		{ id = "Tracks", text = "Strecken" },
-		{ id = "Records", text = "Rekorde" },
-	}
-	for index, tab in tabs do
-		local tabButton = button(panel, {
-			Position = UDim2.fromOffset(20 + (index - 1) * 150, 58),
-			Size = UDim2.fromOffset(140, 34),
-			BackgroundColor3 = GREY,
-			Text = tab.text,
-		})
-		tabButtons[tab.id] = tabButton
-		tabButton.Activated:Connect(function()
-			currentTab = tab.id
-			render()
-		end)
+	-- Reiter-Leiste (scrollt seitlich, wenn es viele Reiter sind)
+	tabBar = Instance.new("ScrollingFrame")
+	tabBar.Name = "Tabs"
+	tabBar.Position = UDim2.fromOffset(20, 56)
+	tabBar.Size = UDim2.new(1, -40, 0, 42)
+	tabBar.BackgroundTransparency = 1
+	tabBar.BorderSizePixel = 0
+	tabBar.ScrollBarThickness = 4
+	tabBar.ScrollingDirection = Enum.ScrollingDirection.X
+	tabBar.AutomaticCanvasSize = Enum.AutomaticSize.X
+	tabBar.CanvasSize = UDim2.new()
+	tabBar.Parent = panel
+	local tabLayout = Instance.new("UIListLayout")
+	tabLayout.FillDirection = Enum.FillDirection.Horizontal
+	tabLayout.Padding = UDim.new(0, 8)
+	tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	tabLayout.Parent = tabBar
+	table.insert(tabDefs, 1, { id = "Upgrades", text = "Upgrades", render = renderUpgrades })
+	table.insert(tabDefs, 2, { id = "Tracks", text = "Strecken", render = renderTracks })
+	table.insert(tabDefs, 3, { id = "Records", text = "Rekorde", render = renderRecords })
+	for index, def in tabDefs do
+		makeTabButton(def, index)
 	end
 
 	content = Instance.new("ScrollingFrame")

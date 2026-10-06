@@ -42,6 +42,9 @@
         },
         "Ghost": {
           "$className": "RemoteEvent"
+        },
+        "Leaderboard": {
+          "$className": "RemoteEvent"
         }
       }
     },

@@ -83,6 +83,7 @@ Hinweise:
 | 23 | Chaser | Langsam am Hund vorbei | Hund rennt dir nach, bleibt knapp hinter dem Wagen, gibt nach ~6 s auf, läuft heim |
 | 24 | Checkpoint 3 | Durchfahren | Hinweis „Checkpoint“ |
 | 25 | Ziel | Durchs Ziel | Ergebnis mit Zeit, Note (Grenzen 50/65/80/100/130 s), Münzen, Leben, Treffer, Chaos; Münzen der Strecke sind wieder da |
+| 26 | Schule | Auf die Schulwand schauen | Zwei Tafeln: Bestenliste „Der Schulweg“ und „Weitester Kuh-Wurf“ mit Top 10 und „Du: Platz …“ (nach dem ersten Lauf/Wurf) |
 | – | Testfläche | B → Strecken → Testfläche | Flacher Platz: Slalom (Pylonen = Props), Drift-Kreis rechts; A/D = Drift, Shift halten = normal |
 
 ## Arbeiten mit Studio
@@ -169,6 +170,9 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/server/Ghosts.luau` | Server | Zeichnet Läufe auf, speichert den Geist der Bestzeit (eigener DataStore) |
 | `src/client/GhostClient.luau` | Client | Spielt den Geist als halbdurchsichtigen Wagen ab |
 | `src/client/Settings.luau` | Client | Einstellungen des Spielers (Geist, Kamera-Wackeln, Lautstärke) |
+| `src/shared/Progression/RunValidation.luau`, `LeaderboardMath.luau` | beiden | Reine Logik (getestet): Plausibilitätsprüfung für die Bestenliste, Plätze und Werte |
+| `src/server/Leaderboards.luau` | Server | Bestenlisten: OrderedDataStore pro Strecke + Kuh-Wurf, Ansichten Global/Server/Freunde |
+| `src/client/LeaderboardClient.luau` | Client | Reiter „Bestenliste“ im Menü, Bretter in der Welt |
 
 Unity-Vergleich: `*.server.luau` / `*.client.luau` sind wie MonoBehaviours, die von selbst
 starten. Alle anderen `.luau`-Dateien sind ModuleScripts, also normale Klassen/Bibliotheken,
@@ -207,7 +211,7 @@ geschrieben wie in der Tabelle). Mehrere Tags pro Part sind erlaubt (z. B. `Move
 |---|---|---|
 | `StartZone` | Start: Wagen steht in der Mitte, schaut bergab. Zeit läuft beim Verlassen | `TrackId` (Text) – „Track1“, nur für Zonen außerhalb eines Track-Models (siehe „Zweiten Track anlegen“) |
 | `FinishZone` | Ziel: beendet den Lauf, Ergebnis mit Note | `Grade6` … `Grade2` (Zahl, Sekunden) – 60 / 75 / 90 / 110 / 130; langsamer = Note 1 |
-| `Checkpoint` | Durchfahren speichert Position + Richtung. R / Crash → hierher | `Order` (Zahl) – keine. Mit Order zählt ein Checkpoint mit kleinerer Zahl als der letzte nicht |
+| `Checkpoint` | Durchfahren speichert Position + Richtung. R / Crash → hierher. Für die globale Bestenliste müssen alle durchfahren werden (alternative Wege: gleiche `Order`, einer reicht) | `Order` (Zahl) – keine. Mit Order zählt ein Checkpoint mit kleinerer Zahl als der letzte nicht; `Optional` (Bool) – false (= muss für die Bestenliste nicht durchfahren werden) |
 | `BoostPad` | Schub in Blickrichtung (Vorderseite) des Parts, beim Drauffahren | `Strength` (Zahl, Studs/s) – 40 |
 | `JumpPad` | Schleudert entlang der Oberseite des Parts nach oben | `Strength` (Zahl, Studs/s) – 86 (≈ 19 Studs hoch) |
 | `Mud` | Bremst stark, Drift-Ladung pausiert | `Drag` (Zahl, pro Sekunde) – 3 |
@@ -228,6 +232,7 @@ geschrieben wie in der Tabelle). Mehrere Tags pro Part sind erlaubt (z. B. `Move
 | `Chaser` | Verfolger (z. B. Hund): rennt dir nach, gibt auf, läuft heim | `Radius` – 40; `MaxSpeed` – 32; `Acceleration` – 50; `GiveUpTime` (s) – 6; `ReturnSpeed` – 14; `Cooldown` (s) – 3; `Hazard` (Bool) – false; `Message`; `ListenSignal` |
 | `UpgradeDoor` | Abkürzungs-Tür: geht nur für Spieler mit dem Upgrade auf (fährt nach unten weg), sonst Schild „nur mit …“ | `RequiredUpgrade` (Text: Upgrade-Id aus `Config.Upgrades`, z. B. `Spring`, `Helmet`, `Turbo`, `Glider`) – nötig; `RequiredLevel` (Zahl) – 1 |
 | `Coin` | Münze: dreht sich, Durchfahren sammelt sie ein (bleibt dir auch nach Crash). Erscheint erst wieder, wenn du das Ziel dieser Strecke erreichst (nicht bei T, gegen „Farmen“) | `Value` (Zahl) – 1 |
+| `Leaderboard` | Brett mit der Bestenliste (Top 10 + dein Platz), z. B. an der Schulwand. Jeder Spieler sieht seinen eigenen Platz | `Board` (Text: TrackId oder `Flight` = Weitester Kuh-Wurf) – Strecke, in der das Brett liegt; `Face` (Text: `Front`, `Back`, `Left`, `Right`, `Top`) – Front |
 | `Launchable` | Kuh, Mülltonne, Gartenzwerg …: Hineinfahren kostet ein Leben, der Wagen fährt aber weiter, das Objekt fliegt absurd weit. Erscheint bei T wieder | `LaunchPower` (Zahl) – 140; `SpinPower` (Zahl) – 12; `SkyChance` (0–1) – 0.25 (fliegt in den Himmel); `Sound` (Sound-Id, z. B. „Muh“) – keiner; `DisplayName` (Text, für Rekorde) – Name des Objekts; `ComicText` (Text, z. B. „MUUH!“) – zufällig |
 
 Hinweise:
@@ -655,6 +660,13 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Geist (Speichern) | Mit API-Zugriff: Bestzeit fahren, Stop, Play, losfahren | Geist ist wieder da (aus dem DataStore) |
 | Geist (2 Spieler) | *Test → 2 Players* | Jeder sieht nur seinen eigenen Geist |
 | Geist (Durchsicht) | F2 → „Geist-Durchsicht“ | Wagen wird beim nächsten Start durchsichtiger/fester |
+| Bestenliste (Menü) | B → „Bestenliste“ | Knöpfe für jede Strecke und „Weitester Kuh-Wurf“, darunter Global / Server / Freunde. Liste Top 10, unten „Dein Platz“ |
+| Bestenliste (Eintrag) | Strecke ganz fahren, B → Bestenliste | Deine Zeit steht drin (grün hinterlegt). In Studio landen Tests in eigenen Listen (`…_Studio`), ohne API-Zugriff nur im Arbeitsspeicher |
+| Bestenliste (Kuh-Wurf) | Kuh umfahren, B → Bestenliste → Weitester Kuh-Wurf | Deine Weite steht drin |
+| Plausibilität (Checkpoint) | Im Play-Test (Server-Ansicht) Checkpoint 2 im Explorer neben die Straße schieben, dann ins Ziel fahren | Ergebnis: „Nicht in der Bestenliste: Checkpoint ausgelassen“, persönliche Bestzeit zählt trotzdem |
+| Plausibilität (Mindestzeit) | `Config.Tracks` → Track1 `minTime = 200`, Lauf beenden | „Nicht in der Bestenliste: Zu schnell für diese Strecke“ |
+| Server / Freunde | *Test → 2 Players*, beide fahren ins Ziel | „Server“ zeigt beide; „Freunde“ in Studio: „Keine Freunde gefunden“ |
+| Brett in der Welt | Teststrecke, Schulwand (Station 26) | Tafeln zeigen Top 10, „Du: Platz …“; nach einem neuen Eintrag spätestens nach 60 s aktuell |
 
 ## Tuning-Ablauf
 

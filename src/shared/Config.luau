@@ -650,10 +650,18 @@ Config.Race = {
 --   beides zusammen:                        was zuerst erfuellt ist
 -- Strecken, die hier fehlen, sind frei (Name: Attribut "TrackName" am Model oder die Id).
 -- Strecken, die es in der Welt nicht gibt, erscheinen nicht im Menue.
+-- minTime: Mindestzeit (s) fuer die globale Bestenliste (schneller = unplausibel, zaehlt nur
+-- persoenlich). Ohne Angabe gilt Config.Leaderboard.MinTime. Nach dem Bau der Strecke auf etwa
+-- 80 % der besten echten Zeit setzen.
 Config.Tracks = {
-	{ id = "Track1", name = "Der Schulweg" },
-	{ id = "Track2", name = "Die Abkuerzung", unlock = { track = "Track1", grade = 4, price = 250 } },
-	{ id = "Track3", name = "Ueber den Berg", unlock = { track = "Track2", grade = 5 } },
+	{ id = "Track1", name = "Der Schulweg", minTime = 20 },
+	{
+		id = "Track2",
+		name = "Die Abkuerzung",
+		minTime = 20,
+		unlock = { track = "Track1", grade = 4, price = 250 },
+	},
+	{ id = "Track3", name = "Ueber den Berg", minTime = 20, unlock = { track = "Track2", grade = 5 } },
 }
 
 -- Geist vom besten Lauf: Der Server zeichnet jeden Lauf auf. Ist er eine neue Bestzeit, wird
@@ -666,6 +674,31 @@ Config.Ghost = {
 	StoreName = "Ghosts_v1", -- DataStore fuer die Geister (aendern = alle Geister neu)
 	Transparency = 0.6,
 	Color = Color3.fromRGB(150, 220, 255),
+}
+
+-- Bestenlisten: pro Strecke die schnellste Zeit, dazu "Weitester Kuh-Wurf". Ansichten Global
+-- (OrderedDataStore), Server (Spieler hier) und Freunde. Im Menue (B) und an Brettern in der
+-- Welt (Part mit Tag "Leaderboard"). Bevor eine Zeit global zaehlt, prueft der Server, ob sie
+-- plausibel ist (siehe src/shared/Progression/RunValidation).
+Config.Leaderboard = {
+	StorePrefix = "LB_v1_", -- OrderedDataStore pro Liste: Praefix + TrackId bzw. FlightBoardId
+	StudioSuffix = "_Studio", -- in Studio eigene Listen, damit Tests nicht in der echten landen
+	FlightBoardId = "Flight",
+	FlightBoardName = "Weitester Kuh-Wurf",
+	TopCount = 10, -- so viele Plaetze werden angezeigt
+	SearchCount = 100, -- so viele Plaetze werden geladen, um den eigenen Platz zu finden
+	RefreshInterval = 60, -- globale Listen alle x Sekunden neu laden
+	EntryCacheTime = 120, -- Eintraege einzelner Spieler (Server/Freunde) so lange merken (s)
+	MaxFriends = 30, -- hoechstens so viele Freunde werden nachgeschlagen
+	BudgetReserve = 20, -- so viele DataStore-Anfragen bleiben fuer die Spielstaende frei
+	RequestCooldown = 1, -- Spam-Schutz: Anfragen vom Client hoechstens alle x Sekunden
+	-- Plausibilitaet
+	MinTime = 20, -- Mindestzeit pro Strecke (s), wenn Config.Tracks keine minTime hat
+	MinCheckpointGap = 1.5, -- Mindestzeit (s) zwischen zwei Checkpoints
+	MaxSpeed = 320, -- hoechstens so schnell (Studs/s, Luftlinie) in jedem Abschnitt
+	-- Brett in der Welt
+	BoardTag = "Leaderboard", -- Attribute: Board (TrackId oder "Flight"), Face ("Front" ...)
+	BoardPixelsPerStud = 40, -- Aufloesung der Schrift auf dem Brett
 }
 
 -- Spielstand (DataStore): Muenzen, Upgrades, Bestzeiten, freigeschaltete Tracks ...

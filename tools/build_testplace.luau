@@ -789,6 +789,19 @@ do
 		Parent = track,
 	})
 	sign(track, s + 4, "Geschafft! Gleich startet der naechste Lauf (oder T)")
+	-- Bestenlisten an der Schulwand (Tag "Leaderboard", zeigen zum ankommenden Fahrer)
+	for _, info in { { x = -18, board = "Track1" }, { x = 18, board = "Flight" } } do
+		part({
+			Name = "Bestenliste_" .. info.board,
+			Size = Vector3.new(22, 16, 0.5),
+			CFrame = frame(s + 99.5, info.x, 14),
+			Color = Color3.fromRGB(28, 60, 40),
+			CanCollide = false,
+			Tags = { "Leaderboard" },
+			Attributes = { Board = info.board, Face = "Back" },
+			Parent = track,
+		})
+	end
 end
 
 ------------------------------------------------------------------------------------------
