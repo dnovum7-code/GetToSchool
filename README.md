@@ -99,6 +99,11 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/client/AbilityHud.luau` | Client | Ability-Anzeige unten links |
 | `src/client/ShopUI.luau` | Client | Menü „Pausen-Kiosk“ (B): Upgrades, Strecken, Rekorde |
 | `src/client/LocalHide.luau` | Client | Objekte nur für diesen Spieler aus-/einblenden |
+| `src/client/Toolkit/` | Client | Erweiterter Baukasten (M2.5): ein Modul pro Baustein (`TriggerZones`, `Spawners`, `PathMovers`, `Gates`, `Collapses`, `Props`, `ForceZones`, `Chasers`), `Signals` (Signal-System), `init.luau` = Manager |
+| `src/shared/Toolkit/*.luau` | beiden | Reine Logik (getestet): `Rng` (reproduzierbarer Zufall), `SpawnSchedule`, `PathMath` (Wege, Tor-Takt), `TriggerRules`, `ChaserLogic` |
+| `src/client/Kinematic.luau` | Client | Verankerte Teile so bewegen, dass sie den Wagen sauber schieben |
+| `src/client/LocalClone.luau` | Client | Lokale Kopien (fliegende Kühe, Steine, Props …) |
+| `plugin/` | Studio | Bau-Hilfe-Plugin (Pfeile, Bereiche, Wege beim Bauen) |
 
 Unity-Vergleich: `*.server.luau` / `*.client.luau` sind wie MonoBehaviours, die von selbst
 starten. Alle anderen `.luau`-Dateien sind ModuleScripts, also normale Klassen/Bibliotheken,
@@ -148,6 +153,14 @@ geschrieben wie in der Tabelle). Mehrere Tags pro Part sind erlaubt (z. B. `Move
 | `Spinner` | Dreht sich um die eigene Hochachse | `Speed` (Grad/s, negativ = andersrum) – 90; `Phase` (s) – 0 |
 | `Pendulum` | Schwingt um die Oberkante des Parts (Modell: um den Pivot), Achse X | `Angle` (Grad) – 45; `Duration` (s, hin und zurück) – 3; `Phase` (s) – 0 |
 | `RandomEvent` | Pro Lauf aktiv oder ausgeblendet | `Chance` (0–1) – 0.5; `Group` (Text) – keine. Aus jeder Gruppe ist genau eins aktiv (`Chance` = Gewicht) |
+| `TriggerZone` | Fährt dein Wagen hinein, wird ein **Signal** ausgelöst (siehe „Erweiterter Baukasten“) | `Signal` (Text) – nötig; `Once` (Bool) – false (nur einmal pro Lauf); `Cooldown` (s) – 2 |
+| `Spawner` | Spawn-Bereich (Part): erzeugt Objekte aus Vorlagen mit Schwung Richtung Vorderseite | siehe Tabelle „Spawner“ unten |
+| `PathMover` | Modell fährt Wegpunkte ab (Ordner `Waypoints` mit Parts `1`, `2`, `3` …) | `Speed` – 16; `Loop` (Bool) – false (= hin und zurück); `WaitAtPoints` (s) – 0; `FaceDirection` (Bool) – true; `Phase` (s) – 0; `ListenSignal` – keins |
+| `Gate` | Tor/Schranke/Klappbrücke: bewegt sich um den Pivot | `Offset` (Vector3) – 0; `Angle` (Grad) – 0; `Axis` („X“/„Y“/„Z“) – X; `Duration` (s) – 2; `OpenTime` – 3; `ClosedTime` – 3; `Phase` – 0; `StartOpen` (Bool) – false; `ListenSignal`; `CloseAfter` (s, 0 = bleibt offen) – 0 |
+| `Collapse` | Brücke/Boden: wackelt nach dem Befahren und stürzt ab, steht bei R/T wieder | `Delay` (s) – 0.8; `Shake` (Studs) – 0.25; `FallSpin` – 1.5; `ListenSignal` (dann nur per Signal) |
+| `Prop` | Loser Gegenstand (Kiste, Pylone, Stand): fliegt weg, kein Crash. Zählt als „Chaos“. Zurück nur bei T | `Density` (Zahl) – 0.4 |
+| `ForceZone` | Bereich drückt den Wagen Richtung Vorderseite (Wind, Rasensprenger, Förderband) | `Strength` (Studs/s²) – 60; `Pulse` (s, 0 = immer) – 0; `PulseOn` (0–1) – 0.5; `Phase` – 0; `ListenSignal`; `ActiveTime` (s) – 3 |
+| `Chaser` | Verfolger (z. B. Hund): rennt dir nach, gibt auf, läuft heim | `Radius` – 40; `MaxSpeed` – 32; `Acceleration` – 50; `GiveUpTime` (s) – 6; `ReturnSpeed` – 14; `Cooldown` (s) – 3; `Hazard` (Bool) – false; `Message`; `ListenSignal` |
 | `Coin` | Münze: dreht sich, Durchfahren sammelt sie ein (bleibt dir auch nach Crash). Erscheint erst wieder, wenn du das Ziel dieser Strecke erreichst (nicht bei T, gegen „Farmen“) | `Value` (Zahl) – 1 |
 | `Launchable` | Kuh, Mülltonne, Gartenzwerg …: Hineinfahren kostet ein Leben, der Wagen fährt aber weiter, das Objekt fliegt absurd weit. Erscheint bei T wieder | `LaunchPower` (Zahl) – 140; `SpinPower` (Zahl) – 12; `SkyChance` (0–1) – 0.25 (fliegt in den Himmel); `Sound` (Sound-Id, z. B. „Muh“) – keiner; `DisplayName` (Text, für Rekorde) – Name des Objekts; `ComicText` (Text, z. B. „MUUH!“) – zufällig |
 
@@ -183,6 +196,133 @@ Hinweise:
    so setzen, dass eine sehr gute Fahrt knapp eine 6 schafft.
 7. Münzen (`Coin`) auf schwierige Wege legen, damit sich Risiko lohnt, und ein paar
    `Launchable`-Objekte (Kühe!) dorthin stellen, wo man sie gerne umfährt.
+
+## Erweiterter Baukasten (M2.5)
+
+Du baust das **Aussehen** (Steine, Autos, Hund, Brücke …), die Tags liefern das **Verhalten**.
+
+**Wer rechnet?** Alle Bausteine dieses Abschnitts laufen auf dem Client des jeweiligen
+Spielers: Jeder hat seine eigene Version (dein Steinschlag, deine eingestürzte Brücke, deine
+umgefahrenen Kisten). So passen Zusammenstöße mit deinem Wagen ohne Verzögerung, und niemand
+macht einem anderen die Strecke kaputt. Dauerbetrieb (Auto-Strom, Tore im Takt, PathMover)
+läuft nach der Serveruhr mit reproduzierbarem Zufall: Alle Spieler sehen ihn gleich.
+Unity-Vergleich: wie lokale Effekte/Physik pro Spieler mit gemeinsamem Random-Seed.
+
+### Vorlagen-Ordner (für Spawner)
+
+1. In Studio im Explorer: **ReplicatedStorage** → Rechtsklick → *Insert Object* → **Folder**,
+   Name **`Templates`** (genau so).
+2. Deine Vorlagen hineinlegen: Modelle oder Parts, z. B. `Stein1`, `Stein2`, `Auto_Rot`.
+   Tipp: Steine als einzelnes Part (Ball/MeshPart), Autos als Modell mit gesetztem *PrimaryPart*.
+   Die Vorderseite (−Z bzw. Pivot) zeigt in Fahrtrichtung.
+3. Am Spawner: Attribut `Template` = `Stein1, Stein2` (mehrere = zufällige Auswahl).
+
+**Rojo und der Ordner:** Rojo verwaltet in ReplicatedStorage nur `Shared` und `Remotes`. In
+`default.project.json` steht für ReplicatedStorage `"$ignoreUnknownInstances": true`: Alles,
+was Rojo nicht kennt (dein `Templates`-Ordner), wird beim Sync weder gelöscht noch
+überschrieben. Der Ordner wird mit deinem Place gespeichert (*File → Publish to Roblox*),
+nicht in Git. Fehlt eine Vorlage, spawnt eine graue Ersatz-Kugel und im Output steht eine Warnung.
+
+### Signale (Trigger-System)
+
+- **TriggerZone**: unsichtbares Part mit Tag `TriggerZone` und Attribut `Signal`, z. B.
+  `Steinschlag1`. Fährt dein Wagen hinein, wird das Signal ausgelöst (nur bei dir).
+  `Once` = nur einmal pro Lauf, `Cooldown` = Mindestabstand in Sekunden.
+- **Zuhörer**: Spawner, PathMover, Gate, Collapse, ForceZone und Chaser haben optional das
+  Attribut `ListenSignal`. Ist es gesetzt, warten sie auf dieses Signal statt dauerhaft zu laufen:
+  Spawner = ein Burst pro Signal, PathMover = ein Durchgang, Gate = öffnet, Collapse = stürzt ein,
+  ForceZone = `ActiveTime` Sekunden an, Chaser = Jagd beginnt.
+- Mehrere Bausteine dürfen auf dasselbe Signal hören (z. B. Steinschlag + Schranke).
+- Fehlersuche: `Config.Debug.Toolkit = true` → Output zeigt jedes Signal und wie viele reagieren.
+
+### Reset bei R und T
+
+| Baustein | T (kompletter Neustart) | R / Crash (Checkpoint) |
+|---|---|---|
+| TriggerZone | wieder scharf | wieder scharf (Steinschlag kommt beim nächsten Versuch wieder) |
+| Spawner | alle Objekte weg | alle Objekte weg, Dauerbetrieb läuft weiter |
+| PathMover / Gate (Signal) | zurück an den Start / zu | zurück an den Start / zu |
+| PathMover / Gate (Takt) | läuft nach Serveruhr weiter | läuft weiter |
+| Collapse | steht wieder | steht wieder (sonst kämst du nicht mehr rüber) |
+| Prop | zurück an den Ursprung, Chaos 0 | bleibt liegen, Chaos bleibt (dein Lauf) |
+| ForceZone (Signal) | aus | aus |
+| Chaser | sofort zu Hause | sofort zu Hause |
+
+### Spawner
+
+| Attribut | Typ | Standard | Bedeutung |
+|---|---|---|---|
+| `Template` | Text | – | Vorlagen-Name(n), mehrere durch Komma |
+| `Interval` / `IntervalRandom` | Zahl (s) | 3 / 1 | Abstand im Dauerbetrieb, zufällig bis zu so viel später |
+| `Burst` | Zahl | 1 | Objekte pro Auslösung |
+| `Speed` / `SpeedRandom` | Zahl (Studs/s) | 30 / 5 | Schwung Richtung Vorderseite, ± zufällig |
+| `SpreadAngle` | Zahl (Grad) | 10 | Streuung der Richtung |
+| `Spin` | Zahl (rad/s) | 0 | zufällige Drehung (Steine: 3–6) |
+| `ScaleRandom` | NumberRange oder Zahl | 1 | z. B. NumberRange 0.8 – 1.3 (oder Zahl 0.2 = 0.8 – 1.2) |
+| `Lifetime` | Zahl (s) | 12 | danach verschwindet das Objekt |
+| `DespawnY` | Zahl | −100 | darunter verschwindet es auch |
+| `MaxActive` | Zahl | 12 | höchstens so viele gleichzeitig |
+| `ActiveRadius` | Zahl (Studs) | 400 | Dauerbetrieb nur, wenn dein Wagen näher ist |
+| `Hazard` | Bool | false | true = Berührung ist ein Crash (`Message` = Text), false = nur Schubs |
+| `Kinematic` | Bool | false | true = fährt stur geradeaus, ohne Schwerkraft (Autos) |
+| `ListenSignal` | Text | – | pro Signal ein Burst statt Dauerbetrieb |
+
+Das Spawner-Part ist der Spawn-**Bereich** (Objekte erscheinen zufällig innerhalb seiner Größe)
+und im Spiel unsichtbar. Seine **Vorderseite** gibt die Richtung (Bau-Hilfe zeigt einen Pfeil).
+
+### Bau-Beispiele
+
+- **Steinschlag** (am Hang, ausgelöst):
+  1. Vorlagen `Stein1`, `Stein2` (graue Bälle, 3–5 Studs) in `ReplicatedStorage/Templates`.
+  2. Flaches, breites Part oben am Hang (z. B. 30 × 2 × 6), Vorderseite bergab, Tag `Spawner`.
+     Attribute: `Template` = `Stein1, Stein2`, `ListenSignal` = `Steinschlag1`, `Burst` = 6,
+     `Speed` = 25, `SpreadAngle` = 15, `Spin` = 4, `ScaleRandom` = 0.3, `Hazard` = true,
+     `Message` = „Steinschlag!“.
+  3. Quader quer über die Straße weiter oben, Tag `TriggerZone`, `Signal` = `Steinschlag1`.
+- **Auto-Strom quer über eine Straße** (Dauerbetrieb): Vorlage `Auto_Rot` (Modell, Vorderseite
+  vorne). Schmales Part am Straßenrand (z. B. 2 × 4 × 8) auf Autohöhe, Vorderseite über die
+  Straße, Tag `Spawner`: `Template` = `Auto_Rot`, `Kinematic` = true, `Interval` = 3,
+  `IntervalRandom` = 1, `Speed` = 40, `SpeedRandom` = 0, `SpreadAngle` = 0, `Lifetime` = 4
+  (so lange, bis das Auto auf der anderen Seite ist), `Hazard` = false (schubst nur).
+- **Lieferwagen auf Runde** (PathMover): Modell `Lieferwagen` mit Tag `PathMover`, darin ein
+  Ordner `Waypoints` mit Parts `1`, `2`, `3`, `4` entlang der Straße (auf Höhe des Pivots).
+  `Loop` = true, `Speed` = 20, `WaitAtPoints` = 1.
+- **Bahnschranke** (Gate im Takt): Balken-Modell, Pivot (*Edit Pivot*) ans Scharnier,
+  Tag `Gate`, `Angle` = 80, `Axis` = `Z`, `OpenTime` = 4, `ClosedTime` = 3.
+- **Klappbrücke per Signal**: Brücke als Gate mit `Angle` = −60, `Axis` = `X`,
+  `StartOpen` = true, `ListenSignal` = `Bruecke` → das Signal schließt sie.
+- **Wackelige Holzbrücke**: Bretter einzeln mit Tag `Collapse`, `Delay` = 0.5 (vorne kürzer,
+  hinten länger) – sie fallen nacheinander.
+- **Marktstände**: Kisten/Pylonen mit Tag `Prop`.
+- **Rasensprenger**: durchsichtiges blaues Part, Tag `ForceZone`, Vorderseite seitlich,
+  `Strength` = 80, `Pulse` = 2.
+- **Hund**: Hunde-Modell (Pivot vorne = Schnauze), Tag `Chaser`, `Radius` = 35, `MaxSpeed` = 30.
+
+## Bau-Hilfe (Studio-Plugin)
+
+Zeigt beim **Bauen** (nicht im Spiel) Pfeile, Bereiche und Wege: Spawner (orange, mit
+Streuung und Vorlagen-Namen), BoostPad/JumpPad (grün), StartZone-Vorderseite (weiß), Mover-Weg
+(lila), PathMover-Wegpunkte (türkis, nummeriert), Gate offen (gelber Kasten), ForceZone (blau),
+TriggerZone mit Signal-Namen (rot), Chaser-Radius (brauner Ring), „hört: Signal“-Hinweise.
+
+**Installieren (einmalig):**
+1. Studio schließen (empfohlen beim ersten Mal).
+2. Terminal im Projektordner öffnen (dort, wo `plugin.project.json` liegt).
+3. Ausführen:
+   ```bash
+   rojo build plugin.project.json --plugin GetToSchoolBauhilfe.rbxm
+   ```
+   Rojo legt die Datei direkt in deinen lokalen Studio-Plugin-Ordner
+   (Windows: `%LOCALAPPDATA%\Roblox\Plugins`, Mac: `~/Documents/Roblox/Plugins`).
+4. Studio öffnen → Reiter **Plugins** → Gruppe **Get to School** → Knopf **Bau-Hilfe**.
+   Der Knopf schaltet die Anzeige an und aus (wird gespeichert).
+
+**Aktualisieren** (wenn ich das Plugin geändert habe):
+1. `git pull`
+2. Denselben Befehl nochmal: `rojo build plugin.project.json --plugin GetToSchoolBauhilfe.rbxm`
+3. Studio lädt lokale Plugins normalerweise automatisch neu. Falls nicht: Studio neu starten.
+
+**Entfernen:** Plugins → *Plugins Folder* öffnen → `GetToSchoolBauhilfe.rbxm` löschen.
 
 ## Zweiten Track anlegen
 
@@ -381,7 +521,32 @@ höchster Stufe. Debug-Schalter wirken nur in Studio; im veröffentlichten Spiel
 | Fallschirm | Springen, Leertaste halten | Schirm über dem Wagen, langsames Fallen, gleitet weiter, A/D lenkt |
 | Ability-Anzeige | Unten links | Pro gekaufter Ability: Name, Taste, Zustand, Balken |
 | Zweiter Track | Siehe „Zweiten Track anlegen“; B → Strecken | Gesperrte Strecke zeigt Bedingung; nach Note 4 auf Track1: Meldung „Neue Strecke freigeschaltet“; *Fahren* setzt dich an deren Start |
-| Tests | `lune run tests/run` | „51 von 51 Tests bestanden“ |
+| Tests | `lune run tests/run` | alle Tests bestanden |
+
+## M2.5 testen (erweiterter Baukasten)
+
+Vorher: Plugin installieren (siehe „Bau-Hilfe“), `ReplicatedStorage/Templates` mit ein, zwei
+Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| Rojo | `rojo serve`, verbinden, Templates-Ordner anlegen, etwas in `src` ändern | Templates-Ordner bleibt erhalten |
+| Bau-Hilfe | Plugin an, Spawner/TriggerZone/PathMover setzen | Pfeile, Kästen, Wegpunkt-Nummern; im Play-Test nichts davon |
+| TriggerZone | Zone mit `Signal` = „Test“, durchfahren (Debug an) | Output: „Signal "Test" ausgelöst … N Baustein(e) reagieren“ |
+| Once / Cooldown | `Once` = true, zweimal durchfahren | Nur beim ersten Mal; nach R oder T wieder |
+| Steinschlag | Beispiel oben bauen, Trigger durchfahren | Steine kommen den Hang herunter, Treffer = „Steinschlag!“-Crash, ein Leben weg |
+| Auto-Strom | Beispiel oben | Autos fahren gleichmäßig quer, schubsen den Wagen (kein Crash durch harten Stoß) |
+| Gleiche Sicht | 2 Spieler (*Test → 2 Players*), Auto-Strom | Beide sehen die Autos an derselben Stelle |
+| Fehlende Vorlage | Falschen Namen bei `Template` | Graue Kugel + Warnung im Output |
+| R / T | Während Steine fallen R drücken | Alle gespawnten Objekte verschwinden |
+| PathMover | Modell mit `Waypoints` 1–4 | Fährt die Punkte ab, dreht sich in Fahrtrichtung, schiebt den Wagen weg |
+| Gate (Takt) | Schranke mit `Angle` | Öffnet/schließt im Takt, schiebt/blockiert den Wagen |
+| Gate (Signal) | `ListenSignal` + TriggerZone | Öffnet beim Durchfahren; nach R/T wieder zu |
+| Collapse | Brücke befahren | Wackelt, stürzt ab; nach R steht sie wieder |
+| Prop | Kisten umfahren | Fliegen weg, kein Crash; Ergebnis: „Chaos: X“; R: liegen noch, T: wieder ordentlich |
+| ForceZone | Wind-Zone durchfahren | Wagen wird seitlich gedrückt; mit `Pulse` im Takt |
+| Chaser | In den Radius des Hundes fahren | Hund rennt hinterher, gibt nach ~6 s auf, läuft heim; R/T: sofort zu Hause |
+| Tests | `lune run tests/run` | „77 von 77 Tests bestanden“ |
 
 ### Wichtigste Studio-Tests (nach Wichtigkeit)
 

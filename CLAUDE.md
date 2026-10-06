@@ -57,9 +57,20 @@ M3 – Progression (gebaut, noch nicht in Studio getestet):
 - Shop „Pausen-Kiosk“ (B): Upgrades mit Stufen (Config.Upgrades), Strecken, Rekorde.
 - Mehrere Tracks: Model mit Attribut TrackId, Bedingungen in Config.Tracks.
 - Automatische Tests mit Lune: `lune run tests/run` (reine Logik in src/shared/Progression).
-In Arbeit (M2.5, OK erhalten): erweiterter Baukasten. Alle dynamischen Bausteine laufen
-auf dem Client des jeweiligen Spielers (eigene Version pro Spieler, Dauerbetrieb über die
-Serveruhr synchron), Vorlagen in ReplicatedStorage/Templates, Bau-Hilfe als Studio-Plugin.
+M2.5 – Erweiterter Baukasten (gebaut, noch nicht in Studio getestet):
+- Neue Tags: TriggerZone, Spawner, PathMover, Gate, Collapse, Prop, ForceZone, Chaser
+  (Attribute und Beispiele im README „Erweiterter Baukasten“).
+- Alle laufen auf dem Client des jeweiligen Spielers (src/client/Toolkit, eigene Version pro
+  Spieler); Dauerbetrieb über Serveruhr + reproduzierbaren Zufall (PieceId vom Server), damit
+  alle dasselbe sehen. Reine Logik in src/shared/Toolkit mit Lune-Tests.
+- Trigger-System: TriggerZone (Attribut Signal, Once, Cooldown) löst ein Signal aus, wenn der
+  eigene Wagen hineinfährt. Bausteine mit Attribut ListenSignal reagieren nur darauf (Spawner =
+  Burst, PathMover = ein Durchgang, Gate = öffnet, Collapse = stürzt ein, ForceZone = an,
+  Chaser = jagt). Signale gelten nur beim jeweiligen Spieler.
+- Reset: T = alles auf Anfang; R/Crash = gespawnte Objekte weg, Collapse steht wieder,
+  Trigger scharf, Signal-Tore zu, Hunde zu Hause; Props und Chaos-Zähler bleiben.
+- Vorlagen: ReplicatedStorage/Templates (in Studio angelegt, Rojo ignoriert ihn).
+- Bau-Hilfe: Studio-Plugin (plugin/), Installation im README.
 (Erledigt: M1 – Fahrgefühl. M1.5 – Aus-/Einsteigen, Drift mit Boost, Ragdoll, Tacho,
 Kamera-Wackeln, Tuning-Panel. M2 – Erster Track: Baukasten, Timer mit Bestzeit, Noten,
 Checkpoints, Hindernisse, Zufallsereignisse, Sound; drei Feedback-Runden: Drift ist der
