@@ -849,6 +849,16 @@ for i = 0, 7 do
 		Parent = flat,
 	})
 end
+-- Trick-Schanze links: JumpPad (Sprung ~19 Studs), Lufttricks mit Q/E
+part({
+	Name = "TrickJumpPad",
+	Size = Vector3.new(12, 0.4, 10),
+	CFrame = CFrame.new(FLAT_CENTER + Vector3.new(-120, 0.2, 60)),
+	Color = Color3.fromRGB(255, 120, 230),
+	Material = Enum.Material.Neon,
+	Tags = { "JumpPad" },
+	Parent = flat,
+})
 -- Drift-Kreis (aufgemalt)
 for i = 0, 23 do
 	local angle = i / 24 * math.pi * 2
@@ -886,7 +896,7 @@ do
 	label.TextScaled = true
 	label.TextWrapped = true
 	label.Text =
-		"Testflaeche: A/D = Drift (Standard) · Shift halten = normal lenken · Leertaste = Hopp · Slalom geradeaus, Drift-Kreis rechts · T = Start"
+		"Testflaeche: A/D = Drift (Standard) · Shift halten = normal lenken · Leertaste = Hopp · Slalom geradeaus, Drift-Kreis rechts, Trick-Schanze links (Q/E in der Luft) · T = Start"
 	label.Parent = gui
 end
 

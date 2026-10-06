@@ -281,6 +281,11 @@ function RaceManager.isOutsideRun(player: Player): boolean
 	return phase == "Ready" or phase == "Finished" or phase == "Aborted"
 end
 
+-- Laeuft gerade ein Lauf (Zeit laeuft)?
+function RaceManager.isRunning(player: Player): boolean
+	return getRace(player).phase == "Running"
+end
+
 -- Helm-Stufe hat sich geaendert (Kauf): Ladungen neu berechnen
 function RaceManager.refreshShield(player: Player)
 	local race = getRace(player)
@@ -508,7 +513,8 @@ function RaceManager.requestEnter(player: Player)
 	CartManager.enter(player)
 end
 
-local CRASH_REASONS = { Tipped = true, Impact = true, Fell = true, Hazard = true, HitHazard = true }
+local CRASH_REASONS =
+	{ Tipped = true, Impact = true, Fell = true, Hazard = true, HitHazard = true, BadLanding = true }
 
 -- Crash (vom Client gemeldet, mit Grund). Der Server prueft, ob der Spieler wirklich faehrt.
 -- Kostet ein Leben, ausser der Helm faengt ihn ab ("Shielded": keine Ragdoll). Sonst fliegt

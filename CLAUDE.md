@@ -43,6 +43,12 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
   Config.TuningPanel. Fehlersuche bei Bodenbausteinen: Config.Debug.TrackPieces.
 
 ## Aktueller Meilenstein
+M5 – Spaß-Extras (in Arbeit; Reihenfolge: Lufttricks, Kuh-Kombo, tägliches Glücksrad,
+visuelle Extras; noch nicht in Studio getestet):
+- Lufttricks: Q/E in der Luft (Gamepad LB, Touch „Trick“) drehen um die Hochachse;
+  Logik Progression/TrickMath, Client src/client/Tricks (Drehmoment nach der Fahrphysik,
+  Landung bewerten, Landehilfe), Server src/server/Tricks (Münzen, Spam-Schutz),
+  Crash-Grund BadLanding. Werte: Config.Tricks.
 M4 – Wiederspielwert (gebaut, noch nicht in Studio getestet; Testliste im README
 „Wichtigste Studio-Tests M4“):
 - Geist vom besten Lauf: Server zeichnet jeden Lauf auf (src/server/Ghosts, kompakt mit
@@ -140,4 +146,5 @@ Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 | Hopp (kleiner Sprung, schneller Richtungswechsel); mit Sprungfeder: Sprung, in der Luft nochmal = Doppelsprung | Leertaste | A | Button „Hopp“ |
 | Fallschirm (Upgrade): in der Luft halten | Leertaste halten | A halten | Button „Hopp“ halten |
 | Turbo-Pausenbrot (Upgrade) | F | RB | Button „Turbo“ |
+| Lufttrick: in der Luft drehen (sauber landen = Münzen, schief = Crash) | Q / E (E nur in der Luft, am Boden Aussteigen) | LB (Richtung vom Stick) | Button „Trick“ |
 | Menü „Pausen-Kiosk“ (Shop, Strecken, Rekorde, Bestenliste, Hausaufgaben, Garage, Lackiererei, Erfolge, Einstellungen; nur außerhalb eines Laufs) | B | Select | Button „Shop“ |

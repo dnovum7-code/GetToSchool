@@ -34,6 +34,7 @@ local ProgressUI = require(script.Parent:WaitForChild("ProgressUI"))
 local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
 local ShopUI = require(script.Parent:WaitForChild("ShopUI"))
 local TrackSensors = require(script.Parent:WaitForChild("TrackSensors"))
+local Tricks = require(script.Parent:WaitForChild("Tricks"))
 local Toolkit = require(script.Parent:WaitForChild("Toolkit"))
 local Obstacles = require(script.Parent:WaitForChild("Obstacles"))
 local RandomEventsClient = require(script.Parent:WaitForChild("RandomEventsClient"))
@@ -189,6 +190,7 @@ PaintShopUI.init() -- Farben und Spur (Reiter im Menue)
 AchievementUI.init() -- Erfolge (Reiter im Menue, Popup)
 SettingsUI.init() -- Einstellungen und Steuerung (Reiter im Menue)
 Onboarding.init() -- einmalige Hinweise beim ersten Lauf
+Tricks.init() -- Lufttricks (Anzeige)
 ProgressClient.onChanged(function(snapshot)
 	Abilities.setLevels(snapshot.upgrades) -- gekaufte Upgrade-Stufen
 	Settings.load(snapshot) -- gespeicherte Einstellungen (einmal nach dem Laden)
@@ -210,6 +212,7 @@ end)
 local EXIT_ACTION = "GetToSchoolExit"
 local HANDBRAKE_ACTION = "GetToSchoolHandbrake"
 local HOP_ACTION = "GetToSchoolHop"
+local lastSteer = 0 -- Lenkung im letzten Frame (Trick-Richtung fuer Gamepad/Touch)
 local shiftHeld = false -- Shift / Gamepad B: wechselt zwischen Drift und normal (Config.Drift.DriftByDefault)
 local hopRequested = false -- Hopp-Taste gedrueckt: Hopp im naechsten Physik-Frame
 local jumpHeld = false -- Hopp-Taste wird gehalten (Fallschirm)
@@ -243,6 +246,7 @@ local function deactivate()
 	shiftHeld = false
 	jumpHeld = false
 	Abilities.deactivate()
+	Tricks.deactivate()
 	DriftEffects.detach()
 	SoundSystem.detach()
 	local humanoid = activeHumanoid
@@ -312,6 +316,9 @@ local function activate(seat: BasePart, humanoid: Humanoid)
 	end, true, Enum.ContextActionPriority.High.Value, Enum.KeyCode.Space, Enum.KeyCode.ButtonA)
 	ContextActionService:SetTitle(HOP_ACTION, "Hopp")
 	Abilities.activate() -- Ability-Tasten (z. B. Turbo F)
+	Tricks.activate(function() -- Lufttricks (Q/E, Gamepad LB, Touch "Trick")
+		return lastSteer
+	end)
 
 	DriftEffects.attach(cart, character)
 	SoundSystem.attach(cart)
@@ -424,6 +431,16 @@ local function helmetSave(reason: string, base: BasePart, predicted: boolean)
 				end
 			end
 		end
+	elseif reason == "BadLanding" then
+		-- schief gelandet: Wagen in Fahrtrichtung drehen und weiterfahren
+		local cart = OwnCart.find()
+		local velocity = base.AssemblyLinearVelocity
+		local flat = Vector3.new(velocity.X, 0, velocity.Z)
+		if cart and flat.Magnitude > 1 then
+			local position = base.Position + Vector3.new(0, 0.5, 0)
+			cart:PivotTo(CFrame.lookAt(position, position + flat.Unit))
+			base.AssemblyAngularVelocity = Vector3.zero
+		end
 	elseif reason == "Hazard" or reason == "Fell" then
 		requestRestartNow("Checkpoint")
 	end
@@ -437,6 +454,7 @@ local function onCrash(reason: string, base: BasePart, text: string?)
 		return
 	end
 	Onboarding.onCrash() -- Hinweis "R = Checkpoint, T = Neustart" (nur beim ersten Mal)
+	Tricks.cancel()
 	enterCrashed(base)
 	RaceUI.showMessage("CRASH!", Color3.fromRGB(255, 80, 60), text or CRASH_TEXTS[reason])
 	SoundSystem.play("Crash")
@@ -616,6 +634,7 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 			gameOver = false
 			GhostClient.stopRun()
 			Onboarding.onRunEnded()
+			Tricks.cancel()
 			RaceUI.hideResult()
 			RaceUI.hideGameOver()
 			Abilities.reset("Full")
@@ -858,6 +877,7 @@ RunService.PreSimulation:Connect(function(dt)
 		return
 	end
 	local throttle, steer = readInput()
+	lastSteer = steer
 	-- Shift zaehlt nur, wenn nicht gerade im Chat getippt wird
 	local shift = shiftHeld and UserInputService:GetFocusedTextBox() == nil
 	local driftMode = if Config.Drift.DriftByDefault then not shift else shift
@@ -884,6 +904,11 @@ RunService.PreSimulation:Connect(function(dt)
 	if not crashed then
 		abilityContext.telemetry = telemetry
 		Abilities.afterStep(abilityContext)
+		-- Lufttricks: drehen in der Luft, Landung bewerten (schief = Crash)
+		if Tricks.step(dt, current, telemetry, runPhase == "Running") == "Crash" then
+			onCrash("BadLanding", current.base, "Schief gelandet!")
+			return
+		end
 	end
 	-- Baukasten (Trigger, Spawner, Kraftzonen ...): nach der Fahrphysik, damit zusaetzliche
 	-- Kraefte (ForceZone) in diesem Physik-Schritt gelten. Im Crash kein Wagen (keine Trigger).

@@ -186,6 +186,8 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/client/Settings.luau`, `SettingsUI.luau` | Client | Einstellungen (gespeichert über `server/PlayerSettings.luau`) und Reiter „Einstellungen“ |
 | `src/client/ControlsInfo.luau` | Client | Steuerung als Text je Gerät (Tabelle, Hilfezeile, Hinweise) |
 | `src/client/Onboarding.luau` | Client | Einmalige Einstiegs-Hinweise (Fahren, Drift, Neustart) |
+| `src/shared/Progression/TrickMath.luau` | beiden | Reine Logik (getestet): Lufttricks zählen und Landung bewerten |
+| `src/client/Tricks.luau`, `src/server/Tricks.luau` | beide | Lufttricks: drehen, Anzeige, Crash bei schiefer Landung / Münzen prüfen und gutschreiben |
 | `src/server/PlayerEvents.luau` | Server | Verteilt Ereignisse (Ziel, Wurf, Münzen, Drift) an Hausaufgaben und Erfolge; prüft die Drift-Meldungen |
 | `src/shared/Progression/Achievements.luau` | beiden | Reine Logik (getestet): Erfolge prüfen, Fortschritt |
 | `src/server/Achievements.luau` | Server | Erfolge freischalten, speichern, Popup, Roblox-Badges |
@@ -765,6 +767,20 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 9. **Erfolge**: Popup beim ersten Lauf, Liste im Menü.
 10. **Lackiererei**: Farbe pro Fahrzeug, Spur sichtbar (auch für einen zweiten Spieler).
 11. **Einstiegs-Hinweise**: erscheinen einmal, „Nochmal zeigen“ funktioniert.
+
+## M5 testen (Spaß-Extras)
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| Lufttrick | Teststrecke Station 3 (JumpPad) oder Testfläche → Trick-Schanze links; in der Luft E halten | Wagen dreht sich nach rechts (Q = links), Taste los = Drehung hört auf |
+| Saubere Landung | Nach ~360° loslassen, gerade landen | Groß „360° SAUBER! +6“, Münzen steigen (nur während eines Laufs) |
+| Wackelig | Mit ~45° Schräglage landen | „360° ... wackelig!“, keine Münzen, kein Crash |
+| Schief gelandet | Quer (90°) landen | „SCHIEF GELANDET!“ + Crash, ein Leben weg; mit Helm: „HELM!“, Wagen dreht in Fahrtrichtung |
+| E am Boden | Am Boden E | Aussteigen wie immer |
+| Normaler Sprung | JumpPad ohne Q/E | Keine Trick-Anzeige, normale Landung |
+| Gamepad / Touch | LB bzw. Knopf „Trick“ in der Luft | Dreht in Lenkrichtung (ohne Lenkung: rechts) |
+| Spam-Schutz | Viele Tricks schnell hintereinander | Höchstens 90 Trick-Münzen pro Minute (`Config.Tricks.MaxCoinsPerMinute`) |
+| Tuning | F2 → „Trick-Drehtempo“, „Trick: sauber bis“, „Trick: Crash ab“ | Wirkt sofort |
 
 ## Tuning-Ablauf
 

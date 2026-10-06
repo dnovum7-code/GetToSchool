@@ -24,6 +24,7 @@ local Shop = require(script.Parent:WaitForChild("Shop"))
 local Track = require(script.Parent:WaitForChild("Track"))
 local TrackPieces = require(script.Parent:WaitForChild("TrackPieces"))
 local TrackUnlocks = require(script.Parent:WaitForChild("TrackUnlocks"))
+local Tricks = require(script.Parent:WaitForChild("Tricks"))
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local requestRestart = remotes:WaitForChild("RequestRestart") :: RemoteEvent
@@ -56,6 +57,7 @@ Garage.init() -- Fahrzeuge kaufen und waehlen
 Cosmetics.init() -- Lackiererei: Farben und Spur
 Achievements.init() -- Erfolge (Popup, Badges)
 PlayerSettings.init() -- Einstellungen und Einstiegs-Hinweise speichern
+Tricks.init() -- Lufttricks: Muenzen fuer saubere Landungen
 Leaderboards.init() -- Bestenlisten (Global, Server, Freunde)
 PlayerEvents.init() -- Ereignisse (Ziel, Wurf, Drift ...) fuer Hausaufgaben und Erfolge
 Homework.init() -- Hausaufgaben (taegliche Aufgaben)

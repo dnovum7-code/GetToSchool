@@ -19,6 +19,7 @@ local SPECS = {
 	"./VehicleSpec",
 	"./CosmeticsSpec",
 	"./AchievementsSpec",
+	"./TricksSpec",
 }
 
 for _, path in SPECS do

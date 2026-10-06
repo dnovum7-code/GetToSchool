@@ -275,6 +275,27 @@ Config.Cosmetics = {
 	} :: { CosmeticDef },
 }
 
+-- Lufttricks: in der Luft Q/E (Gamepad LB, Touch "Trick") = um die Hochachse drehen.
+-- Saubere Landung = Muenzen, schiefe Landung = Crash. Logik: Progression/TrickMath.
+Config.Tricks = {
+	Enabled = true,
+	SpinSpeed = 9, -- Drehtempo (Radiant/s); 9 = ca. 1,4 Umdrehungen pro Sekunde
+	SpinResponse = 10, -- wie schnell die Drehung der Taste folgt
+	StopDamping = 6, -- Taste los: so schnell hoert die Drehung auf (pro Sekunde)
+	MinAirTime = 0.25, -- erst so lange (s) nach dem Abheben gehen Tricks (kein Trick beim Hopp)
+	MinTrickDegrees = 150, -- erst ab dieser Drehung zaehlt es als Trick
+	SpinTolerance = 30, -- so viele Grad duerfen zur naechsten halben Drehung fehlen
+	CleanAngle = 35, -- Landung bis zu diesem Winkel zur Fahrtrichtung: sauber (Grad)
+	CrashAngle = 70, -- darueber: schief gelandet = Crash (dazwischen: wackelig)
+	SlowLandingSpeed = 8, -- langsamer als das: Landewinkel egal
+	LandingAssist = true, -- saubere Landung: Wagen dreht sich in Fahrtrichtung
+	CoinsPerHalfSpin = 3, -- Muenzen pro 180 Grad
+	MaxHalfSpins = 6, -- hoechstens so viele halbe Drehungen werden belohnt (1080)
+	-- Schutz auf dem Server (der Client meldet die Tricks)
+	MinInterval = 0.8, -- hoechstens ein belohnter Trick in dieser Zeit (s)
+	MaxCoinsPerMinute = 90, -- mehr Trick-Muenzen pro Minute gibt es nicht
+}
+
 -- Eingabe: Gamepad (Stick = lenken/Gas, RT = Gas, LT = Bremse) und Touch-Joystick
 Config.Input = {
 	TriggerDeadzone = 0.1, -- RT/LT erst ab diesem Druck (0..1)
@@ -524,6 +545,7 @@ Config.Sounds = {
 	Finish = { Id = "", Volume = 0.8 }, -- im Ziel
 	Achievement = { Id = "", Volume = 0.8 }, -- Erfolg freigeschaltet (Fanfare)
 	Music = { Id = "", Volume = 0.35 }, -- Hintergrundmusik (laeuft dauernd; Lautstaerke in den Einstellungen)
+	Trick = { Id = "", Volume = 0.7 }, -- saubere Trick-Landung
 }
 
 -- Tuning-Panel (nur in Studio, Taste F2): welche Werte als Regler erscheinen.
@@ -562,6 +584,10 @@ Config.TuningPanel = {
 	{ label = "JumpPad-Staerke", path = "Track.JumpPadStrength" },
 	{ label = "Leben pro Lauf", path = "Lives.PerRun", server = true }, -- gilt ab dem naechsten T
 	{ label = "Geist-Durchsicht", path = "Ghost.Transparency", span = 0.4 }, -- 0.2 .. 1, ab dem naechsten Start
+	{ label = "Trick-Drehtempo", path = "Tricks.SpinSpeed" },
+	{ label = "Trick: sauber bis (Grad)", path = "Tricks.CleanAngle", span = 25 },
+	{ label = "Trick: Crash ab (Grad)", path = "Tricks.CrashAngle", span = 25 },
+	{ label = "Trick-Muenzen pro 180", path = "Tricks.CoinsPerHalfSpin", server = true },
 	-- Fahrzeuge: Faktoren auf die Einkaufswagen-Werte (gelten sofort)
 	{ label = "Buerostuhl: Lenkung x", path = "Vehicles.OfficeChair.scale.Drive.SteerRate" },
 	{ label = "Buerostuhl: Seitenhalt x", path = "Vehicles.OfficeChair.scale.Drive.LateralGrip" },

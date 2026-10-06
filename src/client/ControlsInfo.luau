@@ -15,6 +15,7 @@ ControlsInfo.ROWS = {
 	{ "Normal fahren (halten)", "Shift", "B", "Normal" },
 	{ "Hopp / Sprung, Fallschirm (halten)", "Leertaste", "A", "Hopp" },
 	{ "Turbo-Pausenbrot", "F", "RB", "Turbo" },
+	{ "Lufttrick: drehen (in der Luft)", "Q / E", "LB (+ Stick)", "Trick" },
 	{ "Zurueck zum Checkpoint", "R", "Y", "R" },
 	{ "Kompletter Neustart", "T", "Steuerkreuz hoch", "Start" },
 	{ "Aus- / Einsteigen", "E", "X", "Raus" },
@@ -42,11 +43,11 @@ end
 -- Hilfezeile unten im Bild (Touch: leer, die Knoepfe sind beschriftet)
 function ControlsInfo.helpLine(device: Device): string
 	if device == "Gamepad" then
-		return "RT/Stick: Gas   LT: Bremse   Stick: Lenken   B: normal fahren   A: Hopp   X: Aus-/Einsteigen   Y: Checkpoint   Hoch: Neustart   Select: Menue"
+		return "RT/Stick: Gas   LT: Bremse   Stick: Lenken   B: normal fahren   A: Hopp   LB: Trick   X: Aus-/Einsteigen   Y: Checkpoint   Hoch: Neustart   Select: Menue"
 	elseif device == "Touch" then
 		return ""
 	end
-	return "W/S: Anschieben/Bremsen   A/D: Lenken   Shift: normal fahren   Leertaste: Hopp   E: Aus-/Einsteigen   R: Checkpoint   T: Neustart   B: Menue"
+	return "W/S: Anschieben/Bremsen   A/D: Lenken   Shift: normal fahren   Leertaste: Hopp   Q/E in der Luft: Trick   E: Aus-/Einsteigen   R: Checkpoint   T: Neustart   B: Menue"
 end
 
 -- Einstiegs-Hinweise: Titel und Text je Geraet
