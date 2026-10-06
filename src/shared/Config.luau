@@ -143,6 +143,71 @@ Config.Hop = {
 	MaxAirTime = 0.6, -- spaetestens dann endet die Hopp-Drehung
 }
 
+-- Fahrzeuge (Garage im Menue B). Jedes Fahrzeug nimmt die Werte des Einkaufswagens (Cart,
+-- Drive, Drift, Hop oben) und aendert einzelne:
+--   set   = fester Wert (z. B. Groesse),  scale = Faktor auf den Einkaufswagen-Wert
+-- style: Platzhalter-Aussehen ("Cart", "Chair", "Desk"). Eigenes Modell: siehe README
+-- ("Eigene Fahrzeug-Modelle"), Ordner ReplicatedStorage/VehicleModels/<Id>.
+-- ratings: Balken in der Garage (1-5), nur Anzeige.
+Config.Vehicles = {
+	Default = "ShoppingCart",
+	ModelsFolder = "VehicleModels",
+	Order = { "ShoppingCart", "OfficeChair", "SchoolDesk" },
+	ShoppingCart = {
+		name = "Einkaufswagen",
+		description = "Der Klassiker: wackelt, quietscht, faehrt.",
+		price = 0,
+		style = "Cart",
+		ratings = { speed = 3, handling = 3, stability = 3 },
+		set = {},
+		scale = {},
+	},
+	OfficeChair = {
+		name = "Buerostuhl",
+		description = "Dreht sich wie nichts und ist super wendig - kippt aber leicht um.",
+		price = 400,
+		style = "Chair",
+		ratings = { speed = 2, handling = 5, stability = 1 },
+		set = {
+			Cart = { Width = 3.2, Length = 3.2, WallHeight = 0.6, WheelDiameter = 0.9, WheelGap = 1.2 },
+		},
+		scale = {
+			Cart = { BallastHeight = 1.3 }, -- hoeher = kippt leichter
+			Drive = {
+				SteerRate = 1.6,
+				SteerResponse = 1.5,
+				LateralGrip = 0.8,
+				MaxPushSpeed = 0.9,
+				RollDamping = 0.6,
+			},
+			Drift = { SteerRate = 1.4, TailWobble = 1.8 },
+			Hop = { TurnRate = 1.6 },
+		},
+	},
+	SchoolDesk = {
+		name = "Schultisch auf Skateboard",
+		description = "Schnell wie der Pausengong, lenkt aber wie ein Tanker.",
+		price = 800,
+		style = "Desk",
+		ratings = { speed = 5, handling = 1, stability = 4 },
+		set = {
+			Cart = { Width = 3.4, Length = 7, WallHeight = 0.6, WheelDiameter = 0.8, WheelGap = 0.1 },
+		},
+		scale = {
+			Cart = { BallastHeight = 0.5 }, -- tief = kippt kaum
+			Drive = {
+				MaxPushSpeed = 1.25,
+				PushAcceleration = 1.2,
+				AirDrag = 0.75,
+				SteerRate = 0.6,
+				SteerResponse = 0.7,
+				LateralGrip = 1.2,
+			},
+			Drift = { SteerRate = 0.7 },
+		},
+	},
+}
+
 -- Streckenbausteine: normale Parts mit Tag (CollectionService). Werte hier sind
 -- Standardwerte; einzelne Parts koennen sie per Attribut ueberschreiben (in Klammern).
 Config.Track = {
@@ -422,6 +487,11 @@ Config.TuningPanel = {
 	{ label = "JumpPad-Staerke", path = "Track.JumpPadStrength" },
 	{ label = "Leben pro Lauf", path = "Lives.PerRun", server = true }, -- gilt ab dem naechsten T
 	{ label = "Geist-Durchsicht", path = "Ghost.Transparency", span = 0.4 }, -- 0.2 .. 1, ab dem naechsten Start
+	-- Fahrzeuge: Faktoren auf die Einkaufswagen-Werte (gelten sofort)
+	{ label = "Buerostuhl: Lenkung x", path = "Vehicles.OfficeChair.scale.Drive.SteerRate" },
+	{ label = "Buerostuhl: Seitenhalt x", path = "Vehicles.OfficeChair.scale.Drive.LateralGrip" },
+	{ label = "Schultisch: Tempo x", path = "Vehicles.SchoolDesk.scale.Drive.MaxPushSpeed" },
+	{ label = "Schultisch: Lenkung x", path = "Vehicles.SchoolDesk.scale.Drive.SteerRate" },
 	{ label = "Schleuderkraft", path = "Launch.Power", server = true },
 	{ label = "Schleuder-Drehung", path = "Launch.SpinPower", server = true },
 	{ label = "Himmel-Chance (0..1)", path = "Launch.SkyChance", server = true, span = 0.25 },

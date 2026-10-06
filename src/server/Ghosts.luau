@@ -22,6 +22,7 @@ local Ghosts = {}
 
 type Recording = {
 	trackId: string,
+	vehicle: string,
 	samples: { GhostCodec.Sample },
 	nextAt: number,
 }
@@ -97,8 +98,8 @@ local function save(player: Player, trackId: string, ghost: GhostCodec.Ghost)
 end
 
 -- Lauf beginnt (Startzone verlassen): Aufnahme starten
-function Ghosts.start(player: Player, trackId: string)
-	recordings[player] = { trackId = trackId, samples = {}, nextAt = 0 }
+function Ghosts.start(player: Player, trackId: string, vehicle: string)
+	recordings[player] = { trackId = trackId, vehicle = vehicle, samples = {}, nextAt = 0 }
 end
 
 -- Jeden Frame waehrend des Laufs: Lage des Wagens aufnehmen (alle SampleInterval Sekunden)
@@ -136,6 +137,7 @@ function Ghosts.finish(player: Player, trackId: string, isNewBest: boolean, time
 		return
 	end
 	local ghost = GhostCodec.encode(recording.samples, Config.Ghost.SampleInterval, time)
+	ghost.vehicle = recording.vehicle
 	local perPlayer = loaded[player]
 	if not perPlayer then
 		perPlayer = {}

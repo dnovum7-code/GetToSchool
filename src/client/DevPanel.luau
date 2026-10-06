@@ -26,7 +26,7 @@ local PANEL_WIDTH = 340
 
 type Entry = {
 	label: string,
-	path: string, -- "Abschnitt.Name"
+	path: string, -- "Abschnitt.Name" (auch tiefer: "Vehicles.OfficeChair.scale.Drive.SteerRate")
 	span: number?,
 	min: number?,
 	server: boolean?,
@@ -34,7 +34,7 @@ type Entry = {
 
 type Row = {
 	entry: Entry,
-	section: string,
+	holder: any, -- Tabelle in der Config, die den Wert enthaelt
 	key: string,
 	base: number, -- Wert beim Spielstart = Mitte des Reglers
 	low: number,
@@ -47,12 +47,27 @@ type Row = {
 }
 
 local function getValue(row: Row): number
-	return ((Config :: any)[row.section] :: any)[row.key] :: number
+	return row.holder[row.key] :: number
 end
 
 local function setConfigValue(row: Row, value: number)
-	local sectionTable: any = (Config :: any)[row.section]
-	sectionTable[row.key] = value
+	row.holder[row.key] = value
+end
+
+-- "A.B.C" -> Tabelle Config.A.B und Schluessel "C" (nil, wenn es den Weg nicht gibt)
+local function resolvePath(path: string): (any, string?)
+	local parts = string.split(path, ".")
+	if #parts < 2 then
+		return nil, nil
+	end
+	local holder: any = Config
+	for i = 1, #parts - 1 do
+		holder = if type(holder) == "table" then holder[parts[i]] else nil
+	end
+	if type(holder) ~= "table" then
+		return nil, nil
+	end
+	return holder, parts[#parts]
 end
 
 -- Sinnvolle Nachkommastellen fuer einen Bereich: 45 -> 1, 2 -> 2, 0.003 -> 5
@@ -188,13 +203,12 @@ function DevPanel.init()
 	end
 
 	for index, entry in entries do
-		local section, key = string.match(entry.path, "^(%w+)%.(%w+)$")
-		local sectionTable = section and (Config :: any)[section]
-		if not section or not key or type(sectionTable) ~= "table" or type(sectionTable[key]) ~= "number" then
+		local holder, key = resolvePath(entry.path)
+		if not holder or not key or type(holder[key]) ~= "number" then
 			warn(`[DevPanel] Unbekannter Config-Wert "{entry.path}" in Config.TuningPanel`)
 			continue
 		end
-		local base = sectionTable[key] :: number
+		local base = holder[key] :: number
 		-- Bereich: Mitte = Startwert; Standard 0 .. doppelter Wert. Eine untere Grenze (min)
 		-- verkleinert den Bereich symmetrisch, damit der Startwert in der Mitte bleibt.
 		local minBound = entry.min or 0
@@ -269,7 +283,7 @@ function DevPanel.init()
 
 		local row: Row = {
 			entry = entry,
-			section = section,
+			holder = holder,
 			key = key,
 			base = base,
 			low = low,

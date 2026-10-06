@@ -1,5 +1,8 @@
 --!strict
--- Baut den Platzhalter-Einkaufswagen aus einfachen Parts.
+-- Baut den Wagen (Einkaufswagen, Buerostuhl, Schultisch ...) aus einfachen Parts.
+-- Physik (Boden, Raeder, Ballast) ist bei allen Fahrzeugen gleich aufgebaut, nur mit den
+-- Werten des Fahrzeugs (Config.Vehicles, src/shared/Vehicles). Das Aussehen kommt aus einem
+-- eigenen Modell (ReplicatedStorage/VehicleModels/<Id>) oder einem Platzhalter (style).
 --
 -- Aufbau (Unity-Vergleich: ein Rigidbody mit mehreren Collidern als Kinder):
 --   Base       Korbboden, Wurzel der Physik. Alle festen Teile sind per WeldConstraint
@@ -13,6 +16,7 @@ local PhysicsService = game:GetService("PhysicsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local Vehicles = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vehicles"))
 
 local CartBuilder = {}
 
@@ -31,8 +35,9 @@ local function ensureCollisionGroup()
 end
 
 -- Hoehe der Bodenmitte ueber dem Untergrund, wenn alle Raeder aufsetzen.
-function CartBuilder.getRideHeight(): number
-	local c = Config.Cart
+-- `vehicleId` nil = Einkaufswagen.
+function CartBuilder.getRideHeight(vehicleId: string?): number
+	local c = Vehicles.stats(vehicleId).Cart
 	return c.WheelDiameter + c.WheelGap + c.FloorThickness / 2
 end
 
@@ -47,12 +52,13 @@ function CartBuilder.getMass(cart: Model): number
 	return math.max(mass, 0.1)
 end
 
--- Ballast eines bestehenden Wagens auf die aktuelle Config.Cart.BallastHeight setzen.
+-- Ballast eines bestehenden Wagens auf die aktuelle Ballast-Hoehe setzen (Tuning-Panel).
 function CartBuilder.applyBallastHeight(cart: Model)
+	local c = Vehicles.forCart(cart).Cart
 	local ballast = cart:FindFirstChild("Ballast")
 	local ballastWeld = ballast and ballast:FindFirstChild("BallastWeld")
 	if ballastWeld and ballastWeld:IsA("Weld") then
-		ballastWeld.C0 = CFrame.new(0, Config.Cart.FloorThickness / 2 + Config.Cart.BallastHeight, 0)
+		ballastWeld.C0 = CFrame.new(0, c.FloorThickness / 2 + c.BallastHeight, 0)
 	end
 end
 
@@ -75,35 +81,25 @@ local function weld(base: BasePart, part: BasePart)
 	w.Parent = part
 end
 
--- Erzeugt einen neuen Wagen an `cframe` (Mitte des Korbbodens) fuer `owner`.
--- Der Wagen wird noch nicht in den Workspace gesetzt; das macht der Aufrufer.
-function CartBuilder.build(owner: Player, cframe: CFrame): Model
-	ensureCollisionGroup()
+-- Teil des Aussehens: fest an Base, ohne Masse
+local function visual(model: Model, base: BasePart, cframe: CFrame, props: { [string]: any }): Part
+	local offset: CFrame = props.Offset or CFrame.identity
+	local partProps = table.clone(props)
+	partProps.Offset = nil -- kein Part-Property, nur Lage relativ zum Boden
+	local part = makePart(partProps)
+	part.Massless = true
+	part.CFrame = cframe * offset
+	part.Parent = model
+	weld(base, part)
+	return part
+end
 
-	local c = Config.Cart
+-- Platzhalter: Einkaufswagen (Korb aus Gitter-Waenden, roter Griff)
+local function buildCartLook(model: Model, base: BasePart, cframe: CFrame, c: typeof(Config.Cart))
 	local w, l, h, t = c.Width, c.Length, c.WallHeight, c.FloorThickness
-	local r = c.WheelDiameter / 2
 	local metal = Color3.fromRGB(190, 195, 200)
-
-	local model = Instance.new("Model")
-	model.Name = "Cart_" .. owner.Name
-	model:SetAttribute("IsCart", true)
-	model:SetAttribute("OwnerUserId", owner.UserId)
-	-- Bei StreamingEnabled kommt der Wagen immer komplett beim Client an (nie nur halb).
-	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
-
-	-- Korbboden: Wurzel der Assembly
-	local base = makePart({
-		Name = "Base",
-		Size = Vector3.new(w, t, l),
-		CFrame = cframe,
-		Color = metal,
-		Material = Enum.Material.DiamondPlate,
-		CustomPhysicalProperties = PhysicalProperties.new(c.FloorDensity, c.BodyFriction, 0, 1, 1),
-	})
-	base.Parent = model
-	model.PrimaryPart = base
-
+	base.Color = metal
+	base.Material = Enum.Material.DiamondPlate
 	-- Feste Teile: Name, Groesse, Position relativ zur Bodenmitte (-Z ist vorne)
 	local wallY = t / 2 + h / 2
 	local postY = t / 2 + h + 0.45
@@ -124,38 +120,234 @@ function CartBuilder.build(owner: Player, cframe: CFrame): Model
 		},
 	}
 	for _, def in fixedParts do
-		local part = makePart({
+		visual(model, base, cframe, {
 			Name = def.name,
 			Size = def.size,
-			CFrame = cframe * CFrame.new(def.offset),
+			Offset = CFrame.new(def.offset),
 			Color = metal,
 			Material = Enum.Material.Metal,
 			Transparency = 0.35, -- "Gitter"-Optik, man sieht den Fahrer
-			Massless = true, -- Gewicht steckt in Boden und Ballast (einfacher zu tunen)
 		})
-		part.Parent = model
-		weld(base, part)
 	end
-
 	-- Roter Schiebegriff (Zylinder liegt entlang der X-Achse)
-	local handle = makePart({
+	visual(model, base, cframe, {
 		Name = "Handle",
 		Shape = Enum.PartType.Cylinder,
 		Size = Vector3.new(w + 0.4, 0.35, 0.35),
-		CFrame = cframe * CFrame.new(0, t / 2 + h + 0.9, l / 2 + 0.1),
+		Offset = CFrame.new(0, t / 2 + h + 0.9, l / 2 + 0.1),
 		Color = Color3.fromRGB(200, 40, 40),
 		Material = Enum.Material.SmoothPlastic,
-		Massless = true,
 	})
-	handle.Parent = model
-	weld(base, handle)
+end
+
+-- Platzhalter: Buerostuhl (Polster, Lehne, Armlehnen, Gasfeder, Sternfuss)
+local function buildChairLook(model: Model, base: BasePart, cframe: CFrame, c: typeof(Config.Cart))
+	local w, l, t = c.Width, c.Length, c.FloorThickness
+	local fabric = Color3.fromRGB(40, 70, 150)
+	local black = Color3.fromRGB(35, 35, 40)
+	base.Color = black
+	base.Material = Enum.Material.SmoothPlastic
+	visual(model, base, cframe, {
+		Name = "Cushion",
+		Size = Vector3.new(w, 0.4, l),
+		Offset = CFrame.new(0, t / 2 + 0.2, 0),
+		Color = fabric,
+		Material = Enum.Material.Fabric,
+	})
+	visual(model, base, cframe, {
+		Name = "Backrest",
+		Size = Vector3.new(w * 0.9, 2.6, 0.35),
+		Offset = CFrame.new(0, t / 2 + 1.6, l / 2 - 0.1) * CFrame.Angles(math.rad(-8), 0, 0),
+		Color = fabric,
+		Material = Enum.Material.Fabric,
+	})
+	for _, side in { -1, 1 } do
+		visual(model, base, cframe, {
+			Name = "Armrest",
+			Size = Vector3.new(0.3, 0.25, l * 0.6),
+			Offset = CFrame.new(side * (w / 2 - 0.15), t / 2 + 1.1, 0.2),
+			Color = black,
+		})
+		visual(model, base, cframe, {
+			Name = "ArmrestPost",
+			Size = Vector3.new(0.2, 0.9, 0.2),
+			Offset = CFrame.new(side * (w / 2 - 0.15), t / 2 + 0.55, 0.4),
+			Color = black,
+			CanCollide = false,
+		})
+	end
+	-- Gasfeder: vom Sitz bis knapp ueber die Rollen
+	local liftLength = math.max(c.WheelGap, 0.2)
+	visual(model, base, cframe, {
+		Name = "GasLift",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(liftLength, 0.4, 0.4),
+		Offset = CFrame.new(0, -(t / 2 + liftLength / 2), 0) * CFrame.Angles(0, 0, math.rad(90)),
+		Color = Color3.fromRGB(150, 150, 160),
+		Material = Enum.Material.Metal,
+		CanCollide = false,
+	})
+	-- Sternfuss: Arme zu den Rollen (nur Optik)
+	local r = c.WheelDiameter / 2
+	local wheelX = w / 2 - r - 0.1
+	local wheelZ = l / 2 - r - 0.1
+	local armY = -(t / 2 + c.WheelGap - 0.1)
+	for _, corner in
+		{ Vector3.new(-1, 0, -1), Vector3.new(1, 0, -1), Vector3.new(-1, 0, 1), Vector3.new(1, 0, 1) }
+	do
+		local tip = Vector3.new(corner.X * wheelX, armY, corner.Z * wheelZ)
+		local middle = Vector3.new(tip.X / 2, armY, tip.Z / 2)
+		visual(model, base, cframe, {
+			Name = "StarArm",
+			Size = Vector3.new(0.25, 0.2, Vector3.new(tip.X, 0, tip.Z).Magnitude),
+			Offset = CFrame.lookAt(middle, Vector3.new(tip.X, armY, tip.Z)),
+			Color = black,
+			CanCollide = false,
+		})
+	end
+end
+
+-- Platzhalter: Schultisch auf Skateboard (Brett, Achsen, Tischplatte auf vier Beinen)
+local function buildDeskLook(model: Model, base: BasePart, cframe: CFrame, c: typeof(Config.Cart))
+	local w, l, t = c.Width, c.Length, c.FloorThickness
+	local wood = Color3.fromRGB(205, 160, 105)
+	local metal = Color3.fromRGB(120, 125, 135)
+	base.Color = Color3.fromRGB(60, 60, 65) -- Griptape
+	base.Material = Enum.Material.Sand
+	local deskDepth = l * 0.45
+	local deskZ = -l / 2 + deskDepth / 2 + 0.1
+	local deskY = t / 2 + 2.4
+	visual(model, base, cframe, {
+		Name = "DeskTop",
+		Size = Vector3.new(w + 0.6, 0.25, deskDepth),
+		Offset = CFrame.new(0, deskY, deskZ),
+		Color = wood,
+		Material = Enum.Material.Wood,
+	})
+	visual(model, base, cframe, {
+		Name = "BookTray",
+		Size = Vector3.new(w * 0.8, 0.5, deskDepth * 0.8),
+		Offset = CFrame.new(0, deskY - 0.6, deskZ),
+		Color = metal,
+		Material = Enum.Material.Metal,
+	})
+	for _, x in { -1, 1 } do
+		for _, z in { -1, 1 } do
+			visual(model, base, cframe, {
+				Name = "DeskLeg",
+				Size = Vector3.new(0.2, deskY - t / 2, 0.2),
+				Offset = CFrame.new(
+					x * (w / 2 + 0.1),
+					t / 2 + (deskY - t / 2) / 2,
+					deskZ + z * (deskDepth / 2 - 0.15)
+				),
+				Color = metal,
+				Material = Enum.Material.Metal,
+			})
+		end
+	end
+	-- Achsen unter dem Brett (nur Optik)
+	local r = c.WheelDiameter / 2
+	local wheelZ = l / 2 - r - 0.1
+	for _, z in { -1, 1 } do
+		visual(model, base, cframe, {
+			Name = "Truck",
+			Size = Vector3.new(w * 0.75, 0.2, 0.4),
+			Offset = CFrame.new(0, -(t / 2 + 0.1), z * wheelZ),
+			Color = metal,
+			Material = Enum.Material.Metal,
+			CanCollide = false,
+		})
+	end
+end
+
+-- Eigenes Modell aus ReplicatedStorage/VehicleModels/<Id> (Pivot = Mitte des Bodens,
+-- Vorderseite -Z). Gibt zurueck, ob es eins gab.
+local function addCustomModel(model: Model, base: BasePart, cframe: CFrame, vehicleId: string): boolean
+	local folder = ReplicatedStorage:FindFirstChild(Config.Vehicles.ModelsFolder)
+	local template = folder and folder:FindFirstChild(vehicleId)
+	if not template or not template:IsA("Model") then
+		return false
+	end
+	local look = template:Clone()
+	look.Name = "Look"
+	look:PivotTo(cframe)
+	for _, item in look:GetDescendants() do
+		if item:IsA("BasePart") then
+			local collide = item:GetAttribute("Collide") == true
+			item.Anchored = false
+			item.Massless = true
+			item.CanCollide = collide
+			item.CanTouch = false
+			if not collide then
+				item.CanQuery = false
+			end
+			item.CollisionGroup = CartBuilder.COLLISION_GROUP
+			weld(base, item)
+		elseif item:IsA("Script") or item:IsA("LocalScript") then
+			item:Destroy() -- keine Skripte aus Modellen mitnehmen
+		end
+	end
+	look.Parent = model
+	if template:GetAttribute("HideBase") == true then
+		base.Transparency = 1
+	end
+	model:SetAttribute("HideWheels", template:GetAttribute("HideWheels") == true)
+	return true
+end
+
+-- Erzeugt einen neuen Wagen an `cframe` (Mitte des Bodens) fuer `owner`.
+-- `vehicleId`: Fahrzeug aus Config.Vehicles (nil = Einkaufswagen).
+-- Der Wagen wird noch nicht in den Workspace gesetzt; das macht der Aufrufer.
+function CartBuilder.build(owner: Player, cframe: CFrame, vehicleId: string?): Model
+	ensureCollisionGroup()
+
+	local def = Vehicles.get(vehicleId) or Vehicles.get(Vehicles.defaultId())
+	local id = if def then def.id else Vehicles.defaultId()
+	local c = Vehicles.stats(id).Cart
+	local w, l, t = c.Width, c.Length, c.FloorThickness
+	local r = c.WheelDiameter / 2
+	local metal = Color3.fromRGB(190, 195, 200)
+
+	local model = Instance.new("Model")
+	model.Name = "Cart_" .. owner.Name
+	model:SetAttribute("IsCart", true)
+	model:SetAttribute("OwnerUserId", owner.UserId)
+	model:SetAttribute("VehicleId", id)
+	-- Bei StreamingEnabled kommt der Wagen immer komplett beim Client an (nie nur halb).
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+
+	-- Korbboden: Wurzel der Assembly
+	local base = makePart({
+		Name = "Base",
+		Size = Vector3.new(w, t, l),
+		CFrame = cframe,
+		Color = metal,
+		Material = Enum.Material.DiamondPlate,
+		CustomPhysicalProperties = PhysicalProperties.new(c.FloorDensity, c.BodyFriction, 0, 1, 1),
+	})
+	base.Parent = model
+	model.PrimaryPart = base
+
+	-- Aussehen: eigenes Modell oder Platzhalter je nach Fahrzeug
+	if not addCustomModel(model, base, cframe, id) then
+		local style = if def then def.style else "Cart"
+		if style == "Chair" then
+			buildChairLook(model, base, cframe, c)
+		elseif style == "Desk" then
+			buildDeskLook(model, base, cframe, c)
+		else
+			buildCartLook(model, base, cframe, c)
+		end
+	end
 
 	-- Sitz (unsichtbar). Hinten im Korb, damit die Beine nach vorne Platz haben.
 	-- CanTouch = false: niemand setzt sich durch Beruehren hinein, nur per Skript.
 	local seat = Instance.new("Seat")
 	seat.Name = "Seat"
 	seat.Size = Vector3.new(2, 0.2, 2)
-	seat.CFrame = cframe * CFrame.new(0, t / 2 + 0.1, l / 2 - 1.4)
+	local seatY = t / 2 + (if def and def.style == "Chair" then 0.5 else 0.1) -- Stuhl: auf dem Polster
+	seat.CFrame = cframe * CFrame.new(0, seatY, l / 2 - 1.4)
 	seat.Transparency = 1
 	seat.CanCollide = false
 	seat.CanTouch = false
@@ -225,6 +417,7 @@ function CartBuilder.build(owner: Player, cframe: CFrame): Model
 			CFrame = cframe * CFrame.new(offset),
 			Color = Color3.fromRGB(40, 40, 45),
 			Material = Enum.Material.SmoothPlastic,
+			Transparency = if model:GetAttribute("HideWheels") == true then 1 else 0,
 			CustomPhysicalProperties = PhysicalProperties.new(c.WheelDensity, c.WheelFriction, 0, 1, 1),
 		})
 		wheel.Parent = model

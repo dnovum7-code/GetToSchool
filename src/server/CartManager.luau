@@ -17,6 +17,7 @@ local RunService = game:GetService("RunService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local Vehicles = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vehicles"))
 local CartBuilder = require(script.Parent:WaitForChild("CartBuilder"))
 
 local CartManager = {}
@@ -46,6 +47,15 @@ end
 
 function CartManager.setSpawnResolver(resolver: (player: Player) -> CFrame)
 	spawnResolver = resolver
+end
+
+-- Welches Fahrzeug faehrt der Spieler? (wird von GameServer gesetzt: Garage im Spielstand)
+local vehicleResolver: (player: Player) -> string = function(_player)
+	return Vehicles.defaultId()
+end
+
+function CartManager.setVehicleResolver(resolver: (player: Player) -> string)
+	vehicleResolver = resolver
 end
 
 local function getState(player: Player): PlayerState
@@ -250,7 +260,7 @@ local function createCart(player: Player, state: PlayerState, at: CFrame): Model
 	if state.cart then
 		state.cart:Destroy()
 	end
-	local cart = CartBuilder.build(player, at)
+	local cart = CartBuilder.build(player, at, vehicleResolver(player))
 	cart.Parent = cartsFolder
 	state.cart = cart
 	watchSeat(player, state, cart)
@@ -266,8 +276,9 @@ local function findLandingSpot(cart: Model, character: Model, humanoid: Humanoid
 	look = if look.Magnitude > 0.1 then look.Unit else -Vector3.zAxis
 	local right = look:Cross(Vector3.yAxis)
 
-	local side = Config.Cart.Width / 2 + Config.Exit.LandingDistance
-	local frontBack = Config.Cart.Length / 2 + Config.Exit.LandingDistance
+	local size = Vehicles.forCart(cart).Cart
+	local side = size.Width / 2 + Config.Exit.LandingDistance
+	local frontBack = size.Length / 2 + Config.Exit.LandingDistance
 	local candidates = { right * side, -right * side, -look * frontBack, look * frontBack }
 
 	local rayParams = RaycastParams.new()
@@ -334,8 +345,14 @@ function CartManager.reset(player: Player, at: CFrame?): CFrame?
 		state.mode = "Riding"
 		setCharacterMode(character, "Riding")
 	end
-	local spawnCFrame = at or spawnResolver(player)
+	local vehicleId = vehicleResolver(player)
+	-- Startpositionen sind fuer den Einkaufswagen berechnet: andere Fahrzeuge stehen hoeher/tiefer
+	local lift = CartBuilder.getRideHeight(vehicleId) - CartBuilder.getRideHeight(nil)
+	local spawnCFrame = (at or spawnResolver(player)) * CFrame.new(0, lift, 0)
 	local cart = state.cart
+	if cart and cart:GetAttribute("VehicleId") ~= vehicleId then
+		cart = nil -- anderes Fahrzeug gewaehlt (Garage): neu bauen
+	end
 	if cart and isCartIntact(cart) then
 		-- PivotTo verschiebt das ganze Modell; ein angeschweisster Fahrer kommt mit.
 		cart:PivotTo(spawnCFrame)
@@ -501,7 +518,9 @@ local function applyParkBrake(cart: Model)
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Exclude
 	rayParams.FilterDescendantsInstances = { cart }
-	local groundCheck = CartBuilder.getRideHeight() + 0.6
+	local vehicleId = cart:GetAttribute("VehicleId")
+	local groundCheck = CartBuilder.getRideHeight(if type(vehicleId) == "string" then vehicleId else nil)
+		+ 0.6
 	if up.Y > 0.7 and workspace:Raycast(base.Position, -up * groundCheck, rayParams) then
 		local gravity = Vector3.new(0, -workspace.Gravity, 0)
 		accel -= gravity - up * gravity:Dot(up)

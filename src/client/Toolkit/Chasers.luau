@@ -168,7 +168,7 @@ local function update(chaser: Chaser, ctx: ToolkitTypes.Context)
 	local distance = toGoal.Magnitude
 	-- Abstand halten: halbe Wagenlaenge + halbe Hundegroesse + etwas Luft (nicht in den Wagen)
 	local stopDistance = if mode == "Chase"
-		then Config.Cart.Length / 2 + chaser.halfLength + Config.Chaser.StopGap
+		then (if base then base.Size.Z / 2 else Config.Cart.Length / 2) + chaser.halfLength + Config.Chaser.StopGap
 		else 0
 	local stepLength = math.min(speed * ctx.dt, math.max(distance - stopDistance, 0))
 	local direction = if distance > 0.01 then toGoal.Unit else flat(current.LookVector)

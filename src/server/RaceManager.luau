@@ -565,7 +565,8 @@ local function updatePlayer(player: Player, race: RaceState)
 			race.phase = "Running"
 			race.startTime = os.clock()
 			race.startPosition = position
-			Ghosts.start(player, race.trackId)
+			local vehicle = if cart then cart:GetAttribute("VehicleId") else nil
+			Ghosts.start(player, race.trackId, if type(vehicle) == "string" then vehicle else "")
 			runState:FireClient(player, "Started")
 		end
 	elseif race.phase == "Running" then

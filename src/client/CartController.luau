@@ -17,6 +17,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Attributes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Attributes"))
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local Vehicles = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vehicles"))
 local TrackSensors = require(script.Parent:WaitForChild("TrackSensors"))
 
 local CartController = {}
@@ -66,6 +67,7 @@ type ControllerData = {
 	freezeTime: number, -- Hit-Stop: Restzeit, in der der Wagen still steht
 	freezeVelocity: Vector3, -- Tempo nach dem Hit-Stop
 	hopSpeedOverride: number?, -- Sprung-Tempo statt Config.Hop.Speed (Sprungfeder)
+	stats: Vehicles.Stats, -- Fahrwerte des Fahrzeugs (Config.Cart/Drive/Drift/Hop mit Aenderungen)
 }
 
 export type Controller = typeof(setmetatable({} :: ControllerData, CartController))
@@ -90,6 +92,7 @@ end
 function CartController.new(cart: Model, character: Model): Controller
 	local base = cart:WaitForChild("Base") :: BasePart
 	local mass, inertia = measure(cart, base)
+	local stats = Vehicles.forCart(cart)
 
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -114,26 +117,28 @@ function CartController.new(cart: Model, character: Model): Controller
 		boostAcceleration = 0,
 		padCooldowns = {},
 		hopTime = math.huge,
-		settleTime = Config.Drive.SettleTime,
+		settleTime = stats.Drive.SettleTime,
 		freezeTime = 0,
 		freezeVelocity = Vector3.zero,
 		hopSpeedOverride = nil,
+		stats = stats,
 	}, CartController)
 	return self
 end
 
 function CartController.isGrounded(self: Controller): boolean
 	local cf = self.base.CFrame
-	local length = Config.Cart.WheelDiameter + Config.Cart.WheelGap + Config.Cart.FloorThickness / 2
-	length += Config.Drive.GroundCheckExtra
+	local c = self.stats.Cart
+	local length = c.WheelDiameter + c.WheelGap + c.FloorThickness / 2
+	length += self.stats.Drive.GroundCheckExtra
 	return workspace:Raycast(cf.Position, -cf.UpVector * length, self.rayParams) ~= nil
 end
 
 -- Aktuelle Boost-Stufe aus der gesammelten Driftzeit
-local function boostLevelFor(driftTime: number): number
-	if driftTime >= Config.Drift.Level2Time then
+local function boostLevelFor(driftTime: number, DR: typeof(Config.Drift)): number
+	if driftTime >= DR.Level2Time then
 		return 2
-	elseif driftTime >= Config.Drift.Level1Time then
+	elseif driftTime >= DR.Level1Time then
 		return 1
 	end
 	return 0
@@ -141,7 +146,7 @@ end
 
 -- Nach einem Neustart: kurz Restdrehungen wegdaempfen (wie nach dem Einsteigen)
 function CartController.settle(self: Controller)
-	self.settleTime = Config.Drive.SettleTime
+	self.settleTime = self.stats.Drive.SettleTime
 	self.freezeTime = 0 -- laufender Hit-Stop gilt nach dem Neustart nicht mehr
 	self.freezeVelocity = Vector3.zero
 end
@@ -309,8 +314,8 @@ function CartController.step(
 	hopPressed: boolean,
 	surface: TrackSensors.Surface
 ): Telemetry
-	local D = Config.Drive
-	local DR = Config.Drift
+	local D = self.stats.Drive
+	local DR = self.stats.Drift
 	local base = self.base
 	local cf = base.CFrame
 	local up, forward, right = cf.UpVector, cf.LookVector, cf.RightVector
@@ -334,7 +339,7 @@ function CartController.step(
 				slipAngle = 0,
 				driftCharging = false,
 				skidding = false,
-				boostLevel = boostLevelFor(self.driftTime),
+				boostLevel = boostLevelFor(self.driftTime, DR),
 				boosting = false,
 				boostStarted = false,
 				onMud = false,
@@ -368,7 +373,7 @@ function CartController.step(
 	local grounded = self:isGrounded()
 
 	-- Hopp: kleiner Sprung nach oben, nur vom Boden aus und nicht zu oft
-	local H = Config.Hop
+	local H = self.stats.Hop
 	local hopped = false
 	self.hopTime += dt
 	if H.Enabled and hopPressed and grounded and self.hopTime >= H.Cooldown then
@@ -429,7 +434,7 @@ function CartController.step(
 	local boostStarted = false
 	if driftEnded then
 		-- Boost je nach Ladung, dann Ladung leeren
-		local level = boostLevelFor(self.driftTime)
+		local level = boostLevelFor(self.driftTime, DR)
 		if level > 0 then
 			local share = if level == 2 then DR.Level2Boost else DR.Level1Boost
 			local gain = share * D.MaxPushSpeed -- Tempo-Zuwachs in Studs/s (Anteil am Motor-Hoechsttempo)
@@ -572,7 +577,7 @@ function CartController.step(
 		slipAngle = slipAngle,
 		driftCharging = driftCharging,
 		skidding = skidding,
-		boostLevel = boostLevelFor(self.driftTime),
+		boostLevel = boostLevelFor(self.driftTime, DR),
 		boosting = boosting,
 		boostStarted = boostStarted,
 		onMud = onMud,

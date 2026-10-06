@@ -10,6 +10,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local Vehicles = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vehicles"))
 local CartController = require(script.Parent:WaitForChild("CartController"))
 
 local DriftEffects = {}
@@ -79,7 +80,7 @@ function DriftEffects.attach(cart: Model, character: Model)
 	currentCart = cart
 	rayParams.FilterDescendantsInstances = { cart, character, getMarksFolder() }
 
-	local c = Config.Cart
+	local c = Vehicles.forCart(cart).Cart
 	local r = c.WheelDiameter / 2
 	local wheelX = c.Width / 2 - r - 0.1
 	local wheelZ = c.Length / 2 - r - 0.1 -- hinten ist +Z

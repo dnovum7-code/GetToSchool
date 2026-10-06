@@ -61,6 +61,11 @@ Kosmetik, Erfolge, Einstellungen/Einstieg; noch nicht in Studio getestet):
   src/shared/Progression/Homework (fest ausgewürfelt nach Tag + Spieler), Server verbucht
   Launch/Coins/Finish/Drift (Drift meldet der Client über ReportStat, Server begrenzt auf die
   echte Zeit), Belohnung sofort + Bonus für alle. Spielstand Version 2 (Feld homework).
+- Fahrzeuge: Config.Vehicles (Einkaufswagen, Bürostuhl, Schultisch auf Skateboard), Werte
+  = Einkaufswagen + `set` (fest) / `scale` (Faktor), siehe src/shared/Vehicles und
+  Progression/VehicleStats. Wagen trägt Attribut VehicleId; Fahrwerte immer über
+  Vehicles.forCart(cart) bzw. controller.stats lesen, nicht direkt Config.Drive.
+  Garage (Reiter, server/Garage), eigene Modelle in ReplicatedStorage/VehicleModels/<Id>.
 M3 – Progression (gebaut, noch nicht in Studio getestet):
 - Münzen: Baustein `Coin`, Server prüft das Einsammeln (Abstand), Zielbelohnung
   (Grundbetrag + Notenbonus), Münzen bleiben nach Crash/Abbruch. Eingesammelte Münzen erscheinen

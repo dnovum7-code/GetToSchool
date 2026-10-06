@@ -147,4 +147,24 @@ function Economy.describe(text: string, config: { [string]: any }): string
 	return result
 end
 
+-- Etwas Einmaliges kaufen (Fahrzeug, Kosmetik ...): `owned` ist die Tabelle "Id -> true" im
+-- Spielstand. Rueckgabe: Erfolg und Grund ("Owned", "NotEnough", "Bought").
+function Economy.buyOnce(
+	data: { coins: number },
+	owned: { [string]: boolean },
+	id: string,
+	price: number
+): (boolean, string)
+	if owned[id] then
+		return false, "Owned"
+	end
+	local cost = math.max(0, math.floor(price))
+	if data.coins < cost then
+		return false, "NotEnough"
+	end
+	data.coins -= cost
+	owned[id] = true
+	return true, "Bought"
+end
+
 return Economy

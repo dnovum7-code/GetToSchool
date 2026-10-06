@@ -20,6 +20,7 @@ export type Ghost = {
 	dt: number, -- Abstand zwischen zwei Aufnahmen (s)
 	time: number, -- Fahrzeit des Laufs (s)
 	data: { number }, -- 6 Zahlen pro Aufnahme, als Unterschiede
+	vehicle: string?, -- mit welchem Fahrzeug gefahren (fuer das Aussehen)
 }
 
 local VALUES = 6

@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Attributes = require(Shared:WaitForChild("Attributes"))
 local Config = require(Shared:WaitForChild("Config"))
+local Vehicles = require(Shared:WaitForChild("Vehicles"))
 local LaunchMath = require(Shared:WaitForChild("Progression"):WaitForChild("LaunchMath"))
 local TagList = require(Shared:WaitForChild("TagList"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
@@ -104,7 +105,8 @@ function Launchables.tryLaunch(player: Player, object: unknown): LaunchInfo?
 	local L = Config.Launch
 	local velocity = base.AssemblyLinearVelocity
 	local speed = math.min(velocity.Magnitude, Config.Drive.TerminalSpeed)
-	local allowed = radius + Config.Cart.Length / 2 + L.HitTolerance + speed * L.LatencyAllowance
+	local cartLength = Vehicles.forCart(cart).Cart.Length
+	local allowed = radius + cartLength / 2 + L.HitTolerance + speed * L.LatencyAllowance
 	if (base.Position - center).Magnitude > allowed then
 		return nil
 	end

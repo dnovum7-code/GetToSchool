@@ -51,6 +51,7 @@ export type Data = {
 	bestGrades: { [string]: number }, -- TrackId -> beste Note (6 = beste)
 	unlockedTracks: { [string]: boolean },
 	vehicles: { [string]: boolean },
+	selectedVehicle: string, -- gewaehltes Fahrzeug (Garage)
 	launchRecords: { [string]: number }, -- Objektname (z. B. "Kuh") -> weitester Flug in Metern
 	stats: Stats,
 	homework: HomeworkState,
@@ -67,6 +68,7 @@ function SaveData.new(): Data
 		bestGrades = {},
 		unlockedTracks = {},
 		vehicles = { [DEFAULT_VEHICLE] = true },
+		selectedVehicle = DEFAULT_VEHICLE,
 		launchRecords = {},
 		stats = { finishedRuns = 0, coinsCollected = 0, objectsLaunched = 0 },
 		homework = SaveData.newHomework(),
@@ -181,6 +183,10 @@ function SaveData.sanitize(raw: { [any]: any }): Data
 	data.unlockedTracks = sanitizeFlags(raw.unlockedTracks)
 	data.vehicles = sanitizeFlags(raw.vehicles)
 	data.vehicles[DEFAULT_VEHICLE] = true
+	local selected = raw.selectedVehicle
+	data.selectedVehicle = if type(selected) == "string" and data.vehicles[selected]
+		then selected
+		else DEFAULT_VEHICLE
 	data.launchRecords = sanitizeNumberMap(raw.launchRecords, 0, 1e7, false)
 	local stats = if type(raw.stats) == "table" then raw.stats else {}
 	data.stats = {
@@ -258,6 +264,9 @@ function SaveData.merge(stored: Data, session: Data): Data
 	end
 	for id in session.vehicles do
 		result.vehicles[id] = true
+	end
+	if session.selectedVehicle ~= DEFAULT_VEHICLE then
+		result.selectedVehicle = session.selectedVehicle
 	end
 	for name, meters in session.launchRecords do
 		result.launchRecords[name] = math.max(result.launchRecords[name] or 0, meters)

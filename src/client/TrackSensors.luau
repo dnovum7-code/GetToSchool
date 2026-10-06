@@ -12,6 +12,7 @@ local RunService = game:GetService("RunService")
 
 local Attributes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Attributes"))
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local Vehicles = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vehicles"))
 local TagList = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("TagList"))
 
 local TrackSensors = {}
@@ -97,7 +98,7 @@ function TrackSensors.sampleGround(cart: Model): Surface
 	-- aufliegende, buendige und leicht eingelassene Bausteine erkannt werden.
 	local cf = base.CFrame
 	local up = cf.UpVector
-	local radius = Config.Cart.WheelDiameter / 2
+	local radius = Vehicles.forCart(cart).Cart.WheelDiameter / 2
 	local above, below = T.FloorSensorAbove, T.FloorSensorBelow
 	local size = Vector3.new(radius * 1.5, above + below, radius * 1.5)
 	local count = 0

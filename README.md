@@ -177,6 +177,10 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/server/Homework.luau` | Server | Hausaufgaben: Ereignisse verbuchen, Belohnung, Tageswechsel |
 | `src/client/HomeworkUI.luau` | Client | Reiter „Hausaufgaben“ mit Fortschrittsbalken |
 | `src/client/StatReporter.luau` | Client | Meldet Werte, die nur der Client kennt (Driftzeit), der Server begrenzt sie |
+| `src/shared/Progression/VehicleStats.luau` | beiden | Reine Logik (getestet): Fahrwerte pro Fahrzeug (fester Wert oder Faktor auf den Einkaufswagen) |
+| `src/shared/Vehicles.luau` | beiden | Fahrzeuge aus `Config.Vehicles`, Fahrwerte eines Wagens (`Vehicles.forCart`) |
+| `src/server/Garage.luau` | Server | Fahrzeuge kaufen und wählen |
+| `src/client/GarageUI.luau` | Client | Reiter „Garage“ im Menü |
 
 Unity-Vergleich: `*.server.luau` / `*.client.luau` sind wie MonoBehaviours, die von selbst
 starten. Alle anderen `.luau`-Dateien sind ModuleScripts, also normale Klassen/Bibliotheken,
@@ -408,6 +412,32 @@ TriggerZone mit Signal-Namen (rot), Chaser-Radius (brauner Ring), „hört: Sign
 3. Studio lädt lokale Plugins normalerweise automatisch neu. Falls nicht: Studio neu starten.
 
 **Entfernen:** Plugins → *Plugins Folder* öffnen → `GetToSchoolBauhilfe.rbxm` löschen.
+
+## Eigene Fahrzeug-Modelle
+
+Die Fahrzeuge (Einkaufswagen, Bürostuhl, Schultisch auf Skateboard) sind Platzhalter aus
+einfachen Parts. Die **Physik** (Boden, vier Kugel-Räder, unsichtbarer Ballast) baut immer das
+Skript – mit den Werten aus `Config.Vehicles`. Dein Modell ist nur das **Aussehen** und wird
+an den Boden geschweißt (wie ein Kind-Objekt ohne eigenen Rigidbody in Unity).
+
+1. In Studio ein Model bauen (Parts, MeshParts, Decals – keine Skripte nötig).
+2. **Pivot** setzen (*Model → Edit Pivot*): Mitte des Fahrzeugbodens, Vorderseite zeigt
+   nach −Z (blauer Pfeil nach hinten = +Z). Größe passend zu `Width`/`Length` des Fahrzeugs
+   in `Config.Vehicles` (z. B. Bürostuhl 3.2 × 3.2 Studs).
+3. Model so benennen wie die Fahrzeug-Id (`ShoppingCart`, `OfficeChair`, `SchoolDesk`) und
+   in einen Ordner `ReplicatedStorage/VehicleModels` legen (Rojo lässt ihn in Ruhe).
+4. Optional als Attribute am Model: `HideWheels` (Bool) = die Kugel-Räder unsichtbar machen
+   (wenn dein Modell eigene Räder hat), `HideBase` (Bool) = den Boden unsichtbar machen.
+   An einzelnen Parts: `Collide` (Bool) = dieses Teil stößt mit Hindernissen zusammen
+   (sonst gehen alle Teile des Modells durch alles hindurch, nur die Physik-Teile stoßen).
+5. Play: Das Modell ersetzt den Platzhalter. Alle Teile werden automatisch masselos, nicht
+   verankert und an den Boden geschweißt; Skripte im Modell werden entfernt.
+
+Fahrwerte ändern: `Config.Vehicles.<Id>` – `set` = fester Wert (z. B. Größe), `scale` =
+Faktor auf den Einkaufswagen-Wert (z. B. `Drive.SteerRate = 1.6` = 60 % mehr Lenkung). Weil
+die Faktoren auf die Einkaufswagen-Werte wirken, bleiben die Fahrzeuge im Verhältnis gleich,
+wenn du den Einkaufswagen tunst. Neues Fahrzeug: Eintrag in `Config.Vehicles` und die Id in
+`Order` aufnehmen.
 
 ## Zweiten Track anlegen
 
@@ -676,6 +706,14 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Hausaufgaben (Bonus) | Alle drei erledigen | Hinweis „Alle Hausaufgaben erledigt! Bonus +50“ |
 | Hausaufgaben (Tageswechsel) | In `Config.Homework` `ResetHourUtc` auf die aktuelle UTC-Stunde + 1 setzen, Play, eine Stunde warten – oder einfacher: SaveData löschen | Neue Aufgaben, Hinweis „Neue Hausaufgaben!“ |
 | Hausaufgaben (Drift) | Aufgabe „Drifte 30 Sekunden“ (ggf. im Pool `weight` der anderen auf 0) | Balken steigt während Kurven-Drifts im Lauf, alle 5 s |
+| Garage | B → „Garage“ | Drei Fahrzeuge mit Beschreibung und Balken (Tempo, Wendigkeit, Stabilität); Einkaufswagen „Gewählt“ |
+| Fahrzeug kaufen | Mit genug Münzen „Kaufen 400“ beim Bürostuhl (oder `Debug.AllUpgrades`) | Münzen weg, Hinweis „Gekauft“, neuer Wagen steht am Start |
+| Bürostuhl | Fahren | Dreht sehr schnell, wendig, kippt in scharfen Kurven/bei Sprüngen leichter um |
+| Schultisch | Fahren | Deutlich schneller auf Geraden, lenkt träge, kippt kaum |
+| Fahrzeug wechseln | Garage → „Wählen“ beim Einkaufswagen | Zurück im Einkaufswagen am Start |
+| Speichern | Fahrzeug wählen, Stop, Play | Startet im zuletzt gewählten Fahrzeug |
+| Geist mit Fahrzeug | Mit dem Schultisch Bestzeit fahren, T | Geist hat die Größe des Schultischs |
+| Fahrzeug-Tuning | F2 → „Buerostuhl: Lenkung x“ usw. | Wirkt sofort auf den gefahrenen Wagen |
 
 ## Tuning-Ablauf
 

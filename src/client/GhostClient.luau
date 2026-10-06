@@ -10,6 +10,7 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 local GhostCodec =
 	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression"):WaitForChild("GhostCodec"))
 local RaceTime = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RaceTime"))
+local Vehicles = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vehicles"))
 local Settings = require(script.Parent:WaitForChild("Settings"))
 
 local ghostRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Ghost") :: RemoteEvent
@@ -20,6 +21,7 @@ type Loaded = {
 	samples: { GhostCodec.Sample },
 	dt: number,
 	time: number,
+	vehicle: string?,
 }
 
 local ghosts: { [string]: Loaded } = {}
@@ -27,6 +29,7 @@ local currentTrack: string? = nil
 local playing: Loaded? = nil
 local startedAt = 0
 local ghostModel: Model? = nil
+local ghostVehicle: string? = nil -- fuer welches Fahrzeug das Modell gebaut ist
 local ghostParts: { BasePart } = {}
 local label: TextLabel? = nil
 
@@ -34,13 +37,17 @@ local function maxSamples(): number
 	return math.floor(Config.Ghost.MaxDuration / math.max(Config.Ghost.SampleInterval, 0.02)) + 2
 end
 
--- Einfacher, halbdurchsichtiger Wagen (Boden + Waende), nur Optik
-local function getModel(): Model
+-- Einfacher, halbdurchsichtiger Wagen (Boden + Waende) in der Groesse des Fahrzeugs, nur Optik
+local function getModel(vehicle: string?): Model
 	local existing = ghostModel
-	if existing and existing.Parent then
+	if existing and existing.Parent and ghostVehicle == vehicle then
 		return existing
 	end
-	local c = Config.Cart
+	if existing then
+		existing:Destroy()
+	end
+	ghostVehicle = vehicle
+	local c = Vehicles.stats(vehicle).Cart
 	local model = Instance.new("Model")
 	model.Name = "Geist"
 	local function piece(name: string, size: Vector3, offset: Vector3): Part
@@ -125,7 +132,7 @@ function GhostClient.startRun()
 	end
 	playing = ghost
 	startedAt = os.clock()
-	getModel()
+	getModel(ghost.vehicle)
 	local text = label
 	if text then
 		text.Text = "Geist " .. RaceTime.format(ghost.time)
@@ -146,7 +153,10 @@ function GhostClient.init()
 		elseif kind == "Data" then
 			local samples, dt, time = GhostCodec.decode(raw, maxSamples())
 			if samples then
-				ghosts[trackId] = { samples = samples, dt = dt, time = time }
+				local vehicle = if type(raw) == "table" and type(raw.vehicle) == "string"
+					then raw.vehicle
+					else nil
+				ghosts[trackId] = { samples = samples, dt = dt, time = time, vehicle = vehicle }
 			end
 		end
 	end)

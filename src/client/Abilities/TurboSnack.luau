@@ -20,7 +20,7 @@ local function crumbs(base: BasePart)
 	if not current or current.Parent == nil or current:FindFirstAncestorOfClass("Model") ~= base.Parent then
 		local attachment = Instance.new("Attachment")
 		attachment.Name = "TurboCrumbs"
-		attachment.Position = Vector3.new(0, 0.5, Config.Cart.Length / 2)
+		attachment.Position = Vector3.new(0, 0.5, base.Size.Z / 2) -- Heck (jedes Fahrzeug)
 		attachment.Parent = base
 		local newEmitter = Instance.new("ParticleEmitter")
 		newEmitter.Rate = 0
