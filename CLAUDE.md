@@ -75,6 +75,9 @@ M2.5 – Erweiterter Baukasten (gebaut, noch nicht in Studio getestet):
   Trigger scharf, Signal-Tore zu, Hunde zu Hause; Props und Chaos-Zähler bleiben.
 - Vorlagen: ReplicatedStorage/Templates (in Studio angelegt, Rojo ignoriert ihn).
 - Bau-Hilfe: Studio-Plugin (plugin/), Installation im README.
+- Test-Place: `rojo build test.project.json -o TestPlace.rbxl` (Teststrecke mit allen
+  Bausteinen, Testfläche, Vorlagen). Erzeugt mit `lune run tools/build_testplace` – nach
+  Änderungen am Projekt (z. B. neue Remotes) neu erzeugen; tests/ProjectSpec prüft das.
 (Erledigt: M1 – Fahrgefühl. M1.5 – Aus-/Einsteigen, Drift mit Boost, Ragdoll, Tacho,
 Kamera-Wackeln, Tuning-Panel. M2 – Erster Track: Baukasten, Timer mit Bestzeit, Noten,
 Checkpoints, Hindernisse, Zufallsereignisse, Sound; drei Feedback-Runden: Drift ist der

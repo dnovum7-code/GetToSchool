@@ -1,0 +1,73 @@
+{
+  "name": "GetToSchoolTest",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$ignoreUnknownInstances": true,
+      "Remotes": {
+        "$className": "Folder",
+        "CollectCoin": {
+          "$className": "RemoteEvent"
+        },
+        "DevTuning": {
+          "$className": "RemoteEvent"
+        },
+        "HitLaunchable": {
+          "$className": "RemoteEvent"
+        },
+        "Progress": {
+          "$className": "RemoteEvent"
+        },
+        "ReportCrash": {
+          "$className": "RemoteEvent"
+        },
+        "RequestEnter": {
+          "$className": "RemoteEvent"
+        },
+        "RequestExit": {
+          "$className": "RemoteEvent"
+        },
+        "RequestRestart": {
+          "$className": "RemoteEvent"
+        },
+        "RunState": {
+          "$className": "RemoteEvent"
+        },
+        "ShopRequest": {
+          "$className": "RemoteEvent"
+        }
+      },
+      "Shared": {
+        "$path": "src/shared"
+      },
+      "Templates": {
+        "$path": "test/Templates.rbxm"
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "Workspace": {
+      "$className": "Workspace",
+      "$ignoreUnknownInstances": true,
+      "SpawnLocation": {
+        "$path": "test/SpawnLocation.rbxm"
+      },
+      "TestTrack": {
+        "$path": "test/TestTrack.rbxm"
+      },
+      "Testflaeche": {
+        "$path": "test/Testflaeche.rbxm"
+      }
+    }
+  }
+}

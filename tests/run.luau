@@ -12,6 +12,7 @@ local SPECS = {
 	"./LaunchMathSpec",
 	"./UnlocksSpec",
 	"./ToolkitSpec",
+	"./ProjectSpec",
 }
 
 for _, path in SPECS do

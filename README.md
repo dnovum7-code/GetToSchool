@@ -25,6 +25,66 @@ Du brauchst: **git**, **Rokit** (Werkzeug-Manager), darüber **Rojo**, und **Rob
 4. Rojo-Plugin für Studio installieren: `rojo plugin install` (Studio danach neu starten).
    Alternativ: Plugin "Rojo" im Creator Store.
 
+## Test-Place öffnen
+
+Ein fertiger Test-Place mit einer Teststrecke, auf der **jeder Baustein einmal vorkommt**
+(mit Schild und Nummer), einer flachen **Testfläche** für Lenkung und Drift und fertigen
+**Vorlagen** (Steine, Auto) in `ReplicatedStorage/Templates`. Er benutzt denselben Code wie
+das Spiel, du kannst also wie gewohnt live mit `rojo serve` arbeiten.
+
+1. `git pull`
+2. Test-Place bauen (im Projektordner):
+   ```bash
+   rojo build test.project.json -o TestPlace.rbxl
+   ```
+3. `TestPlace.rbxl` in Studio öffnen (Doppelklick oder *File → Open from File*).
+4. Live-Sync: `rojo serve` (das normale Projekt) starten und im Rojo-Plugin **Connect**.
+   Rojo aktualisiert nur die Skripte; Teststrecke und Vorlagen bleiben unberührt.
+5. **Play**. Du startest oben auf der Teststrecke. Die Testfläche: **B** → *Strecken* →
+   *Testflaeche (Lenkung & Drift)* → *Fahren*.
+
+Hinweise:
+- Speichern: Eine Datei, die nicht veröffentlicht ist, darf keine DataStores benutzen. Im Output
+  erscheint die Warnung „nur im Arbeitsspeicher“ – das ist im Test-Place richtig so.
+- Für die Abkürzungs-Tür und die Abilities ohne Einkaufen: `Config.Debug.AllUpgrades = true`.
+- Für Signale: `Config.Debug.Toolkit = true`.
+- `TestPlace.rbxl` wird von git ignoriert. Nach einem `git pull` mit Änderungen an der
+  Teststrecke einfach Schritt 2 wiederholen (deine Änderungen im Test-Place gehen dabei verloren).
+- Für mich: Die Strecke wird mit `lune run tools/build_testplace` aus Code erzeugt
+  (`test/*.rbxm`, `test.project.json`).
+
+### Checkliste Teststrecke (Reihenfolge der Strecke)
+
+| Nr. | Station | Was tun | Was passieren sollte |
+|---|---|---|---|
+| – | Start | Play | Wagen in der Startzone, Blick bergab; Münzzähler, 5 Ranzen, Shop-Knopf sichtbar; keine roten Fehler |
+| 1 | Münzen | Durch die Münzreihe fahren | Jede Münze „+1“, die große „+5“; Zähler steigt. T: Münzen bleiben weg (erst nach dem Ziel wieder da) |
+| 2 | BoostPad | Über das grüne Feld | Spürbarer Schub nach vorne |
+| 3 | JumpPad | Über das pinke Feld | Sprung nach oben (ca. 19 Studs), weiche Landung ohne Crash |
+| 4 | Mud | Durch den Schlamm | Starkes Abbremsen, Drift-Funken stoppen |
+| 5 | Ice | Auf dem Eis lenken | Wagen rutscht, lenkt kaum |
+| 6 | Bouncy | Links gegen die pinke Wand | Federt ab, kein Crash |
+| 7 | Hazard | Rechts durchs Wasser | „CRASH! Ins Wasser gefallen!“, ein Leben weg, Figur fliegt, zurück zum Start (noch kein Checkpoint) |
+| 8 | Checkpoint 1 | Durchfahren, dann R | Hinweis „Checkpoint“; R setzt dich hierher zurück, Zeit läuft weiter |
+| 9 | Mover | Am querfahrenden Block vorbei | Block fährt hin und her, schiebt den Wagen sauber |
+| 10 | Spinner | Am drehenden Balken vorbei | Balken dreht sich, schubst bei Berührung |
+| 11 | Pendulum | Unter dem Pendel durch | Pendel schwingt quer, trifft bei falschem Timing |
+| 12 | Zufall | Eine Seite ist gesperrt | Nach T ist es vielleicht die andere Seite |
+| 13 | Launchable | Kuh (links) bzw. Mülltonne (rechts) umfahren | „MUUH!“/„SCHEPPER!“, kurzer Stillstand, Kamera wackelt, Wagen fährt weiter, Objekt fliegt; oben „Kuh: … m“; Mülltonne verschwindet mit Stern im Himmel; ein Leben weg |
+| 14 | Checkpoint 2 | Durchfahren | Hinweis „Checkpoint“ (Zwischenzeit ab dem 2. Lauf) |
+| 15 | Steinschlag | Durch den roten Trigger fahren | Steine fallen vor dir auf die Straße; Treffer = „Steinschlag!“-Crash. R: Steine weg, Trigger wieder scharf |
+| 16 | Auto-Strom | Zwischen den Autos durch | Autos fahren gleichmäßig quer, schubsen nur (kein Crash) |
+| 17 | PathMover | Am Lieferwagen vorbei | Fährt im Rechteck, dreht sich in Fahrtrichtung, wartet kurz an den Ecken |
+| 18 | Gate | Schranke | Hebt und senkt sich im Takt |
+| 19 | Abkürzungs-Tür | Linke Spur | Ohne Sprungfeder: Schild „nur mit Trampolin-Sprungfeder“, Tür fest. Mit (Shop oder Debug): Tür fährt weg, Bonus-Münzen dahinter |
+| 20 | Collapse | Über die Holzbrücke | Bretter wackeln und fallen nacheinander; wer zu langsam ist, fällt in die Grube (Crash). R: Brücke wieder da |
+| 21 | Props | Kisten und Pylonen umfahren | Fliegen weg, kein Crash; im Ergebnis „Chaos: X“ |
+| 22 | ForceZone | Durch den Wind | Wagen wird im 2-s-Takt nach rechts gedrückt |
+| 23 | Chaser | Langsam am Hund vorbei | Hund rennt dir nach, bleibt knapp hinter dem Wagen, gibt nach ~6 s auf, läuft heim |
+| 24 | Checkpoint 3 | Durchfahren | Hinweis „Checkpoint“ |
+| 25 | Ziel | Durchs Ziel | Ergebnis mit Zeit, Note (Grenzen 50/65/80/100/130 s), Münzen, Leben, Treffer, Chaos; Münzen der Strecke sind wieder da |
+| – | Testfläche | B → Strecken → Testfläche | Flacher Platz: Slalom (Pylonen = Props), Drift-Kreis rechts; A/D = Drift, Shift halten = normal |
+
 ## Arbeiten mit Studio
 
 1. Im Projektordner `rojo serve` starten (läuft weiter, Fenster offen lassen).
@@ -104,6 +164,7 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/client/Kinematic.luau` | Client | Verankerte Teile so bewegen, dass sie den Wagen sauber schieben |
 | `src/client/LocalClone.luau` | Client | Lokale Kopien (fliegende Kühe, Steine, Props …) |
 | `plugin/` | Studio | Bau-Hilfe-Plugin (Pfeile, Bereiche, Wege beim Bauen) |
+| `tools/build_testplace.luau`, `test/`, `test.project.json` | – | Test-Place: Generator (Lune), erzeugte Strecke/Vorlagen, Projektdatei |
 
 Unity-Vergleich: `*.server.luau` / `*.client.luau` sind wie MonoBehaviours, die von selbst
 starten. Alle anderen `.luau`-Dateien sind ModuleScripts, also normale Klassen/Bibliotheken,
