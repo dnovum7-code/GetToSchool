@@ -26,6 +26,7 @@ local RaceTime = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("
 local BestTimes = require(script.Parent:WaitForChild("BestTimes"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
 local Coins = require(script.Parent:WaitForChild("Coins"))
+local Ghosts = require(script.Parent:WaitForChild("Ghosts"))
 local Launchables = require(script.Parent:WaitForChild("Launchables"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local RandomEvents = require(script.Parent:WaitForChild("RandomEvents"))
@@ -161,6 +162,8 @@ function RaceManager.restart(player: Player)
 	runState:FireClient(player, "Reset", spawnCFrame, false)
 	sendBest(player, race)
 	sendLives(player, race)
+	Ghosts.cancel(player)
+	Ghosts.announce(player, race.trackId) -- Geist dieser Strecke an den Client
 end
 
 -- Zurueck zum letzten Checkpoint (Taste R, nach Crash). Die Zeit laeuft weiter, Leben und
@@ -189,6 +192,7 @@ end
 
 -- Game Over (0 Leben): lustiger Screen beim Client, dann kompletter Neustart
 local function gameOver(player: Player, race: RaceState)
+	Ghosts.cancel(player)
 	local wasRunning = race.phase == "Running"
 	race.phase = "GameOver"
 	local runId = race.runId
@@ -381,6 +385,8 @@ local function finish(player: Player, race: RaceState, finishZone: BasePart)
 	runState:FireClient(player, "Finished", result)
 	-- Ziel erreicht: die eingesammelten Muenzen dieser Strecke erscheinen wieder
 	Coins.restoreTrack(player, race.trackId)
+	-- Neue Bestzeit: Aufnahme wird der neue Geist
+	Ghosts.finish(player, race.trackId, isNewBest, time)
 
 	local delay = Config.Race.AutoRestartAfterFinish
 	if delay > 0 then
@@ -404,6 +410,7 @@ function RaceManager.requestExit(player: Player)
 	if race.phase == "Running" or race.phase == "Finished" then
 		-- Wer aussteigt, hat keinen gueltigen Lauf mehr (und kein Auto-Neustart nach dem Ziel)
 		race.phase = "Aborted"
+		Ghosts.cancel(player)
 		runState:FireClient(player, "Aborted")
 	end
 	runState:FireClient(player, "Exited", landing)
@@ -474,9 +481,11 @@ local function updatePlayer(player: Player, race: RaceState)
 		if leftStart then
 			race.phase = "Running"
 			race.startTime = os.clock()
+			Ghosts.start(player, race.trackId)
 			runState:FireClient(player, "Started")
 		end
 	elseif race.phase == "Running" then
+		Ghosts.record(player, base.CFrame, os.clock() - race.startTime)
 		checkCheckpoints(player, race, base)
 		local finishZone = Track.findZone(race.trackId, Config.Race.FinishZoneTag)
 		if finishZone and Track.isInZone(finishZone, position) then

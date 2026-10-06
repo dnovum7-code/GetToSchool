@@ -13,6 +13,7 @@ local SPECS = {
 	"./UnlocksSpec",
 	"./ToolkitSpec",
 	"./ProjectSpec",
+	"./GhostSpec",
 }
 
 for _, path in SPECS do

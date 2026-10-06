@@ -43,6 +43,12 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
   Config.TuningPanel. Fehlersuche bei Bodenbausteinen: Config.Debug.TrackPieces.
 
 ## Aktueller Meilenstein
+M4 – Wiederspielwert (in Arbeit, Reihenfolge: Geist, Bestenlisten, Hausaufgaben, Fahrzeuge,
+Kosmetik, Erfolge, Einstellungen/Einstieg; noch nicht in Studio getestet):
+- Geist vom besten Lauf: Server zeichnet jeden Lauf auf (src/server/Ghosts, kompakt mit
+  src/shared/Progression/GhostCodec), speichert bei neuer Bestzeit (eigener DataStore
+  Config.Ghost.StoreName, Schlüssel pro Spieler und Strecke), Client spielt ihn ab dem Start
+  halbdurchsichtig ab (src/client/GhostClient). Abschaltbar über src/client/Settings ("Ghost").
 M3 – Progression (gebaut, noch nicht in Studio getestet):
 - Münzen: Baustein `Coin`, Server prüft das Einsammeln (Abstand), Zielbelohnung
   (Grundbetrag + Notenbonus), Münzen bleiben nach Crash/Abbruch. Eingesammelte Münzen erscheinen
@@ -90,7 +96,13 @@ Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 - Globale Bestenlisten: Weil Hindernisse auf dem Client laufen, prüft der Server jede Zeit,
   bevor sie in die globale Bestenliste kommt: alle Checkpoints in der richtigen Reihenfolge
   durchfahren, Mindestzeit pro Track, Mindestzeit zwischen Checkpoints (Werte in der Config).
-  Unplausible Zeiten zählen nur persönlich, nicht global.
+  Unplausible Zeiten zählen nur persönlich, nicht global. Zusätzlich Ansicht „Server“
+  (Spieler im selben Server) und „Freunde“.
+- M5 – Spaß-Extras (nach M4): Lufttricks (Q/E in der Luft drehen, Münzen bei sauberer
+  Landung, Crash bei schiefer Landung; E am Boden bleibt Aussteigen), Kuh-Kombo
+  (Multiplikator für Bonus-Münzen, große Anzeige „3x KOMBO!“), tägliches Glücksrad
+  (Items/Powerups), weitere visuelle Effekte. Alle Werte in die Config, wichtige ins
+  Tuning-Panel.
 
 ## Steuerung
 | Aktion | Tastatur | Gamepad | Touch |

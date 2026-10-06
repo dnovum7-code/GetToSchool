@@ -12,6 +12,9 @@
         "DevTuning": {
           "$className": "RemoteEvent"
         },
+        "Ghost": {
+          "$className": "RemoteEvent"
+        },
         "HitLaunchable": {
           "$className": "RemoteEvent"
         },

@@ -39,6 +39,9 @@
         },
         "ShopRequest": {
           "$className": "RemoteEvent"
+        },
+        "Ghost": {
+          "$className": "RemoteEvent"
         }
       }
     },

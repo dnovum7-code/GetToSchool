@@ -421,6 +421,7 @@ Config.TuningPanel = {
 	{ label = "BoostPad-Staerke", path = "Track.BoostPadStrength" },
 	{ label = "JumpPad-Staerke", path = "Track.JumpPadStrength" },
 	{ label = "Leben pro Lauf", path = "Lives.PerRun", server = true }, -- gilt ab dem naechsten T
+	{ label = "Geist-Durchsicht", path = "Ghost.Transparency", span = 0.4 }, -- 0.2 .. 1, ab dem naechsten Start
 	{ label = "Schleuderkraft", path = "Launch.Power", server = true },
 	{ label = "Schleuder-Drehung", path = "Launch.SpinPower", server = true },
 	{ label = "Himmel-Chance (0..1)", path = "Launch.SkyChance", server = true, span = 0.25 },
@@ -653,6 +654,18 @@ Config.Tracks = {
 	{ id = "Track1", name = "Der Schulweg" },
 	{ id = "Track2", name = "Die Abkuerzung", unlock = { track = "Track1", grade = 4, price = 250 } },
 	{ id = "Track3", name = "Ueber den Berg", unlock = { track = "Track2", grade = 5 } },
+}
+
+-- Geist vom besten Lauf: Der Server zeichnet jeden Lauf auf. Ist er eine neue Bestzeit, wird
+-- er gespeichert (eigener DataStore) und beim naechsten Lauf als halbdurchsichtiger Wagen
+-- abgespielt. In den Einstellungen abschaltbar.
+Config.Ghost = {
+	Enabled = true, -- Standard fuer die Einstellung "Geist"
+	SampleInterval = 0.1, -- alle x Sekunden eine Aufnahme (kleiner = genauer, groesser = weniger Daten)
+	MaxDuration = 600, -- laengere Laeufe (s) werden nicht als Geist gespeichert
+	StoreName = "Ghosts_v1", -- DataStore fuer die Geister (aendern = alle Geister neu)
+	Transparency = 0.6,
+	Color = Color3.fromRGB(150, 220, 255),
 }
 
 -- Spielstand (DataStore): Muenzen, Upgrades, Bestzeiten, freigeschaltete Tracks ...

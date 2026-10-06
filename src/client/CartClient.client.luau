@@ -17,6 +17,7 @@ local CrashDetector = require(script.Parent:WaitForChild("CrashDetector"))
 local DevPanel = require(script.Parent:WaitForChild("DevPanel"))
 local DriftEffects = require(script.Parent:WaitForChild("DriftEffects"))
 local EnterPrompt = require(script.Parent:WaitForChild("EnterPrompt"))
+local GhostClient = require(script.Parent:WaitForChild("GhostClient"))
 local LaunchablesClient = require(script.Parent:WaitForChild("LaunchablesClient"))
 local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 local ProgressClient = require(script.Parent:WaitForChild("ProgressClient"))
@@ -162,6 +163,7 @@ LaunchablesClient.init() -- Objekte wegschleudern (Kuh, Muelltonne ...)
 ProgressClient.init() -- Spielstand-Kopie vom Server
 AbilityHud.init() -- Abilities unten links
 Toolkit.init() -- erweiterter Baukasten (Trigger, Spawner, Tore ...)
+GhostClient.init() -- Geist vom besten Lauf
 -- Shop (Taste B): nur ausserhalb eines Laufs (der Server prueft das auch)
 ShopUI.init(function()
 	return runPhase == "Ready" or runPhase == "Finished" or runPhase == "Aborted"
@@ -508,6 +510,7 @@ end
 -- 0 Leben: lustiger Game-Over-Screen; der Server startet danach selbst neu (T: sofort)
 local function onGameOver(info: { hits: number, coins: number, time: number? })
 	gameOver = true
+	GhostClient.stopRun()
 	runPhase = "GameOver"
 	RaceUI.hideMessage()
 	local L = Config.Lives
@@ -582,6 +585,7 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 			-- kompletter Neustart: neuer Lauf. Beim Checkpoint-Neustart laeuft die Zeit weiter.
 			runPhase = "Ready"
 			gameOver = false
+			GhostClient.stopRun()
 			RaceUI.hideResult()
 			RaceUI.hideGameOver()
 			Abilities.reset("Full")
@@ -641,9 +645,11 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 	elseif kind == "Exited" then
 		onExited(...)
 	elseif kind == "Aborted" then
+		GhostClient.stopRun()
 		runPhase = "Aborted"
 		RaceUI.showMessage("Lauf abgebrochen", Color3.fromRGB(255, 200, 80), "R: Neustart", 2)
 	elseif kind == "Started" then
+		GhostClient.startRun() -- Geist faehrt los
 		runPhase = "Running"
 		ShopUI.close() -- Lauf beginnt: Menue zu
 		runStartedAt = os.clock()

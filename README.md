@@ -165,6 +165,10 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/client/LocalClone.luau` | Client | Lokale Kopien (fliegende Kühe, Steine, Props …) |
 | `plugin/` | Studio | Bau-Hilfe-Plugin (Pfeile, Bereiche, Wege beim Bauen) |
 | `tools/build_testplace.luau`, `test/`, `test.project.json` | – | Test-Place: Generator (Lune), erzeugte Strecke/Vorlagen, Projektdatei |
+| `src/shared/Progression/GhostCodec.luau` | beiden | Reine Logik (getestet): Geist-Aufnahme platzsparend speichern und abspielen |
+| `src/server/Ghosts.luau` | Server | Zeichnet Läufe auf, speichert den Geist der Bestzeit (eigener DataStore) |
+| `src/client/GhostClient.luau` | Client | Spielt den Geist als halbdurchsichtigen Wagen ab |
+| `src/client/Settings.luau` | Client | Einstellungen des Spielers (Geist, Kamera-Wackeln, Lautstärke) |
 
 Unity-Vergleich: `*.server.luau` / `*.client.luau` sind wie MonoBehaviours, die von selbst
 starten. Alle anderen `.luau`-Dateien sind ModuleScripts, also normale Klassen/Bibliotheken,
@@ -638,6 +642,19 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
    Crash-Arten), Turbo, Fallschirm.
 9. **Zweiter Track**: anlegen, freischalten, wählen, Checkpoints und Ziel funktionieren dort.
 10. **Zwei Spieler** (*Test → 2 Players*): Münzen und Kühe verschwinden nur beim Sammler.
+
+## M4 testen (Wiederspielwert)
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| Geist (erster Lauf) | Strecke einmal bis ins Ziel fahren | Noch kein Geist zu sehen (es gibt noch keine Bestzeit) |
+| Geist (Bestzeit) | Nach der ersten Zielankunft T drücken und losfahren | Halbdurchsichtiger blauer Wagen mit „Geist 0:52.10“ fährt deinen besten Lauf nach |
+| Geist (schneller) | Schneller als der Geist fahren, Ziel | Ab dem nächsten Lauf fährt der neue, schnellere Geist |
+| Geist (langsamer) | Langsamer fahren, Ziel | Geist bleibt der alte |
+| Geist (Abbruch) | Während des Laufs T, E (Aussteigen) oder Game Over | Geist verschwindet sofort, startet beim nächsten Lauf neu |
+| Geist (Speichern) | Mit API-Zugriff: Bestzeit fahren, Stop, Play, losfahren | Geist ist wieder da (aus dem DataStore) |
+| Geist (2 Spieler) | *Test → 2 Players* | Jeder sieht nur seinen eigenen Geist |
+| Geist (Durchsicht) | F2 → „Geist-Durchsicht“ | Wagen wird beim nächsten Start durchsichtiger/fester |
 
 ## Tuning-Ablauf
 
