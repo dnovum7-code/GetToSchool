@@ -11,17 +11,14 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local HomeworkLogic = require(Shared:WaitForChild("Progression"):WaitForChild("Homework"))
 local Unlocks = require(Shared:WaitForChild("Progression"):WaitForChild("Unlocks"))
-local CartManager = require(script.Parent:WaitForChild("CartManager"))
+local PlayerEvents = require(script.Parent:WaitForChild("PlayerEvents"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local ProgressSync = require(script.Parent:WaitForChild("ProgressSync"))
 local Track = require(script.Parent:WaitForChild("Track"))
 
-local reportRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ReportStat") :: RemoteEvent
-
 local Homework = {}
 
 local GREEN = Color3.fromRGB(120, 255, 140)
-local lastDriftReport: { [Player]: number } = {}
 
 local function pool(): { HomeworkLogic.Def }
 	return Config.Homework.Pool :: any
@@ -63,7 +60,7 @@ local function ensureToday(player: Player): boolean
 	return changed
 end
 
--- Ereignis verbuchen (aus RaceManager, Coins, Launchables, Drift-Meldung)
+-- Ereignis verbuchen (kommt ueber PlayerEvents von RaceManager, Coins, Launchables, Drift)
 function Homework.report(player: Player, event: HomeworkLogic.Event)
 	ensureToday(player)
 	local data = Profiles.get(player)
@@ -90,6 +87,7 @@ function Homework.report(player: Player, event: HomeworkLogic.Event)
 		)
 	end
 	if #finished > 0 and HomeworkLogic.takeBonus(data.homework) then
+		PlayerEvents.fire(player, { type = "HomeworkDone" })
 		local bonus = Config.Homework.AllDoneBonus
 		if bonus > 0 then
 			Profiles.addCoins(player, bonus)
@@ -144,25 +142,10 @@ function Homework.init()
 	Profiles.onLoaded(function(player)
 		ensureToday(player)
 	end)
-	-- Driftzeit meldet der Client (Fahrphysik laeuft dort). Der Server glaubt hoechstens so
-	-- viel, wie seit der letzten Meldung wirklich vergangen ist, und nur im Wagen.
-	reportRemote.OnServerEvent:Connect(function(player, kind, amount)
-		if kind ~= "Drift" or type(amount) ~= "number" or amount ~= amount or amount <= 0 then
-			return
+	PlayerEvents.on(function(player, event)
+		if event.type ~= "HomeworkDone" then
+			Homework.report(player, event :: any)
 		end
-		local now = os.clock()
-		local last = lastDriftReport[player] or (now - Config.Homework.DriftReportInterval)
-		lastDriftReport[player] = now
-		if not CartManager.isSeated(player) then
-			return
-		end
-		local allowed = math.min(amount, now - last + 0.5)
-		if allowed > 0 then
-			Homework.report(player, { type = "Drift", amount = allowed })
-		end
-	end)
-	Players.PlayerRemoving:Connect(function(player)
-		lastDriftReport[player] = nil
 	end)
 	-- Tageswechsel, waehrend jemand spielt: neue Aufgaben und Hinweis
 	task.spawn(function()

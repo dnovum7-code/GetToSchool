@@ -28,6 +28,7 @@ export type Stats = {
 	finishedRuns: number,
 	coinsCollected: number, -- eingesammelte Muenzen (ohne Belohnungen)
 	objectsLaunched: number,
+	driftSeconds: number, -- insgesamt gedriftet (fuer Erfolge)
 }
 
 -- Hausaufgaben des Tages (siehe Progression/Homework)
@@ -64,6 +65,7 @@ export type Data = {
 	stats: Stats,
 	homework: HomeworkState,
 	cosmetics: Cosmetics,
+	achievements: { [string]: boolean }, -- freigeschaltete Erfolge
 }
 
 local DEFAULT_VEHICLE = "ShoppingCart"
@@ -79,9 +81,10 @@ function SaveData.new(): Data
 		vehicles = { [DEFAULT_VEHICLE] = true },
 		selectedVehicle = DEFAULT_VEHICLE,
 		launchRecords = {},
-		stats = { finishedRuns = 0, coinsCollected = 0, objectsLaunched = 0 },
+		stats = { finishedRuns = 0, coinsCollected = 0, objectsLaunched = 0, driftSeconds = 0 },
 		homework = SaveData.newHomework(),
 		cosmetics = { colors = {}, trails = {}, vehicleColors = {}, trail = "" },
+		achievements = {},
 	}
 end
 
@@ -203,7 +206,9 @@ function SaveData.sanitize(raw: { [any]: any }): Data
 		finishedRuns = wholeNumber(stats.finishedRuns, 0) or 0,
 		coinsCollected = wholeNumber(stats.coinsCollected, 0) or 0,
 		objectsLaunched = wholeNumber(stats.objectsLaunched, 0) or 0,
+		driftSeconds = if isNumber(stats.driftSeconds) then math.max(stats.driftSeconds, 0) else 0,
 	}
+	data.achievements = sanitizeFlags(raw.achievements)
 	data.homework = sanitizeHomework(raw.homework)
 	local cosmetics = if type(raw.cosmetics) == "table" then raw.cosmetics else {}
 	local vehicleColors: { [string]: string } = {}
@@ -299,6 +304,10 @@ function SaveData.merge(stored: Data, session: Data): Data
 	result.stats.finishedRuns += session.stats.finishedRuns
 	result.stats.coinsCollected += session.stats.coinsCollected
 	result.stats.objectsLaunched += session.stats.objectsLaunched
+	result.stats.driftSeconds += session.stats.driftSeconds
+	for id in session.achievements do
+		result.achievements[id] = true
+	end
 	-- Kosmetik: Gekauftes zusammen, Auswahl aus der Sitzung
 	for id in session.cosmetics.colors do
 		result.cosmetics.colors[id] = true

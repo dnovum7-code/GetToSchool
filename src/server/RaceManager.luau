@@ -30,8 +30,8 @@ local BestTimes = require(script.Parent:WaitForChild("BestTimes"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
 local Coins = require(script.Parent:WaitForChild("Coins"))
 local Ghosts = require(script.Parent:WaitForChild("Ghosts"))
-local Homework = require(script.Parent:WaitForChild("Homework"))
 local Leaderboards = require(script.Parent:WaitForChild("Leaderboards"))
+local PlayerEvents = require(script.Parent:WaitForChild("PlayerEvents"))
 local Launchables = require(script.Parent:WaitForChild("Launchables"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local RandomEvents = require(script.Parent:WaitForChild("RandomEvents"))
@@ -459,16 +459,21 @@ local function finish(player: Player, race: RaceState, finishZone: BasePart, pos
 		leaderboardNote = submitToLeaderboard(player, race, time, position),
 	}
 	runState:FireClient(player, "Finished", result)
+	-- Alle Muenzen der Strecke (seit dem letzten Ziel)? Vor dem Wiederherstellen zaehlen.
+	local coinsHave, coinsTotal = Coins.trackProgress(player, race.trackId)
 	-- Ziel erreicht: die eingesammelten Muenzen dieser Strecke erscheinen wieder
 	Coins.restoreTrack(player, race.trackId)
 	-- Neue Bestzeit: Aufnahme wird der neue Geist
 	Ghosts.finish(player, race.trackId, isNewBest, time)
-	Homework.report(player, {
+	PlayerEvents.fire(player, {
 		type = "Finish",
 		trackId = race.trackId,
 		time = time,
 		grade = grade,
 		livesLost = math.max(0, race.life.maxLives - race.life.lives),
+		allCoins = coinsTotal > 0 and coinsHave >= coinsTotal,
+		isNewBest = isNewBest,
+		hadPrevious = previousBest ~= nil,
 	})
 
 	local delay = Config.Race.AutoRestartAfterFinish

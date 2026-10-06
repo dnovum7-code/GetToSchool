@@ -184,6 +184,10 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/shared/Progression/Cosmetics.luau` | beiden | Reine Logik (getestet): Farbe pro Fahrzeug, Spur, besessen? |
 | `src/server/Cosmetics.luau` | Server | Lackiererei: Farben/Spuren kaufen, wählen, am Wagen anwenden |
 | `src/client/PaintShopUI.luau` | Client | Reiter „Lackiererei“ im Menü |
+| `src/server/PlayerEvents.luau` | Server | Verteilt Ereignisse (Ziel, Wurf, Münzen, Drift) an Hausaufgaben und Erfolge; prüft die Drift-Meldungen |
+| `src/shared/Progression/Achievements.luau` | beiden | Reine Logik (getestet): Erfolge prüfen, Fortschritt |
+| `src/server/Achievements.luau` | Server | Erfolge freischalten, speichern, Popup, Roblox-Badges |
+| `src/client/AchievementUI.luau` | Client | Erfolgs-Popup und Reiter „Erfolge“ |
 
 Unity-Vergleich: `*.server.luau` / `*.client.luau` sind wie MonoBehaviours, die von selbst
 starten. Alle anderen `.luau`-Dateien sind ModuleScripts, also normale Klassen/Bibliotheken,
@@ -723,6 +727,12 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Farbe pro Fahrzeug | Garage → Bürostuhl, Lackiererei → Blau; zurück zum Einkaufswagen | Einkaufswagen bleibt rot, Bürostuhl ist blau |
 | Spur | Mit genug Münzen „Kreidestaub“ kaufen, fahren | Weißes Band hinter dem Wagen; andere Spieler sehen es auch. „Keine“ schaltet ab |
 | Speichern | Farbe/Spur wählen, Stop, Play | Wagen hat wieder Farbe und Spur |
+| Erfolg (Popup) | Ersten Lauf beenden | Oben fährt ein goldenes Popup herein: „Erfolg freigeschaltet! Pünktlich!“, bleibt 4 s |
+| Mehrere Erfolge | Erster Lauf ohne Lebensverlust | Zwei Popups nacheinander („Pünktlich!“, „Ohne Kratzer“) |
+| Kuh im Weltall | Mülltonne auf der Teststrecke (fliegt ins All, Station 13) | „Erste Kuh im Weltall“ |
+| Erfolge (Menü) | B → „Erfolge“ | „X von 12 Erfolgen“, erreichte golden mit 🏆, andere mit 🔒 und Fortschritt „3 / 25“ |
+| Speichern | Stop, Play | Erreichte Erfolge bleiben, kein zweites Popup |
+| Badges | Badge im Creator Dashboard anlegen, Id in `Config.Achievements.List` (`badge`) eintragen, im veröffentlichten Spiel freischalten | Roblox-Badge wird vergeben (in Studio nur mit echtem Spieler, Testspieler werden übersprungen) |
 
 ## Tuning-Ablauf
 

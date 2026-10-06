@@ -16,7 +16,7 @@ local Config = require(Shared:WaitForChild("Config"))
 local Economy = require(Shared:WaitForChild("Progression"):WaitForChild("Economy"))
 local TagList = require(Shared:WaitForChild("TagList"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
-local Homework = require(script.Parent:WaitForChild("Homework"))
+local PlayerEvents = require(script.Parent:WaitForChild("PlayerEvents"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local Track = require(script.Parent:WaitForChild("Track"))
 
@@ -111,7 +111,7 @@ function Coins.collect(player: Player, coin: unknown)
 	runTotals[player] = (runTotals[player] or 0) + value
 	Profiles.get(player).stats.coinsCollected += value
 	Profiles.addCoins(player, value)
-	Homework.report(player, { type = "Coins", amount = value })
+	PlayerEvents.fire(player, { type = "Coins", amount = value })
 end
 
 -- Neuer Lauf (T): nur die Lauf-Summe auf 0. Eingesammelte Muenzen bleiben weg.
@@ -138,6 +138,21 @@ function Coins.restoreTrack(player: Player, trackId: string)
 	if #ids > 0 then
 		progressRemote:FireClient(player, "CoinsRestored", ids)
 	end
+end
+
+-- Muenzen der Strecke: wie viele seit dem letzten Ziel eingesammelt, wie viele es gibt
+function Coins.trackProgress(player: Player, trackId: string): (number, number)
+	local set = collected[player] or {}
+	local have, total = 0, 0
+	for _, coin in TagList.get("Coin") do
+		if coin:IsDescendantOf(workspace) and Track.belongsTo(coin, trackId) then
+			total += 1
+			if set[coin] then
+				have += 1
+			end
+		end
+	end
+	return have, total
 end
 
 -- In diesem Lauf eingesammelt (fuer den Ergebnis-Screen)

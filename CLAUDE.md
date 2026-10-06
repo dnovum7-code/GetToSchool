@@ -68,6 +68,11 @@ Kosmetik, Erfolge, Einstellungen/Einstieg; noch nicht in Studio getestet):
   Garage (Reiter, server/Garage), eigene Modelle in ReplicatedStorage/VehicleModels/<Id>.
 - Kosmetik: Config.Cosmetics (Farben pro Fahrzeug, Spuren), Reiter „Lackiererei“,
   server/Cosmetics wendet sie per CartBuilder.applyLook an (Parts mit Attribut Paint).
+- Ereignisse: server/PlayerEvents verteilt Finish/Launch/Coins/Drift/HomeworkDone/
+  VehicleBought an Hausaufgaben und Erfolge (neue Abnehmer mit PlayerEvents.on).
+- Erfolge: Config.Achievements (Liste, Badge-Ids, 0 = kein Badge), Logik in
+  Progression/Achievements, server/Achievements (Popup über Progress-Remote "Achievement"),
+  Reiter „Erfolge“. Spielstand: achievements, stats.driftSeconds.
 M3 – Progression (gebaut, noch nicht in Studio getestet):
 - Münzen: Baustein `Coin`, Server prüft das Einsammeln (Abstand), Zielbelohnung
   (Grundbetrag + Notenbonus), Münzen bleiben nach Crash/Abbruch. Eingesammelte Münzen erscheinen

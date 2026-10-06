@@ -11,6 +11,7 @@ local Config = require(Shared:WaitForChild("Config"))
 local Economy = require(Shared:WaitForChild("Progression"):WaitForChild("Economy"))
 local Vehicles = require(Shared:WaitForChild("Vehicles"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
+local PlayerEvents = require(script.Parent:WaitForChild("PlayerEvents"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local ProgressSync = require(script.Parent:WaitForChild("ProgressSync"))
 local RaceManager = require(script.Parent:WaitForChild("RaceManager"))
@@ -60,6 +61,7 @@ local function buyVehicle(player: Player, id: unknown): (boolean, string)
 				else "Geht nicht."
 	end
 	select(player, def.id) -- neues Fahrzeug gleich nehmen
+	PlayerEvents.fire(player, { type = "VehicleBought" }) -- Erfolg "Fuhrpark"
 	return true, `Gekauft: {def.name}! Viel Spass.`
 end
 

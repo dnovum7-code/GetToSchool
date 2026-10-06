@@ -516,6 +516,7 @@ Config.Sounds = {
 	Launch = { Id = "", Volume = 0.8 }, -- Treffer (wenn das Objekt kein eigenes Attribut "Sound" hat)
 	SkyStar = { Id = "", Volume = 0.6 }, -- Stern-Blinken, wenn ein Objekt im Himmel verschwindet
 	Finish = { Id = "", Volume = 0.8 }, -- im Ziel
+	Achievement = { Id = "", Volume = 0.8 }, -- Erfolg freigeschaltet (Fanfare)
 }
 
 -- Tuning-Panel (nur in Studio, Taste F2): welche Werte als Regler erscheinen.
@@ -909,6 +910,119 @@ Config.Homework = {
 			text = "Schaffe eine Note {grade} oder besser",
 		},
 	} :: { HomeworkDef },
+}
+
+-- Erfolge: Popup beim Freischalten, Liste im Menue (B -> Erfolge). Arten (type):
+-- SkyLaunch, Flight (meters), AllCoins (track), Flawless, BeatGhost, HomeworkDay,
+-- Finishes (goal), Launches (goal), DriftTotal (goal, Sekunden), AllGrades (grade),
+-- AllVehicles. Text-Platzhalter: {goal} {meters} {track} {grade}.
+-- badge: Roblox-Badge-Id (im Creator Dashboard anlegen, Zahl hier eintragen); 0 = kein Badge.
+export type AchievementDef = {
+	id: string,
+	name: string,
+	description: string,
+	type: string,
+	goal: number?,
+	meters: number?,
+	track: string?,
+	grade: number?,
+	badge: number?,
+}
+Config.Achievements = {
+	PopupTime = 4, -- so lange (s) bleibt das Popup stehen
+	List = {
+		{
+			id = "FirstFinish",
+			name = "Puenktlich!",
+			description = "Beende deinen ersten Lauf",
+			type = "Finishes",
+			goal = 1,
+			badge = 0,
+		},
+		{
+			id = "Finish25",
+			name = "Stammgast",
+			description = "Beende {goal} Laeufe",
+			type = "Finishes",
+			goal = 25,
+			badge = 0,
+		},
+		{
+			id = "CowInSpace",
+			name = "Erste Kuh im Weltall",
+			description = "Schleudere etwas bis ins All",
+			type = "SkyLaunch",
+			badge = 0,
+		},
+		{
+			id = "Launch50",
+			name = "Kuh-Fluesterer",
+			description = "Schleudere {goal} Objekte weg",
+			type = "Launches",
+			goal = 50,
+			badge = 0,
+		},
+		{
+			id = "Flight300",
+			name = "Weitwurf-Weltmeister",
+			description = "Schleudere etwas {meters} m weit",
+			type = "Flight",
+			meters = 300,
+			badge = 0,
+		},
+		{
+			id = "AllCoinsTrack1",
+			name = "Sparschwein",
+			description = "Sammle alle Muenzen auf {track} und fahr ins Ziel",
+			type = "AllCoins",
+			track = "Track1",
+			badge = 0,
+		},
+		{
+			id = "Grade6All",
+			name = "Klassenbester",
+			description = "Note {grade} auf allen Strecken",
+			type = "AllGrades",
+			grade = 6,
+			badge = 0,
+		},
+		{
+			id = "Flawless",
+			name = "Ohne Kratzer",
+			description = "Beende einen Lauf ohne ein Leben zu verlieren",
+			type = "Flawless",
+			badge = 0,
+		},
+		{
+			id = "BeatGhost",
+			name = "Geisterjaeger",
+			description = "Schlage deine eigene Bestzeit (und damit deinen Geist)",
+			type = "BeatGhost",
+			badge = 0,
+		},
+		{
+			id = "Drift300",
+			name = "Drift-Koenig",
+			description = "Drifte insgesamt {goal} Sekunden",
+			type = "DriftTotal",
+			goal = 300,
+			badge = 0,
+		},
+		{
+			id = "AllVehicles",
+			name = "Fuhrpark",
+			description = "Besitze alle Fahrzeuge",
+			type = "AllVehicles",
+			badge = 0,
+		},
+		{
+			id = "HomeworkDay",
+			name = "Streber",
+			description = "Erledige alle Hausaufgaben eines Tages",
+			type = "HomeworkDay",
+			badge = 0,
+		},
+	} :: { AchievementDef },
 }
 
 -- Spielstand (DataStore): Muenzen, Upgrades, Bestzeiten, freigeschaltete Tracks ...

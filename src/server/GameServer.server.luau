@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local Achievements = require(script.Parent:WaitForChild("Achievements"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
 local Coins = require(script.Parent:WaitForChild("Coins"))
 local Cosmetics = require(script.Parent:WaitForChild("Cosmetics"))
@@ -13,6 +14,7 @@ local Garage = require(script.Parent:WaitForChild("Garage"))
 local Homework = require(script.Parent:WaitForChild("Homework"))
 local Launchables = require(script.Parent:WaitForChild("Launchables"))
 local Leaderboards = require(script.Parent:WaitForChild("Leaderboards"))
+local PlayerEvents = require(script.Parent:WaitForChild("PlayerEvents"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local ProgressSync = require(script.Parent:WaitForChild("ProgressSync"))
 local RaceManager = require(script.Parent:WaitForChild("RaceManager"))
@@ -51,7 +53,9 @@ Shop.init() -- Kaeufe pruefen
 TrackUnlocks.init() -- Strecken freischalten und waehlen
 Garage.init() -- Fahrzeuge kaufen und waehlen
 Cosmetics.init() -- Lackiererei: Farben und Spur
+Achievements.init() -- Erfolge (Popup, Badges)
 Leaderboards.init() -- Bestenlisten (Global, Server, Freunde)
+PlayerEvents.init() -- Ereignisse (Ziel, Wurf, Drift ...) fuer Hausaufgaben und Erfolge
 Homework.init() -- Hausaufgaben (taegliche Aufgaben)
 DevTuning.init(cartsFolder) -- Tuning-Panel (nur in Studio aktiv)
 
