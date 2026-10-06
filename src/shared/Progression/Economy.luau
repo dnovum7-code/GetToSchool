@@ -78,6 +78,22 @@ function Economy.effectiveLevel(upgrades: { [string]: number }, def: UpgradeDef,
 	return math.clamp(math.floor(upgrades[def.id] or 0), 0, #def.levels)
 end
 
+-- Hat der Spieler das Upgrade `id` mindestens auf Stufe `level`? (z. B. Abkuerzungs-Tuer)
+-- Rueckgabe: erfuellt?, das Upgrade (fuer den Namen; nil = unbekannte Id)
+function Economy.meetsRequirement(
+	upgrades: { [string]: number },
+	defs: { UpgradeDef },
+	id: string,
+	level: number,
+	allMax: boolean?
+): (boolean, UpgradeDef?)
+	local def = Economy.findUpgrade(defs, id)
+	if not def then
+		return false, nil
+	end
+	return Economy.effectiveLevel(upgrades, def, allMax) >= math.max(1, math.floor(level)), def
+end
+
 -- Preis der naechsten Stufe, nil = schon hoechste Stufe
 function Economy.nextPrice(def: UpgradeDef, currentLevel: number): number?
 	local nextLevel = def.levels[currentLevel + 1]

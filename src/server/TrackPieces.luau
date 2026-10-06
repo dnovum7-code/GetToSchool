@@ -14,8 +14,17 @@ local TagList = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("T
 local TrackPieces = {}
 
 -- Tags des erweiterten Baukastens (M2.5)
-local TOOLKIT_TAGS =
-	{ "TriggerZone", "Spawner", "PathMover", "Gate", "Collapse", "Prop", "ForceZone", "Chaser" }
+local TOOLKIT_TAGS = {
+	"TriggerZone",
+	"Spawner",
+	"PathMover",
+	"Gate",
+	"Collapse",
+	"Prop",
+	"ForceZone",
+	"Chaser",
+	"UpgradeDoor",
+}
 
 local function forEachPart(instance: Instance, callback: (BasePart) -> ())
 	if instance:IsA("BasePart") then
@@ -119,6 +128,15 @@ function TrackPieces.init()
 			part.CanCollide = false
 			part.CanQuery = false
 			part.CanTouch = false
+		end)
+	end)
+
+	-- Abkuerzungs-Tuer: fest; der Client oeffnet sie nur bei Spielern mit dem Upgrade
+	TagList.watch("UpgradeDoor", function(instance)
+		forEachPart(instance, function(part)
+			part.Anchored = true
+			part.CanCollide = true
+			part.CanQuery = true
 		end)
 	end)
 

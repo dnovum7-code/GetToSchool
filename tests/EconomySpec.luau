@@ -105,6 +105,20 @@ describe("Economy: Upgrades", function()
 		expect(Economy.effectiveLevel({}, turbo, true)).toBe(2)
 	end)
 
+	it("Abkuerzungs-Tuer: Upgrade-Stufe erfuellt?", function()
+		local ok, def = Economy.meetsRequirement({ Turbo = 1 }, { turbo }, "Turbo", 1)
+		expect(ok).toBe(true)
+		expect(def and def.name).toBe("Turbo-Pausenbrot")
+		expect((Economy.meetsRequirement({ Turbo = 1 }, { turbo }, "Turbo", 2))).toBe(false)
+		expect((Economy.meetsRequirement({}, { turbo }, "Turbo", 1))).toBe(false)
+		expect((Economy.meetsRequirement({}, { turbo }, "Turbo", 2, true))).toBe(true)
+		local unknown, noDef = Economy.meetsRequirement({}, { turbo }, "Gibtsnicht", 1)
+		expect(unknown).toBe(false)
+		expect(noDef).toBeNil()
+		-- Stufe 0 oder weniger zaehlt als Stufe 1
+		expect((Economy.meetsRequirement({}, { turbo }, "Turbo", 0))).toBe(false)
+	end)
+
 	it("Beschreibung setzt Config-Werte ein", function()
 		local config = { Abilities = { TurboCooldown1 = 12, TurboCooldown2 = 7.5 } }
 		expect(Economy.describe(turbo.levels[1].description, config)).toBe("Abklingzeit 12 s")

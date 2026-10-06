@@ -161,6 +161,7 @@ geschrieben wie in der Tabelle). Mehrere Tags pro Part sind erlaubt (z. B. `Move
 | `Prop` | Loser Gegenstand (Kiste, Pylone, Stand): fliegt weg, kein Crash. Zählt als „Chaos“. Zurück nur bei T | `Density` (Zahl) – 0.4 |
 | `ForceZone` | Bereich drückt den Wagen Richtung Vorderseite (Wind, Rasensprenger, Förderband) | `Strength` (Studs/s²) – 60; `Pulse` (s, 0 = immer) – 0; `PulseOn` (0–1) – 0.5; `Phase` – 0; `ListenSignal`; `ActiveTime` (s) – 3 |
 | `Chaser` | Verfolger (z. B. Hund): rennt dir nach, gibt auf, läuft heim | `Radius` – 40; `MaxSpeed` – 32; `Acceleration` – 50; `GiveUpTime` (s) – 6; `ReturnSpeed` – 14; `Cooldown` (s) – 3; `Hazard` (Bool) – false; `Message`; `ListenSignal` |
+| `UpgradeDoor` | Abkürzungs-Tür: geht nur für Spieler mit dem Upgrade auf (fährt nach unten weg), sonst Schild „nur mit …“ | `RequiredUpgrade` (Text: Upgrade-Id aus `Config.Upgrades`, z. B. `Spring`, `Helmet`, `Turbo`, `Glider`) – nötig; `RequiredLevel` (Zahl) – 1 |
 | `Coin` | Münze: dreht sich, Durchfahren sammelt sie ein (bleibt dir auch nach Crash). Erscheint erst wieder, wenn du das Ziel dieser Strecke erreichst (nicht bei T, gegen „Farmen“) | `Value` (Zahl) – 1 |
 | `Launchable` | Kuh, Mülltonne, Gartenzwerg …: Hineinfahren kostet ein Leben, der Wagen fährt aber weiter, das Objekt fliegt absurd weit. Erscheint bei T wieder | `LaunchPower` (Zahl) – 140; `SpinPower` (Zahl) – 12; `SkyChance` (0–1) – 0.25 (fliegt in den Himmel); `Sound` (Sound-Id, z. B. „Muh“) – keiner; `DisplayName` (Text, für Rekorde) – Name des Objekts; `ComicText` (Text, z. B. „MUUH!“) – zufällig |
 
@@ -300,6 +301,11 @@ und im Spiel unsichtbar. Seine **Vorderseite** gibt die Richtung (Bau-Hilfe zeig
 - **Förderband**: Das Band selbst ist ein normales Part (Boden). Darauf ein eigenes,
   unsichtbares Part mit Tag `ForceZone` (z. B. 3 Studs hoch), Vorderseite in Laufrichtung.
   Eine ForceZone ist nie fest (man fährt hindurch) – deshalb nicht das Band selbst taggen.
+- **Abkürzung mit Sprungfeder**: Eine Mauer (Part) quer über einen Seitenweg, Tag `UpgradeDoor`,
+  `RequiredUpgrade` = `Spring`, `RequiredLevel` = 1. Ohne Sprungfeder: Schild „Abkürzung: nur mit
+  Trampolin-Sprungfeder Stufe 1“. Nach dem Kauf fährt die Mauer sofort weg. Zum Testen ohne
+  Kauf: `Config.Debug.AllUpgrades = true`. (Die Tür ist wie die anderen Bausteine nur bei dir
+  offen; der Server prüft sie nicht – sie öffnet nur einen Weg, verteilt keine Belohnung.)
 - **Hund**: Hunde-Modell (Pivot vorne = Schnauze), Tag `Chaser`, `Radius` = 35, `MaxSpeed` = 30.
   Mit `ListenSignal` startet er nur per Signal (der Radius zählt dann nicht).
 
@@ -551,6 +557,7 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Prop | Kisten umfahren | Fliegen weg, kein Crash; Ergebnis: „Chaos: X“; R: liegen noch, T: wieder ordentlich |
 | ForceZone | Wind-Zone durchfahren | Wagen wird seitlich gedrückt; mit `Pulse` im Takt |
 | Chaser | In den Radius des Hundes fahren | Hund rennt hinterher, gibt nach ~6 s auf, läuft heim; R/T: sofort zu Hause |
+| UpgradeDoor | Tür mit `RequiredUpgrade` = `Spring` | Ohne Upgrade: Schild „nur mit Trampolin-Sprungfeder“, Tür fest. Sprungfeder kaufen (B): Tür fährt weg |
 | Tests | `lune run tests/run` | „77 von 77 Tests bestanden“ |
 
 ### Wichtigste Studio-Tests (nach Wichtigkeit)

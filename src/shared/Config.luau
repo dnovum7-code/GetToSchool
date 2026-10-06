@@ -328,6 +328,16 @@ Config.ForceZone = {
 	ActiveTime = 3, -- mit ListenSignal: so lange (s) an nach dem Signal
 }
 
+-- UpgradeDoor (Tag "UpgradeDoor", Part oder Modell): Abkuerzungs-Tuer. Oeffnet sich nur fuer
+-- Spieler mit einem bestimmten Upgrade (Attribut "RequiredUpgrade" = Upgrade-Id aus
+-- Config.Upgrades, z. B. "Spring"; "RequiredLevel" = Stufe). Sonst bleibt sie zu und ein
+-- Schild sagt, welches Upgrade fehlt. Jeder Spieler sieht seinen eigenen Zustand.
+Config.UpgradeDoor = {
+	RequiredLevel = 1,
+	OpenTime = 0.8, -- so lange (s) faehrt die Tuer nach unten weg
+	SignDistance = 90, -- Schild ist bis zu diesem Abstand (Studs) sichtbar
+}
+
 -- Chaser (Tag "Chaser", Modell oder Part, z. B. ein Hund): rennt dir am Boden nach, sobald du
 -- naeher als Radius kommst, gibt nach GiveUpTime auf und laeuft nach Hause. Jeder Spieler hat
 -- seinen eigenen Hund. Pivot-Vorderseite = Laufrichtung.

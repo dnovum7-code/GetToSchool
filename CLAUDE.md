@@ -61,7 +61,8 @@ M3 – Progression (gebaut, noch nicht in Studio getestet):
 - Mehrere Tracks: Model mit Attribut TrackId, Bedingungen in Config.Tracks.
 - Automatische Tests mit Lune: `lune run tests/run` (reine Logik in src/shared/Progression).
 M2.5 – Erweiterter Baukasten (gebaut, noch nicht in Studio getestet):
-- Neue Tags: TriggerZone, Spawner, PathMover, Gate, Collapse, Prop, ForceZone, Chaser
+- Neue Tags: TriggerZone, Spawner, PathMover, Gate, Collapse, Prop, ForceZone, Chaser,
+  UpgradeDoor (Abkürzungs-Tür, öffnet nur mit RequiredUpgrade/RequiredLevel)
   (Attribute und Beispiele im README „Erweiterter Baukasten“).
 - Alle laufen auf dem Client des jeweiligen Spielers (src/client/Toolkit, eigene Version pro
   Spieler); Dauerbetrieb über Serveruhr + reproduzierbaren Zufall (PieceId vom Server), damit

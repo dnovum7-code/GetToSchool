@@ -13,6 +13,7 @@
 --   blau    ForceZone (Bereich und Richtung)
 --   rot     TriggerZone (Bereich, Name des Signals)
 --   braun   Chaser (Radius, ab dem er losrennt)
+--   gelb    UpgradeDoor (welches Upgrade die Abkuerzungs-Tuer braucht)
 -- Bausteine mit ListenSignal zeigen "hoert: <Signal>".
 --
 -- Unity-Vergleich: wie OnDrawGizmos, nur als Plugin (Spiel-Skripte laufen in Studio nicht,
@@ -402,6 +403,22 @@ local function draw()
 	for _, tag in { "Collapse" } do
 		for _, instance in tagged(tag) do
 			drawListen(instance)
+		end
+	end
+
+	for _, instance in tagged("UpgradeDoor") do
+		local part = mainPart(instance)
+		if part then
+			local upgrade = instance:GetAttribute("RequiredUpgrade")
+			local level = numberAttr(instance, "RequiredLevel", 1)
+			label(
+				part,
+				"Tuer: braucht "
+					.. (if type(upgrade) == "string" and upgrade ~= "" then upgrade else "FEHLT")
+					.. " Stufe "
+					.. tostring(level),
+				COLORS.Gate
+			)
 		end
 	end
 

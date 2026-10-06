@@ -20,6 +20,7 @@ local Props = require(script:WaitForChild("Props"))
 local Spawners = require(script:WaitForChild("Spawners"))
 local ToolkitTypes = require(script:WaitForChild("ToolkitTypes"))
 local TriggerZones = require(script:WaitForChild("TriggerZones"))
+local UpgradeDoors = require(script:WaitForChild("UpgradeDoors"))
 
 local Toolkit = {}
 
@@ -32,6 +33,7 @@ local MODULES: { ToolkitTypes.Piece } = {
 	Props :: any,
 	ForceZones,
 	Chasers,
+	UpgradeDoors,
 }
 
 function Toolkit.init()
