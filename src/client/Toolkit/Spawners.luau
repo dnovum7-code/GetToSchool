@@ -19,6 +19,7 @@ local Rng = require(Shared:WaitForChild("Toolkit"):WaitForChild("Rng"))
 local SpawnSchedule = require(Shared:WaitForChild("Toolkit"):WaitForChild("SpawnSchedule"))
 local Kinematic = require(script.Parent.Parent:WaitForChild("Kinematic"))
 local LocalClone = require(script.Parent.Parent:WaitForChild("LocalClone"))
+local LocalHide = require(script.Parent.Parent:WaitForChild("LocalHide"))
 local Pieces = require(script.Parent:WaitForChild("Pieces"))
 local Signals = require(script.Parent:WaitForChild("Signals"))
 local ToolkitTypes = require(script.Parent:WaitForChild("ToolkitTypes"))
@@ -56,6 +57,7 @@ local function createCopy(name: string): PVInstance
 	local template = folder and folder:FindFirstChild(name)
 	local copy = if template then LocalClone.copy(template) else nil
 	if copy then
+		LocalClone.weldTogether(copy) -- lose Kopie darf nicht zerfallen
 		return copy
 	end
 	if not warnedTemplate[name] then
@@ -94,8 +96,14 @@ local function recycle(spawner: Spawner, entry: Active)
 		list = {}
 		spawner.pool[entry.template] = list
 	end
-	entry.object.Parent = nil
-	table.insert(list, entry.object)
+	-- Ist das Objekt schon zerstoert (z. B. ins Bodenlose gefallen), nicht wiederverwenden
+	local object = entry.object
+	local ok = pcall(function()
+		object.Parent = nil
+	end)
+	if ok then
+		table.insert(list, object)
+	end
 end
 
 local function clearActive(spawner: Spawner)
@@ -117,11 +125,13 @@ local function spawnOne(spawner: Spawner, index: number, now: number)
 	local names = SpawnSchedule.splitNames(Pieces.string(part, "Template", S.Template) or "")
 	local name = SpawnSchedule.pick(names, r(1)) or "Stein"
 
-	-- Position innerhalb des Parts, Richtung mit Streuung, Tempo
+	local kinematic = Pieces.bool(part, "Kinematic", S.Kinematic)
+	-- Position innerhalb des Parts (Kinematic: auf mittlerer Hoehe, sie fallen ja nicht),
+	-- Richtung mit Streuung, Tempo
 	local size = part.Size
-	local position = part.CFrame:PointToWorldSpace(
-		Vector3.new((r(2) - 0.5) * size.X, (r(3) - 0.5) * size.Y, (r(4) - 0.5) * size.Z)
-	)
+	local height = if kinematic then 0 else (r(3) - 0.5) * size.Y
+	local position =
+		part.CFrame:PointToWorldSpace(Vector3.new((r(2) - 0.5) * size.X, height, (r(4) - 0.5) * size.Z))
 	local spread = math.rad(Pieces.number(part, "SpreadAngle", S.SpreadAngle))
 	local direction = (part.CFrame.Rotation * CFrame.Angles(
 		(r(5) * 2 - 1) * spread,
@@ -133,7 +143,6 @@ local function spawnOne(spawner: Spawner, index: number, now: number)
 	local spin = Pieces.number(part, "Spin", S.Spin)
 	local scaleMin, scaleMax = Pieces.range(part, "ScaleRandom", S.ScaleMin, S.ScaleMax)
 	local scale = scaleMin + (scaleMax - scaleMin) * r(8)
-	local kinematic = Pieces.bool(part, "Kinematic", S.Kinematic)
 	local hazard = Pieces.bool(part, "Hazard", S.Hazard)
 
 	-- Kopie aus dem Pool oder neu
@@ -157,6 +166,7 @@ local function spawnOne(spawner: Spawner, index: number, now: number)
 		CollectionService:AddTag(object, "Hazard")
 		CollectionService:RemoveTag(object, "SoftHit")
 		object:SetAttribute("Message", Pieces.string(part, "Message", S.HazardMessage))
+		object:SetAttribute("HazardHit", true) -- Treffer, kein Wasser/Abgrund (Helm: weiterfahren)
 	else
 		CollectionService:AddTag(object, "SoftHit")
 		CollectionService:RemoveTag(object, "Hazard")
@@ -212,6 +222,9 @@ local function register(instance: Instance)
 	local listen = Pieces.string(instance, "ListenSignal", nil)
 	if listen then
 		spawner.disconnect = Signals.on(listen, function()
+			if LocalHide.isHidden(instance) then
+				return -- ausgeblendetes Zufallsereignis: keine Wirkung
+			end
 			spawner.signalCount += 1
 			-- eigener Zahlenbereich fuer Signal-Ausloesungen (anderer Zufall als der Dauerbetrieb)
 			burst(spawner, 1000000 + spawner.signalCount, workspace:GetServerTimeNow())
@@ -262,6 +275,10 @@ local Spawners: ToolkitTypes.Piece = {
 			updateActive(spawner, now, ctx.dt)
 			if spawner.disconnect then
 				continue -- wartet auf Signal, kein Dauerbetrieb
+			end
+			if LocalHide.isHidden(instance) then
+				spawner.lastK = nil -- ausgeblendetes Zufallsereignis: kein Dauerbetrieb
+				continue
 			end
 			-- Dauerbetrieb nur, wenn der eigene Wagen in der Naehe ist
 			local base = ctx.base

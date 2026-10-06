@@ -21,6 +21,7 @@ type Prop = {
 	template: PVInstance, -- unveraenderte Kopie (ohne Parent) fuer das Zuruecksetzen
 	copy: PVInstance?, -- lose Kopie in der Welt
 	hit: boolean, -- in diesem Lauf schon getroffen
+	hidden: boolean, -- Original liegt in einem ausgeblendeten Zufallsereignis
 }
 
 local props: { [Instance]: Prop } = {}
@@ -36,6 +37,7 @@ local function spawnCopy(prop: Prop)
 		old:Destroy()
 	end
 	local copy = prop.template:Clone()
+	LocalClone.weldTogether(copy) -- lose Kopie darf nicht zerfallen
 	local density = Pieces.number(prop.instance, "Density", Config.Props.Density)
 	for _, part in LocalClone.allParts(copy) do
 		part.Anchored = false
@@ -57,6 +59,9 @@ local function spawnCopy(prop: Prop)
 	prop.copy = copy
 	prop.hit = false
 	byCopy[copy] = prop
+	if prop.hidden then
+		LocalHide.set(copy, "Prop", true)
+	end
 end
 
 local function register(instance: Instance)
@@ -67,7 +72,8 @@ local function register(instance: Instance)
 	if not template then
 		return
 	end
-	local prop: Prop = { instance = instance :: PVInstance, template = template, copy = nil, hit = false }
+	local prop: Prop =
+		{ instance = instance :: PVInstance, template = template, copy = nil, hit = false, hidden = false }
 	props[instance] = prop
 	LocalHide.set(instance, "Prop", true) -- Original bei uns weg, die Kopie uebernimmt
 	spawnCopy(prop)
@@ -112,6 +118,16 @@ local piece: ToolkitTypes.Piece = {
 				end
 				prop.template:Destroy()
 				props[instance] = nil
+				continue
+			end
+			-- Original in einem ausgeblendeten Zufallsereignis? Dann die Kopie auch ausblenden
+			local hidden = LocalHide.isHidden(instance, "Prop")
+			if hidden ~= prop.hidden then
+				prop.hidden = hidden
+				local copy = prop.copy
+				if copy then
+					LocalHide.set(copy, "Prop", hidden)
+				end
 			end
 		end
 		local cart, base = ctx.cart, ctx.base
@@ -121,7 +137,7 @@ local piece: ToolkitTypes.Piece = {
 		-- Trifft der Wagen eine Prop-Kopie?
 		local include = {}
 		for copy, prop in byCopy do
-			if not prop.hit then
+			if not prop.hit and not prop.hidden then
 				table.insert(include, copy)
 			end
 		end

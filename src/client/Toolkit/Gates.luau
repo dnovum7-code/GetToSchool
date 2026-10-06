@@ -13,6 +13,8 @@ local Config = require(Shared:WaitForChild("Config"))
 local TagList = require(Shared:WaitForChild("TagList"))
 local PathMath = require(Shared:WaitForChild("Toolkit"):WaitForChild("PathMath"))
 local Kinematic = require(script.Parent.Parent:WaitForChild("Kinematic"))
+local LocalClone = require(script.Parent.Parent:WaitForChild("LocalClone"))
+local LocalHide = require(script.Parent.Parent:WaitForChild("LocalHide"))
 local Pieces = require(script.Parent:WaitForChild("Pieces"))
 local Signals = require(script.Parent:WaitForChild("Signals"))
 local ToolkitTypes = require(script.Parent:WaitForChild("ToolkitTypes"))
@@ -23,6 +25,10 @@ type Gate = {
 	last: CFrame,
 	signalAt: number?, -- os.clock() beim Signal
 	disconnect: (() -> ())?,
+	parts: { BasePart }, -- zwischengespeichert
+	moving: boolean, -- hat sich im letzten Frame bewegt
+	snap: boolean, -- naechste Bewegung ohne Geschwindigkeit (nach Neustart)
+	alpha: number, -- aktuelle Oeffnung 0..1
 }
 
 local gates: { [Instance]: Gate } = {}
@@ -33,11 +39,43 @@ local function register(instance: Instance)
 	end
 	local pv = instance :: PVInstance
 	local home = pv:GetPivot()
-	local gate: Gate = { instance = pv, home = home, last = home, signalAt = nil, disconnect = nil }
+	local gate: Gate = {
+		instance = pv,
+		home = home,
+		last = home,
+		signalAt = nil,
+		disconnect = nil,
+		parts = LocalClone.allParts(instance),
+		moving = false,
+		snap = false,
+		alpha = 0,
+	}
 	local listen = Pieces.string(instance, "ListenSignal", nil)
 	if listen then
 		gate.disconnect = Signals.on(listen, function()
-			gate.signalAt = os.clock()
+			if LocalHide.isHidden(instance) then
+				return
+			end
+			local G = Config.Gate
+			local duration = math.max(Pieces.number(instance, "Duration", G.Duration), 0.01)
+			local at = gate.signalAt
+			if at == nil then
+				gate.signalAt = os.clock()
+				return
+			end
+			-- Schon offen oder am Oeffnen: nicht von vorne beginnen (sonst klappt es zu und
+			-- wieder auf). Offen: Haltezeit neu starten. Schliesst gerade: von der aktuellen
+			-- Oeffnung aus wieder oeffnen.
+			local since = os.clock() - at
+			if since < duration then
+				return
+			end
+			local closeAfter = Pieces.number(instance, "CloseAfter", G.CloseAfter)
+			if closeAfter <= 0 or since < duration + closeAfter then
+				gate.signalAt = os.clock() - duration
+			else
+				gate.signalAt = os.clock() - duration * gate.alpha
+			end
 		end)
 	end
 	local G = Config.Gate
@@ -94,23 +132,38 @@ local Gates: ToolkitTypes.Piece = {
 					Pieces.number(instance, "ClosedTime", G.ClosedTime)
 				)
 			end
+			gate.alpha = alpha
 			if Pieces.bool(instance, "StartOpen", G.StartOpen) then
 				alpha = 1 - alpha
 			end
 			local target = targetFor(gate, alpha)
 			if target ~= gate.last then
-				Kinematic.move(gate.instance, gate.last, target, ctx.dt, true)
+				Kinematic.move(
+					gate.instance,
+					gate.last,
+					target,
+					if gate.snap then 0 else ctx.dt,
+					true,
+					gate.parts
+				)
 				gate.last = target
-			else
-				Kinematic.stop(gate.instance)
+				gate.moving = true
+			elseif gate.moving then
+				-- gerade angekommen: Geschwindigkeit einmal auf 0 (nicht jeden Frame)
+				Kinematic.stop(gate.instance, gate.parts)
+				gate.moving = false
 			end
+			gate.snap = false
 		end
 	end,
 
 	-- R und T: Signal-Tore zurueck in den Grundzustand
 	reset = function()
 		for _, gate in gates do
-			gate.signalAt = nil
+			if gate.disconnect then
+				gate.signalAt = nil
+				gate.snap = true -- in den Grundzustand springen, ohne den Wagen wegzuschleudern
+			end
 		end
 	end,
 }

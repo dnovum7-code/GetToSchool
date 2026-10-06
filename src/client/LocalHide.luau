@@ -104,7 +104,21 @@ function LocalHide.set(instance: Instance, reason: string, hidden: boolean)
 end
 
 -- Ist das Objekt (oder eines darueber) gerade bei diesem Spieler ausgeblendet?
-function LocalHide.isHidden(instance: Instance): boolean
+-- `ignoreReason`: dieser Grund am Objekt selbst zaehlt nicht (z. B. "Prop": das Original
+-- ist immer ausgeblendet, interessant ist nur, ob ein Zufallsereignis darueber aus ist).
+function LocalHide.isHidden(instance: Instance, ignoreReason: string?): boolean
+	if ignoreReason then
+		local set = reasons[instance]
+		if set then
+			for reason in set do
+				if reason ~= ignoreReason then
+					return true
+				end
+			end
+		end
+		local parent = instance.Parent
+		return parent ~= nil and hiddenInTree(parent)
+	end
 	return hiddenInTree(instance)
 end
 

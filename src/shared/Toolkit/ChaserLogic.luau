@@ -1,13 +1,15 @@
 --!strict
 -- Verhalten eines Verfolgers (Hund) als einfache Zustandsmaschine (reine Logik, getestet in
 -- tests/ToolkitSpec.luau):
---   "Idle"   wartet zu Hause. Kommt der Wagen naeher als Radius (oder Signal): "Chase".
+--   "Idle"   wartet zu Hause. Kommt der Wagen naeher als Radius: "Chase". Wartet er auf ein
+--            Signal (ListenSignal), startet er nur beim Signal.
 --   "Chase"  rennt dem Wagen nach, wird bis MaxSpeed schneller. Nach GiveUpTime: "Return".
 --   "Return" laeuft mit ReturnSpeed nach Hause, dann "Idle" mit kurzer Pause (Cooldown).
 
 local ChaserLogic = {}
 
 export type Settings = {
+	waitsForSignal: boolean?, -- true = startet nur per Signal (nicht ueber den Radius)
 	radius: number,
 	maxSpeed: number,
 	acceleration: number,
@@ -40,8 +42,10 @@ function ChaserLogic.step(
 	if state.mode == "Idle" then
 		state.timer = math.max(0, state.timer - dt)
 		state.speed = 0
-		local inRange = targetDistance ~= nil and targetDistance <= settings.radius
-		if targetDistance ~= nil and state.timer <= 0 and (inRange or signaled) then
+		local start = if settings.waitsForSignal
+			then signaled
+			else targetDistance ~= nil and targetDistance <= settings.radius
+		if targetDistance ~= nil and state.timer <= 0 and start then
 			state.mode = "Chase"
 			state.timer = 0
 		end

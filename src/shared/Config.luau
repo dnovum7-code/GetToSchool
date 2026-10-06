@@ -339,6 +339,7 @@ Config.Chaser = {
 	ReturnSpeed = 14, -- Tempo auf dem Heimweg
 	Cooldown = 3, -- Pause zu Hause, bevor er wieder jagt
 	TurnSpeed = 8, -- wie schnell er sich in Laufrichtung dreht
+	StopGap = 0.8, -- so viel Luft (Studs) laesst er zwischen sich und dem Wagen
 	Hazard = false, -- true = Beruehrung ist ein Crash, false = nur Schubs
 	HazardMessage = "Vom Hund erwischt!", -- Attribut "Message"
 }

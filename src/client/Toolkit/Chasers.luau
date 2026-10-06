@@ -14,6 +14,8 @@ local Config = require(Shared:WaitForChild("Config"))
 local TagList = require(Shared:WaitForChild("TagList"))
 local ChaserLogic = require(Shared:WaitForChild("Toolkit"):WaitForChild("ChaserLogic"))
 local Kinematic = require(script.Parent.Parent:WaitForChild("Kinematic"))
+local LocalClone = require(script.Parent.Parent:WaitForChild("LocalClone"))
+local LocalHide = require(script.Parent.Parent:WaitForChild("LocalHide"))
 local Pieces = require(script.Parent:WaitForChild("Pieces"))
 local Signals = require(script.Parent:WaitForChild("Signals"))
 local ToolkitTypes = require(script.Parent:WaitForChild("ToolkitTypes"))
@@ -26,15 +28,27 @@ type Chaser = {
 	state: ChaserLogic.State,
 	signaled: boolean,
 	disconnect: (() -> ())?,
+	parts: { BasePart }, -- zwischengespeichert
+	halfLength: number, -- halbe Groesse (waagerecht), fuer den Abstand zum Wagen
+	moving: boolean,
 }
 
 local chasers: { [Instance]: Chaser } = {}
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Exclude
+local excludeBuiltAt = -math.huge
 
--- Boden unter `position` (ohne Wagen, Spieler und den Hund selbst)
-local function groundY(chaser: Chaser, position: Vector3): number?
-	local exclude: { Instance } = { chaser.instance }
+-- Liste der Dinge, die kein Boden sind (Wagen, Spieler, Hunde, lokale Objekte).
+-- Nur einmal pro Sekunde neu bauen, nicht bei jedem Strahl.
+local function refreshExclude()
+	if os.clock() - excludeBuiltAt < 1 then
+		return
+	end
+	excludeBuiltAt = os.clock()
+	local exclude: { Instance } = {}
+	for instance in chasers do
+		table.insert(exclude, instance)
+	end
 	local carts = workspace:FindFirstChild("Carts")
 	if carts then
 		table.insert(exclude, carts)
@@ -51,6 +65,11 @@ local function groundY(chaser: Chaser, position: Vector3): number?
 		end
 	end
 	rayParams.FilterDescendantsInstances = exclude
+end
+
+-- Boden unter `position`
+local function groundY(position: Vector3): number?
+	refreshExclude()
 	local hit = workspace:Raycast(position + Vector3.new(0, 6, 0), Vector3.new(0, -40, 0), rayParams)
 	return if hit then hit.Position.Y else nil
 end
@@ -58,6 +77,7 @@ end
 local function settingsFor(instance: Instance): ChaserLogic.Settings
 	local C = Config.Chaser
 	return {
+		waitsForSignal = Pieces.string(instance, "ListenSignal", nil) ~= nil,
 		radius = Pieces.number(instance, "Radius", C.Radius),
 		maxSpeed = Pieces.number(instance, "MaxSpeed", C.MaxSpeed),
 		acceleration = Pieces.number(instance, "Acceleration", C.Acceleration),
@@ -73,20 +93,24 @@ local function register(instance: Instance)
 	end
 	local pv = instance :: PVInstance
 	local home = pv:GetPivot()
+	local size = if pv:IsA("Model") then pv:GetExtentsSize() else (pv :: BasePart).Size
 	local chaser: Chaser = {
 		instance = pv,
 		home = home,
-		groundOffset = nil,
+		groundOffset = nil, -- wird beim ersten Laufen bestimmt (Boden evtl. noch nicht geladen)
 		last = home,
 		state = ChaserLogic.new(),
 		signaled = false,
 		disconnect = nil,
+		parts = LocalClone.allParts(instance),
+		halfLength = math.max(size.X, size.Z) / 2,
+		moving = false,
 	}
-	local ground = groundY(chaser, home.Position)
-	chaser.groundOffset = if ground then home.Position.Y - ground else nil
+	excludeBuiltAt = -math.huge -- neuer Hund: Ausschluss-Liste neu bauen
 	-- Beruehrung: Crash (Hazard) oder nur Schubs (zaehlt nicht als harter Aufprall)
 	if Pieces.bool(instance, "Hazard", Config.Chaser.Hazard) then
 		CollectionService:AddTag(instance, "Hazard")
+		instance:SetAttribute("HazardHit", true) -- Treffer, kein Wasser/Abgrund (Helm: weiterfahren)
 		if instance:GetAttribute("Message") == nil then
 			instance:SetAttribute("Message", Config.Chaser.HazardMessage)
 		end
@@ -96,7 +120,9 @@ local function register(instance: Instance)
 	local listen = Pieces.string(instance, "ListenSignal", nil)
 	if listen then
 		chaser.disconnect = Signals.on(listen, function()
-			chaser.signaled = true
+			if not LocalHide.isHidden(instance) then
+				chaser.signaled = true
+			end
 		end)
 	end
 	chasers[instance] = chaser
@@ -109,7 +135,8 @@ end
 local function update(chaser: Chaser, ctx: ToolkitTypes.Context)
 	local current = chaser.last
 	local position = current.Position
-	local base = ctx.base
+	-- ausgeblendetes Zufallsereignis: kein Ziel (Hund bleibt bzw. geht nach Hause)
+	local base = if LocalHide.isHidden(chaser.instance) then nil else ctx.base
 	local targetDistance = if base then flat(base.Position - position).Magnitude else nil
 	local homeDistance = flat(chaser.home.Position - position).Magnitude
 	local speed = ChaserLogic.step(
@@ -125,25 +152,35 @@ local function update(chaser: Chaser, ctx: ToolkitTypes.Context)
 	local mode = chaser.state.mode
 	if mode == "Idle" then
 		if current ~= chaser.home then
-			Kinematic.move(chaser.instance, current, chaser.home, ctx.dt, true)
+			Kinematic.move(chaser.instance, current, chaser.home, ctx.dt, true, chaser.parts)
 			chaser.last = chaser.home
-		else
-			Kinematic.stop(chaser.instance)
+			chaser.moving = true
+		elseif chaser.moving then
+			Kinematic.stop(chaser.instance, chaser.parts) -- nur beim Anhalten, nicht jeden Frame
+			chaser.moving = false
 		end
 		return
 	end
+	chaser.moving = true
 	-- Ziel: Wagen (Jagd) oder Zuhause (Rueckweg), nur waagerecht laufen
 	local goal = if mode == "Chase" and base then base.Position else chaser.home.Position
 	local toGoal = flat(goal - position)
 	local distance = toGoal.Magnitude
-	local stopDistance = if mode == "Chase" then 1.5 else 0
+	-- Abstand halten: halbe Wagenlaenge + halbe Hundegroesse + etwas Luft (nicht in den Wagen)
+	local stopDistance = if mode == "Chase"
+		then Config.Cart.Length / 2 + chaser.halfLength + Config.Chaser.StopGap
+		else 0
 	local stepLength = math.min(speed * ctx.dt, math.max(distance - stopDistance, 0))
 	local direction = if distance > 0.01 then toGoal.Unit else flat(current.LookVector)
 	local newPosition = position + direction * stepLength
-	-- auf dem Boden bleiben
+	-- auf dem Boden bleiben (Abstand zum Boden beim ersten Mal bestimmen)
+	if chaser.groundOffset == nil then
+		local homeGround = groundY(chaser.home.Position)
+		chaser.groundOffset = if homeGround then chaser.home.Position.Y - homeGround else nil
+	end
 	local offset = chaser.groundOffset
 	if offset then
-		local ground = groundY(chaser, newPosition)
+		local ground = groundY(newPosition)
 		if ground then
 			newPosition = Vector3.new(newPosition.X, ground + offset, newPosition.Z)
 		end
@@ -158,7 +195,7 @@ local function update(chaser: Chaser, ctx: ToolkitTypes.Context)
 	if mode == "Return" and homeDistance <= 1 then
 		target = chaser.home
 	end
-	Kinematic.move(chaser.instance, current, target, ctx.dt, true)
+	Kinematic.move(chaser.instance, current, target, ctx.dt, true, chaser.parts)
 	chaser.last = target
 end
 
@@ -186,8 +223,9 @@ local Chasers: ToolkitTypes.Piece = {
 			ChaserLogic.reset(chaser.state)
 			chaser.signaled = false
 			chaser.instance:PivotTo(chaser.home)
-			Kinematic.stop(chaser.instance)
+			Kinematic.stop(chaser.instance, chaser.parts)
 			chaser.last = chaser.home
+			chaser.moving = false
 		end
 	end,
 }

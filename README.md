@@ -286,7 +286,8 @@ und im Spiel unsichtbar. Seine **Vorderseite** gibt die Richtung (Bau-Hilfe zeig
   (so lange, bis das Auto auf der anderen Seite ist), `Hazard` = false (schubst nur).
 - **Lieferwagen auf Runde** (PathMover): Modell `Lieferwagen` mit Tag `PathMover`, darin ein
   Ordner `Waypoints` mit Parts `1`, `2`, `3`, `4` entlang der Straße (auf Höhe des Pivots).
-  `Loop` = true, `Speed` = 20, `WaitAtPoints` = 1.
+  `Loop` = true, `Speed` = 20, `WaitAtPoints` = 1. Wichtig: Im Modell ein **PrimaryPart**
+  setzen (oder *Edit Pivot*), sonst liegt der Pivot in der Mitte von Auto **und** Wegpunkten.
 - **Bahnschranke** (Gate im Takt): Balken-Modell, Pivot (*Edit Pivot*) ans Scharnier,
   Tag `Gate`, `Angle` = 80, `Axis` = `Z`, `OpenTime` = 4, `ClosedTime` = 3.
 - **Klappbrücke per Signal**: Brücke als Gate mit `Angle` = −60, `Axis` = `X`,
@@ -296,7 +297,11 @@ und im Spiel unsichtbar. Seine **Vorderseite** gibt die Richtung (Bau-Hilfe zeig
 - **Marktstände**: Kisten/Pylonen mit Tag `Prop`.
 - **Rasensprenger**: durchsichtiges blaues Part, Tag `ForceZone`, Vorderseite seitlich,
   `Strength` = 80, `Pulse` = 2.
+- **Förderband**: Das Band selbst ist ein normales Part (Boden). Darauf ein eigenes,
+  unsichtbares Part mit Tag `ForceZone` (z. B. 3 Studs hoch), Vorderseite in Laufrichtung.
+  Eine ForceZone ist nie fest (man fährt hindurch) – deshalb nicht das Band selbst taggen.
 - **Hund**: Hunde-Modell (Pivot vorne = Schnauze), Tag `Chaser`, `Radius` = 35, `MaxSpeed` = 30.
+  Mit `ListenSignal` startet er nur per Signal (der Radius zählt dann nicht).
 
 ## Bau-Hilfe (Studio-Plugin)
 

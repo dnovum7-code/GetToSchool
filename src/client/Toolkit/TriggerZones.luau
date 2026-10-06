@@ -9,6 +9,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local TagList = require(Shared:WaitForChild("TagList"))
 local TriggerRules = require(Shared:WaitForChild("Toolkit"):WaitForChild("TriggerRules"))
+local LocalHide = require(script.Parent.Parent:WaitForChild("LocalHide"))
 local Pieces = require(script.Parent:WaitForChild("Pieces"))
 local Signals = require(script.Parent:WaitForChild("Signals"))
 local ToolkitTypes = require(script.Parent:WaitForChild("ToolkitTypes"))
@@ -39,7 +40,10 @@ local TriggerZones: ToolkitTypes.Piece = {
 				zones[instance] = nil
 				continue
 			end
-			local inside = base ~= nil and Pieces.inBox(zone.part, base.Position, T.TriggerMargin)
+			-- ausgeblendetes Zufallsereignis: Zone ohne Wirkung
+			local inside = base ~= nil
+				and not LocalHide.isHidden(instance)
+				and Pieces.inBox(zone.part, base.Position, T.TriggerMargin)
 			local once = Pieces.bool(instance, "Once", T.TriggerOnce)
 			local cooldown = Pieces.number(instance, "Cooldown", T.TriggerCooldown)
 			if TriggerRules.update(zone.state, inside, now, once, cooldown) then

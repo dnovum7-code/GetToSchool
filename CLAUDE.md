@@ -11,6 +11,9 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
 - Kein Frust beim Wiederholen: sofortiger Neustart (< 1 s), Checkpoints,
   jeder Versuch bringt Münzen.
 - Upgrades öffnen neue Wege, nicht nur bessere Zahlen.
+- Lenkung (so gewollt, nicht zurückbauen): Drift ist der Standard-Fahrmodus – A/D lenkt
+  direkt im Drift (Front zieht, Heck schwingt aus, Boost am Drift-Ende). Shift gehalten =
+  normale, ruhigere Lenkung (ca. 60 %, fester Seitenhalt). Config.Drift.DriftByDefault = true.
 
 ## Technik
 - Sprache: Luau (strict mode wo sinnvoll)

@@ -97,6 +97,11 @@ function TrackPieces.init()
 				nextPieceId += 1
 				instance:SetAttribute("PieceId", tag .. tostring(nextPieceId))
 			end
+			-- Mit StreamingEnabled kommt ein Baustein-Modell immer komplett beim Client an
+			-- (sonst fehlen z. B. Wegpunkte oder Teile einer Prop-Kopie)
+			if instance:IsA("Model") then
+				instance.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+			end
 		end)
 	end
 

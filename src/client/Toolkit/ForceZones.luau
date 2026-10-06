@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local TagList = require(Shared:WaitForChild("TagList"))
+local LocalHide = require(script.Parent.Parent:WaitForChild("LocalHide"))
 local Pieces = require(script.Parent:WaitForChild("Pieces"))
 local Signals = require(script.Parent:WaitForChild("Signals"))
 local ToolkitTypes = require(script.Parent:WaitForChild("ToolkitTypes"))
@@ -66,7 +67,14 @@ local ForceZones: ToolkitTypes.Piece = {
 				zones[instance] = nil
 				continue
 			end
-			if base and controller and Pieces.inBox(zone.part, base.Position, 0) and isActive(zone) then
+			-- 1 Stud Spielraum nach oben/unten: auch duenne Zonen (z. B. Foerderband) wirken
+			if
+				base
+				and controller
+				and Pieces.inBox(zone.part, base.Position, 1)
+				and isActive(zone)
+				and not LocalHide.isHidden(instance)
+			then
 				local strength = Pieces.number(instance, "Strength", Config.ForceZone.Strength)
 				controller:addForce(zone.part.CFrame.LookVector * strength * controller:getMass())
 			end

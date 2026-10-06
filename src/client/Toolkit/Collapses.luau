@@ -29,7 +29,7 @@ local overlapParams = OverlapParams.new()
 overlapParams.FilterType = Enum.RaycastFilterType.Include
 
 local function trigger(piece: Piece)
-	if piece.state == "Idle" then
+	if piece.state == "Idle" and not LocalHide.isHidden(piece.instance) then
 		piece.state = "Shaking"
 		piece.triggeredAt = os.clock()
 		Signals.debugLog(`Collapse "{piece.instance.Name}" gibt nach`)
@@ -66,6 +66,7 @@ local function fall(piece: Piece)
 	if not copy then
 		return
 	end
+	LocalClone.weldTogether(copy) -- faellt als ein Stueck
 	local spin = Pieces.number(piece.instance, "FallSpin", Config.Collapse.FallSpin)
 	for _, part in LocalClone.allParts(copy) do
 		part.Anchored = false

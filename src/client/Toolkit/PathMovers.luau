@@ -13,6 +13,7 @@ local TagList = require(Shared:WaitForChild("TagList"))
 local PathMath = require(Shared:WaitForChild("Toolkit"):WaitForChild("PathMath"))
 local Kinematic = require(script.Parent.Parent:WaitForChild("Kinematic"))
 local LocalClone = require(script.Parent.Parent:WaitForChild("LocalClone"))
+local LocalHide = require(script.Parent.Parent:WaitForChild("LocalHide"))
 local Pieces = require(script.Parent:WaitForChild("Pieces"))
 local Signals = require(script.Parent:WaitForChild("Signals"))
 local ToolkitTypes = require(script.Parent:WaitForChild("ToolkitTypes"))
@@ -26,6 +27,8 @@ type Mover = {
 	rotation: CFrame, -- aktuelle (geglaettete) Drehung
 	signalStart: number?, -- Mit ListenSignal: os.clock() beim letzten Signal
 	disconnect: (() -> ())?,
+	parts: { BasePart }, -- zwischengespeichert (nicht jeden Frame suchen)
+	snap: boolean, -- naechste Bewegung ohne Geschwindigkeit (Sprung nach Neustart)
 }
 
 local movers: { [Instance]: Mover } = {}
@@ -86,11 +89,16 @@ local function register(instance: Instance)
 		rotation = home.Rotation,
 		signalStart = nil,
 		disconnect = nil,
+		parts = LocalClone.allParts(instance),
+		snap = false,
 	}
 	local listen = Pieces.string(instance, "ListenSignal", nil)
 	if listen then
 		mover.disconnect = Signals.on(listen, function()
-			mover.signalStart = os.clock()
+			-- waehrend eines Durchgangs zaehlt ein weiteres Signal nicht (sonst Sprung zurueck)
+			if mover.signalStart == nil and not LocalHide.isHidden(instance) then
+				mover.signalStart = os.clock()
+			end
 		end)
 	end
 	movers[instance] = mover
@@ -142,7 +150,15 @@ local PathMovers: ToolkitTypes.Piece = {
 				rotation = mover.rotation
 			end
 			local target = CFrame.new(position) * rotation
-			Kinematic.move(mover.instance, mover.last, target, ctx.dt, true)
+			Kinematic.move(
+				mover.instance,
+				mover.last,
+				target,
+				if mover.snap then 0 else ctx.dt,
+				true,
+				mover.parts
+			)
+			mover.snap = false
 			mover.last = target
 		end
 	end,
@@ -150,7 +166,11 @@ local PathMovers: ToolkitTypes.Piece = {
 	-- R und T: Signal-Mover zurueck an den Start
 	reset = function()
 		for _, mover in movers do
-			mover.signalStart = nil
+			if mover.disconnect then
+				mover.signalStart = nil
+				mover.rotation = mover.home.Rotation
+				mover.snap = true -- zurueck an den Start springen, ohne den Wagen wegzuschleudern
+			end
 		end
 	end,
 }

@@ -40,10 +40,19 @@ function Toolkit.init()
 	end
 end
 
--- Jeden Physik-Frame aus CartClient (nach der Fahrphysik)
+local warnedErrors: { [string]: boolean } = {}
+
+-- Jeden Physik-Frame aus CartClient (nach der Fahrphysik). Ein Fehler in einem Baustein darf
+-- das Fahren (Muenzen, Crash-Erkennung ...) nicht lahmlegen: abfangen, einmal melden.
 function Toolkit.step(ctx: ToolkitTypes.Context)
 	for _, piece in MODULES do
-		piece.step(ctx)
+		xpcall(piece.step, function(err)
+			local text = tostring(err)
+			if not warnedErrors[text] then
+				warnedErrors[text] = true
+				warn("[Baukasten] Fehler: " .. text .. "\n" .. debug.traceback())
+			end
+		end, ctx)
 	end
 end
 

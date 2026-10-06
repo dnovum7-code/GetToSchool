@@ -16,7 +16,16 @@ end
 
 -- `instance` von `last` nach `target` bewegen (`dt` = Zeit seit dem letzten Aufruf).
 -- `usePivot`: die Lagen sind Pivot-Lagen (GetPivot/PivotTo), auch bei einzelnen Parts.
-function Kinematic.move(instance: PVInstance, last: CFrame, target: CFrame, dt: number, usePivot: boolean?)
+-- `parts`: zwischengespeicherte Teile-Liste (spart GetDescendants in jedem Frame).
+-- dt = 0: nur hinsetzen, ohne Geschwindigkeit (Sprung, z. B. nach einem Neustart).
+function Kinematic.move(
+	instance: PVInstance,
+	last: CFrame,
+	target: CFrame,
+	dt: number,
+	usePivot: boolean?,
+	parts: { BasePart }?
+)
 	if usePivot then
 		instance:PivotTo(target)
 	elseif instance:IsA("BasePart") then
@@ -25,6 +34,7 @@ function Kinematic.move(instance: PVInstance, last: CFrame, target: CFrame, dt: 
 		instance:PivotTo(target)
 	end
 	if dt <= 0 then
+		Kinematic.stop(instance, parts)
 		return
 	end
 
@@ -42,6 +52,12 @@ function Kinematic.move(instance: PVInstance, last: CFrame, target: CFrame, dt: 
 		part.AssemblyLinearVelocity = linear + angular:Cross(part.Position - pivot)
 		part.AssemblyAngularVelocity = angular
 	end
+	if parts then
+		for _, part in parts do
+			setVelocity(part)
+		end
+		return
+	end
 	if instance:IsA("BasePart") then
 		setVelocity(instance)
 	end
@@ -53,10 +69,16 @@ function Kinematic.move(instance: PVInstance, last: CFrame, target: CFrame, dt: 
 end
 
 -- Bewegung anhalten (Geschwindigkeit 0), z. B. wenn ein Tor stillsteht
-function Kinematic.stop(instance: PVInstance)
+function Kinematic.stop(instance: PVInstance, parts: { BasePart }?)
 	local function zero(part: BasePart)
 		part.AssemblyLinearVelocity = Vector3.zero
 		part.AssemblyAngularVelocity = Vector3.zero
+	end
+	if parts then
+		for _, part in parts do
+			zero(part)
+		end
+		return
 	end
 	if instance:IsA("BasePart") then
 		zero(instance)

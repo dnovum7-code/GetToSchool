@@ -149,6 +149,7 @@ local function showResult(result: RunResult)
 end
 
 local CRASH_TEXTS: { [string]: string } = {
+	HitHazard = "Getroffen!",
 	Tipped = "Umgekippt",
 	Impact = "Harter Aufprall",
 	Fell = "Abgestuerzt",
@@ -851,8 +852,10 @@ RunService.PreSimulation:Connect(function(dt)
 	local hazard = if crashed or protected then nil else TrackSensors.touching(current.cart, "Hazard")
 	if hazard then
 		local message = hazard:GetAttribute("Message")
+		-- Treffer durch ein Objekt (Stein, Hund): wie ein Aufprall (Helm: weiterfahren);
+		-- sonst Wasser/Grube (Helm: zurueck zum Checkpoint)
 		onCrash(
-			"Hazard",
+			if hazard:GetAttribute("HazardHit") == true then "HitHazard" else "Hazard",
 			current.base,
 			if type(message) == "string" then message else Config.Track.HazardMessage
 		)

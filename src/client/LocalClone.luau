@@ -41,6 +41,26 @@ function LocalClone.copy(object: Instance): PVInstance?
 	return copy
 end
 
+-- Alle Teile einer Kopie fest miteinander verbinden (an das PrimaryPart bzw. erste Part).
+-- Noetig fuer lose Kopien: Auf dem Server sind die Originale verankert, deshalb fallen
+-- fehlende Schweissnaehte beim Bauen nicht auf - eine lose Kopie wuerde zerfallen.
+function LocalClone.weldTogether(copy: PVInstance)
+	local parts = LocalClone.allParts(copy)
+	if #parts < 2 then
+		return
+	end
+	local root = if copy:IsA("Model") and copy.PrimaryPart then copy.PrimaryPart else parts[1]
+	for _, part in parts do
+		if part ~= root then
+			local weld = Instance.new("WeldConstraint")
+			weld.Name = "LocalCloneWeld"
+			weld.Part0 = root
+			weld.Part1 = part
+			weld.Parent = part
+		end
+	end
+end
+
 -- Ordner im Workspace fuer lokale Objekte (existiert nur auf diesem Client)
 local folders: { [string]: Folder } = {}
 function LocalClone.folder(name: string): Folder
