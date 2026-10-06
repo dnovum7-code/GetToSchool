@@ -172,7 +172,15 @@ local function coin(parent: any, cf: any, value: number?, size: number?)
 	})
 end
 
-local function zone(parent: any, name: string, cf: any, size: any, color: any, tags: { string }, attributes: any?)
+local function zone(
+	parent: any,
+	name: string,
+	cf: any,
+	size: any,
+	color: any,
+	tags: { string },
+	attributes: any?
+)
 	return part({
 		Name = name,
 		Size = size,
@@ -189,14 +197,44 @@ end
 -- Platzhalter-Kuh (Modell, Vorderseite -Z)
 local function cow(parent: any, cf: any): any
 	local m = model("Kuh", parent, { "Launchable" }, { DisplayName = "Kuh", ComicText = "MUUH!" })
-	local body = part({ Name = "Body", Size = Vector3.new(3.2, 3, 6), CFrame = cf * CFrame.new(0, 3.5, 0), Color = Color3.fromRGB(245, 245, 245), Parent = m })
-	part({ Name = "Head", Size = Vector3.new(2.2, 2, 2.4), CFrame = cf * CFrame.new(0, 4.4, -3.8), Color = Color3.fromRGB(245, 245, 245), Parent = m })
-	part({ Name = "Nose", Size = Vector3.new(1.8, 1, 0.6), CFrame = cf * CFrame.new(0, 3.9, -5.1), Color = Color3.fromRGB(240, 170, 180), Parent = m })
+	local body = part({
+		Name = "Body",
+		Size = Vector3.new(3.2, 3, 6),
+		CFrame = cf * CFrame.new(0, 3.5, 0),
+		Color = Color3.fromRGB(245, 245, 245),
+		Parent = m,
+	})
+	part({
+		Name = "Head",
+		Size = Vector3.new(2.2, 2, 2.4),
+		CFrame = cf * CFrame.new(0, 4.4, -3.8),
+		Color = Color3.fromRGB(245, 245, 245),
+		Parent = m,
+	})
+	part({
+		Name = "Nose",
+		Size = Vector3.new(1.8, 1, 0.6),
+		CFrame = cf * CFrame.new(0, 3.9, -5.1),
+		Color = Color3.fromRGB(240, 170, 180),
+		Parent = m,
+	})
 	for _, xz in { { -1, -2 }, { 1, -2 }, { -1, 2 }, { 1, 2 } } do
-		part({ Name = "Leg", Size = Vector3.new(0.8, 2.2, 0.8), CFrame = cf * CFrame.new(xz[1], 1.1, xz[2]), Color = Color3.fromRGB(245, 245, 245), Parent = m })
+		part({
+			Name = "Leg",
+			Size = Vector3.new(0.8, 2.2, 0.8),
+			CFrame = cf * CFrame.new(xz[1], 1.1, xz[2]),
+			Color = Color3.fromRGB(245, 245, 245),
+			Parent = m,
+		})
 	end
 	for _, spot in { { 1.61, 3.8, -1 }, { -1.61, 3.3, 1.2 }, { 1.61, 3.1, 1.8 } } do
-		part({ Name = "Spot", Size = Vector3.new(0.05, 1.2, 1.6), CFrame = cf * CFrame.new(spot[1], spot[2], spot[3]), Color = Color3.fromRGB(20, 20, 20), Parent = m })
+		part({
+			Name = "Spot",
+			Size = Vector3.new(0.05, 1.2, 1.6),
+			CFrame = cf * CFrame.new(spot[1], spot[2], spot[3]),
+			Color = Color3.fromRGB(20, 20, 20),
+			Parent = m,
+		})
 	end
 	m.PrimaryPart = body
 	return m
@@ -206,13 +244,43 @@ end
 local function dog(parent: any, cf: any): any
 	local m = model("Hund", parent, { "Chaser" }, { Radius = 35, MaxSpeed = 28 })
 	local brown = Color3.fromRGB(150, 100, 55)
-	local body = part({ Name = "Body", Size = Vector3.new(1.6, 1.6, 3.6), CFrame = cf * CFrame.new(0, 1.9, 0), Color = brown, Parent = m })
-	part({ Name = "Head", Size = Vector3.new(1.4, 1.4, 1.4), CFrame = cf * CFrame.new(0, 2.7, -2.2), Color = brown, Parent = m })
-	part({ Name = "Snout", Size = Vector3.new(0.8, 0.6, 0.8), CFrame = cf * CFrame.new(0, 2.4, -3.1), Color = Color3.fromRGB(40, 30, 25), Parent = m })
+	local body = part({
+		Name = "Body",
+		Size = Vector3.new(1.6, 1.6, 3.6),
+		CFrame = cf * CFrame.new(0, 1.9, 0),
+		Color = brown,
+		Parent = m,
+	})
+	part({
+		Name = "Head",
+		Size = Vector3.new(1.4, 1.4, 1.4),
+		CFrame = cf * CFrame.new(0, 2.7, -2.2),
+		Color = brown,
+		Parent = m,
+	})
+	part({
+		Name = "Snout",
+		Size = Vector3.new(0.8, 0.6, 0.8),
+		CFrame = cf * CFrame.new(0, 2.4, -3.1),
+		Color = Color3.fromRGB(40, 30, 25),
+		Parent = m,
+	})
 	for _, xz in { { -0.5, -1.3 }, { 0.5, -1.3 }, { -0.5, 1.3 }, { 0.5, 1.3 } } do
-		part({ Name = "Leg", Size = Vector3.new(0.4, 1.1, 0.4), CFrame = cf * CFrame.new(xz[1], 0.55, xz[2]), Color = brown, Parent = m })
+		part({
+			Name = "Leg",
+			Size = Vector3.new(0.4, 1.1, 0.4),
+			CFrame = cf * CFrame.new(xz[1], 0.55, xz[2]),
+			Color = brown,
+			Parent = m,
+		})
 	end
-	part({ Name = "Tail", Size = Vector3.new(0.3, 0.3, 1.2), CFrame = cf * CFrame.new(0, 2.5, 2.2) * CFrame.Angles(math.rad(-30), 0, 0), Color = brown, Parent = m })
+	part({
+		Name = "Tail",
+		Size = Vector3.new(0.3, 0.3, 1.2),
+		CFrame = cf * CFrame.new(0, 2.5, 2.2) * CFrame.Angles(math.rad(-30), 0, 0),
+		Color = brown,
+		Parent = m,
+	})
 	m.PrimaryPart = body
 	return m
 end
@@ -220,8 +288,21 @@ end
 -- Platzhalter-Auto (Modell, Vorderseite -Z), auch als Vorlage
 local function car(parent: any, cf: any, name: string, color: any): any
 	local m = model(name, parent)
-	local body = part({ Name = "Body", Size = Vector3.new(5, 2.4, 9), CFrame = cf * CFrame.new(0, 2, 0), Color = color, Parent = m })
-	part({ Name = "Cabin", Size = Vector3.new(4.4, 1.8, 4.4), CFrame = cf * CFrame.new(0, 4.1, 0.6), Color = Color3.fromRGB(180, 220, 255), Transparency = 0.2, Parent = m })
+	local body = part({
+		Name = "Body",
+		Size = Vector3.new(5, 2.4, 9),
+		CFrame = cf * CFrame.new(0, 2, 0),
+		Color = color,
+		Parent = m,
+	})
+	part({
+		Name = "Cabin",
+		Size = Vector3.new(4.4, 1.8, 4.4),
+		CFrame = cf * CFrame.new(0, 4.1, 0.6),
+		Color = Color3.fromRGB(180, 220, 255),
+		Transparency = 0.2,
+		Parent = m,
+	})
 	for _, xz in { { -2.6, -3 }, { 2.6, -3 }, { -2.6, 3 }, { 2.6, 3 } } do
 		part({
 			Name = "Wheel",
@@ -265,23 +346,62 @@ station(1, "Muenzen: einsammeln, oben rechts +1", true, function(s)
 end)
 
 station(2, "BoostPad: drueberfahren = Schub", true, function(s)
-	part({ Name = "BoostPad", Size = Vector3.new(10, 0.2, 10), CFrame = frame(s, 0, 0.05), Color = Color3.fromRGB(60, 255, 120), Material = Enum.Material.Neon, Tags = { "BoostPad" }, Parent = track })
+	part({
+		Name = "BoostPad",
+		Size = Vector3.new(10, 0.2, 10),
+		CFrame = frame(s, 0, 0.05),
+		Color = Color3.fromRGB(60, 255, 120),
+		Material = Enum.Material.Neon,
+		Tags = { "BoostPad" },
+		Parent = track,
+	})
 end)
 
 station(3, "JumpPad: Sprung nach oben", true, function(s)
-	part({ Name = "JumpPad", Size = Vector3.new(10, 0.4, 8), CFrame = frame(s - 10, 0, 0.1), Color = Color3.fromRGB(255, 120, 230), Material = Enum.Material.Neon, Tags = { "JumpPad" }, Parent = track })
+	part({
+		Name = "JumpPad",
+		Size = Vector3.new(10, 0.4, 8),
+		CFrame = frame(s - 10, 0, 0.1),
+		Color = Color3.fromRGB(255, 120, 230),
+		Material = Enum.Material.Neon,
+		Tags = { "JumpPad" },
+		Parent = track,
+	})
 end)
 
 station(4, "Mud: bremst stark", true, function(s)
-	part({ Name = "Mud", Size = Vector3.new(ROAD_WIDTH, 0.3, 24), CFrame = frame(s, 0, 0.05), Color = Color3.fromRGB(100, 70, 40), Material = Enum.Material.Mud, Tags = { "Mud" }, Parent = track })
+	part({
+		Name = "Mud",
+		Size = Vector3.new(ROAD_WIDTH, 0.3, 24),
+		CFrame = frame(s, 0, 0.05),
+		Color = Color3.fromRGB(100, 70, 40),
+		Material = Enum.Material.Mud,
+		Tags = { "Mud" },
+		Parent = track,
+	})
 end)
 
 station(5, "Ice: rutschig, lenkt kaum", true, function(s)
-	part({ Name = "Ice", Size = Vector3.new(ROAD_WIDTH, 0.3, 24), CFrame = frame(s, 0, 0.05), Color = Color3.fromRGB(190, 230, 255), Material = Enum.Material.Ice, Tags = { "Ice" }, Parent = track })
+	part({
+		Name = "Ice",
+		Size = Vector3.new(ROAD_WIDTH, 0.3, 24),
+		CFrame = frame(s, 0, 0.05),
+		Color = Color3.fromRGB(190, 230, 255),
+		Material = Enum.Material.Ice,
+		Tags = { "Ice" },
+		Parent = track,
+	})
 end)
 
 station(6, "Bouncy: links gegen die Wand = federt, kein Crash", true, function(s)
-	part({ Name = "BouncyWall", Size = Vector3.new(12, 5, 1.5), CFrame = frame(s, -7, 2.5) * CFrame.Angles(0, math.rad(25), 0), Color = Color3.fromRGB(255, 110, 200), Tags = { "Bouncy" }, Parent = track })
+	part({
+		Name = "BouncyWall",
+		Size = Vector3.new(12, 5, 1.5),
+		CFrame = frame(s, -7, 2.5) * CFrame.Angles(0, math.rad(25), 0),
+		Color = Color3.fromRGB(255, 110, 200),
+		Tags = { "Bouncy" },
+		Parent = track,
+	})
 end)
 
 station(7, "Hazard: rechts ins Wasser = Crash", true, function(s)
@@ -299,21 +419,60 @@ station(7, "Hazard: rechts ins Wasser = Crash", true, function(s)
 end)
 
 station(8, "Checkpoint 1: R bringt dich hierher", true, function(s)
-	zone(track, "Checkpoint1", frame(s, 0, 6), Vector3.new(ROAD_WIDTH, 12, 3), COLORS.checkpoint, { "Checkpoint" }, { Order = 1 })
+	zone(
+		track,
+		"Checkpoint1",
+		frame(s, 0, 6),
+		Vector3.new(ROAD_WIDTH, 12, 3),
+		COLORS.checkpoint,
+		{ "Checkpoint" },
+		{ Order = 1 }
+	)
 end)
 
 station(9, "Mover: Block faehrt quer", true, function(s)
-	part({ Name = "Mover", Size = Vector3.new(6, 4, 4), CFrame = frame(s, -10, 2), Color = Color3.fromRGB(240, 150, 40), Tags = { "Mover" }, Attributes = { Offset = Vector3.new(20, 0, 0), Duration = 2, Pause = 0.5 }, Parent = track })
+	part({
+		Name = "Mover",
+		Size = Vector3.new(6, 4, 4),
+		CFrame = frame(s, -10, 2),
+		Color = Color3.fromRGB(240, 150, 40),
+		Tags = { "Mover" },
+		Attributes = { Offset = Vector3.new(20, 0, 0), Duration = 2, Pause = 0.5 },
+		Parent = track,
+	})
 end)
 
 station(10, "Spinner: drehender Balken", true, function(s)
-	part({ Name = "Spinner", Size = Vector3.new(22, 2, 2), CFrame = frame(s, 0, 1.2), Color = Color3.fromRGB(220, 60, 60), Tags = { "Spinner" }, Attributes = { Speed = 60 }, Parent = track })
+	part({
+		Name = "Spinner",
+		Size = Vector3.new(22, 2, 2),
+		CFrame = frame(s, 0, 1.2),
+		Color = Color3.fromRGB(220, 60, 60),
+		Tags = { "Spinner" },
+		Attributes = { Speed = 60 },
+		Parent = track,
+	})
 end)
 
 station(11, "Pendulum: schwingender Block", true, function(s)
 	-- Pendel haengt an der Oberkante und schwingt quer (deshalb um 90 Grad gedreht)
-	part({ Name = "Pendulum", Size = Vector3.new(3, 14, 3), CFrame = frame(s, 0, 9) * CFrame.Angles(0, math.rad(90), 0), Color = Color3.fromRGB(150, 80, 220), Tags = { "Pendulum" }, Attributes = { Angle = 50, Duration = 3 }, Parent = track })
-	part({ Name = "Balken", Size = Vector3.new(ROAD_WIDTH + 4, 1, 1), CFrame = frame(s, 0, 16.5), Color = COLORS.post, CanCollide = false, Parent = track })
+	part({
+		Name = "Pendulum",
+		Size = Vector3.new(3, 14, 3),
+		CFrame = frame(s, 0, 9) * CFrame.Angles(0, math.rad(90), 0),
+		Color = Color3.fromRGB(150, 80, 220),
+		Tags = { "Pendulum" },
+		Attributes = { Angle = 50, Duration = 3 },
+		Parent = track,
+	})
+	part({
+		Name = "Balken",
+		Size = Vector3.new(ROAD_WIDTH + 4, 1, 1),
+		CFrame = frame(s, 0, 16.5),
+		Color = COLORS.post,
+		CanCollide = false,
+		Parent = track,
+	})
 end)
 
 station(12, "Zufall: eine Seite gesperrt (nach T evtl. die andere)", true, function(s)
@@ -345,11 +504,27 @@ station(13, "Launchable: Kuh (links) und Muelltonne (rechts, fliegt ins All)", t
 end)
 
 station(14, "Checkpoint 2", true, function(s)
-	zone(track, "Checkpoint2", frame(s, 0, 6), Vector3.new(ROAD_WIDTH, 12, 3), COLORS.checkpoint, { "Checkpoint" }, { Order = 2 })
+	zone(
+		track,
+		"Checkpoint2",
+		frame(s, 0, 6),
+		Vector3.new(ROAD_WIDTH, 12, 3),
+		COLORS.checkpoint,
+		{ "Checkpoint" },
+		{ Order = 2 }
+	)
 end)
 
 station(15, "Steinschlag: Trigger ausloesen, Steinen ausweichen", true, function(s)
-	zone(track, "TriggerSteinschlag", frame(s - 22, 0, 5), Vector3.new(ROAD_WIDTH, 10, 4), Color3.fromRGB(255, 70, 90), { "TriggerZone" }, { Signal = "Steinschlag1" })
+	zone(
+		track,
+		"TriggerSteinschlag",
+		frame(s - 22, 0, 5),
+		Vector3.new(ROAD_WIDTH, 10, 4),
+		Color3.fromRGB(255, 70, 90),
+		{ "TriggerZone" },
+		{ Signal = "Steinschlag1" }
+	)
 	-- Spawner ueber der Strasse vor dir: Steine fallen auf die Fahrbahn und rollen bergab
 	local spawnCF = frame(s + 8, 0, 25) * CFrame.Angles(math.rad(-60), 0, 0)
 	part({
@@ -405,30 +580,88 @@ end)
 
 station(17, "PathMover: Lieferwagen faehrt im Kreis", true, function(s)
 	local van = model("Lieferwagen", track, { "PathMover" }, { Loop = true, Speed = 12, WaitAtPoints = 0.5 })
-	local body = part({ Name = "Body", Size = Vector3.new(6, 4, 10), CFrame = frame(s - 18, -9, 2.5), Color = Color3.fromRGB(250, 250, 250), Parent = van })
-	part({ Name = "Stripe", Size = Vector3.new(6.05, 0.8, 9), CFrame = frame(s - 18, -9, 2.5), Color = Color3.fromRGB(230, 60, 60), Parent = van })
+	local body = part({
+		Name = "Body",
+		Size = Vector3.new(6, 4, 10),
+		CFrame = frame(s - 18, -9, 2.5),
+		Color = Color3.fromRGB(250, 250, 250),
+		Parent = van,
+	})
+	part({
+		Name = "Stripe",
+		Size = Vector3.new(6.05, 0.8, 9),
+		CFrame = frame(s - 18, -9, 2.5),
+		Color = Color3.fromRGB(230, 60, 60),
+		Parent = van,
+	})
 	van.PrimaryPart = body
 	local waypoints = Instance.new("Folder")
 	waypoints.Name = "Waypoints"
 	waypoints.Parent = van
 	local points = { { -9, -18 }, { 9, -18 }, { 9, 18 }, { -9, 18 } }
 	for index, p in points do
-		part({ Name = tostring(index), Size = Vector3.new(1, 1, 1), CFrame = frame(s + p[2], p[1], 2.5), Color = Color3.fromRGB(60, 220, 230), Transparency = 0.5, CanCollide = false, Parent = waypoints })
+		part({
+			Name = tostring(index),
+			Size = Vector3.new(1, 1, 1),
+			CFrame = frame(s + p[2], p[1], 2.5),
+			Color = Color3.fromRGB(60, 220, 230),
+			Transparency = 0.5,
+			CanCollide = false,
+			Parent = waypoints,
+		})
 	end
 end)
 
 station(18, "Gate: Schranke im Takt", true, function(s)
-	local gate = model("Schranke", track, { "Gate" }, { Angle = 80, Axis = "Z", Duration = 1.5, OpenTime = 3, ClosedTime = 3 })
+	local gate = model(
+		"Schranke",
+		track,
+		{ "Gate" },
+		{ Angle = 80, Axis = "Z", Duration = 1.5, OpenTime = 3, ClosedTime = 3 }
+	)
 	-- Scharnier = PrimaryPart (bestimmt den Pivot), der Balken reicht von dort nach rechts
-	local hinge = part({ Name = "Scharnier", Size = Vector3.new(1, 1, 1), CFrame = frame(s, -13, 3), Color = Color3.fromRGB(60, 60, 60), Parent = gate })
-	part({ Name = "Balken", Size = Vector3.new(25, 0.8, 0.8), CFrame = frame(s, -13 + 12.5, 3), Color = Color3.fromRGB(255, 255, 255), Parent = gate })
+	local hinge = part({
+		Name = "Scharnier",
+		Size = Vector3.new(1, 1, 1),
+		CFrame = frame(s, -13, 3),
+		Color = Color3.fromRGB(60, 60, 60),
+		Parent = gate,
+	})
+	part({
+		Name = "Balken",
+		Size = Vector3.new(25, 0.8, 0.8),
+		CFrame = frame(s, -13 + 12.5, 3),
+		Color = Color3.fromRGB(255, 255, 255),
+		Parent = gate,
+	})
 	gate.PrimaryPart = hinge
-	part({ Name = "Pfosten", Size = Vector3.new(1, 3, 1), CFrame = frame(s, -13, 1.5), Color = Color3.fromRGB(200, 40, 40), Parent = track })
+	part({
+		Name = "Pfosten",
+		Size = Vector3.new(1, 3, 1),
+		CFrame = frame(s, -13, 1.5),
+		Color = Color3.fromRGB(200, 40, 40),
+		Parent = track,
+	})
 end)
 
 station(19, "Abkuerzungs-Tuer: links nur mit Sprungfeder (Bonus-Muenzen)", true, function(s)
-	part({ Name = "Trennwand", Size = Vector3.new(1, 5, 40), CFrame = frame(s, 0, 2.5), Color = COLORS.rail, Parent = track })
-	part({ Name = "Tuer", Size = Vector3.new(13.5, 7, 1.2), CFrame = frame(s - 20, -7, 3.5), Color = Color3.fromRGB(120, 80, 50), Material = Enum.Material.WoodPlanks, Tags = { "UpgradeDoor" }, Attributes = { RequiredUpgrade = "Spring", RequiredLevel = 1 }, Parent = track })
+	part({
+		Name = "Trennwand",
+		Size = Vector3.new(1, 5, 40),
+		CFrame = frame(s, 0, 2.5),
+		Color = COLORS.rail,
+		Parent = track,
+	})
+	part({
+		Name = "Tuer",
+		Size = Vector3.new(13.5, 7, 1.2),
+		CFrame = frame(s - 20, -7, 3.5),
+		Color = Color3.fromRGB(120, 80, 50),
+		Material = Enum.Material.WoodPlanks,
+		Tags = { "UpgradeDoor" },
+		Attributes = { RequiredUpgrade = "Spring", RequiredLevel = 1 },
+		Parent = track,
+	})
 	for i = -1, 1 do
 		coin(track, frame(s + i * 8, -7, 2.5), 3)
 	end
@@ -438,7 +671,10 @@ end)
 do
 	local number = 20
 	local s = stationStart(number)
-	table.insert(stationList, { number = number, title = "Collapse: Bruecke stuerzt nach dem Befahren ein", s = s })
+	table.insert(
+		stationList,
+		{ number = number, title = "Collapse: Bruecke stuerzt nach dem Befahren ein", s = s }
+	)
 	road(track, s, s + 20, true)
 	road(track, s + 50, s + STATION_LENGTH, true)
 	sign(track, s + 4, `{number} · Collapse: Bruecke stuerzt nach dem Befahren ein`)
@@ -465,11 +701,18 @@ do
 		Attributes = { Message = "In die Grube gefallen!" },
 		Parent = track,
 	})
-	part({ Name = "GrubenBoden", Size = Vector3.new(GROUND_WIDTH, 2, 30), CFrame = frame(s + 35, 0, -27), Color = Color3.fromRGB(90, 70, 50), Parent = track })
+	part({
+		Name = "GrubenBoden",
+		Size = Vector3.new(GROUND_WIDTH, 2, 30),
+		CFrame = frame(s + 35, 0, -27),
+		Color = Color3.fromRGB(90, 70, 50),
+		Parent = track,
+	})
 end
 
 station(21, "Props: Kisten und Pylonen umfahren (Chaos-Zaehler)", true, function(s)
-	local spots = { { -8, -12 }, { -3, -6 }, { 4, -10 }, { 9, -2 }, { -6, 4 }, { 2, 8 }, { 7, 12 }, { -2, 14 } }
+	local spots =
+		{ { -8, -12 }, { -3, -6 }, { 4, -10 }, { 9, -2 }, { -6, 4 }, { 2, 8 }, { 7, 12 }, { -2, 14 } }
 	for index, spot in spots do
 		local isCone = index % 2 == 0
 		part({
@@ -504,35 +747,84 @@ station(23, "Chaser: der Hund rennt dir nach", false, function(s)
 end)
 
 station(24, "Checkpoint 3", true, function(s)
-	zone(track, "Checkpoint3", frame(s, 0, 6), Vector3.new(ROAD_WIDTH, 12, 3), COLORS.checkpoint, { "Checkpoint" }, { Order = 3 })
+	zone(
+		track,
+		"Checkpoint3",
+		frame(s, 0, 6),
+		Vector3.new(ROAD_WIDTH, 12, 3),
+		COLORS.checkpoint,
+		{ "Checkpoint" },
+		{ Order = 3 }
+	)
 end)
 
 station(25, "ZIEL: Noten 6 / 5 / 4 / 3 / 2 bis 50 / 65 / 80 / 100 / 130 s", true, function(s)
-	zone(track, "FinishZone", frame(s, 0, 5), Vector3.new(ROAD_WIDTH, 10, 10), Color3.fromRGB(255, 220, 80), { "FinishZone" }, {
-		Grade6 = 50,
-		Grade5 = 65,
-		Grade4 = 80,
-		Grade3 = 100,
-		Grade2 = 130,
-	})
+	zone(
+		track,
+		"FinishZone",
+		frame(s, 0, 5),
+		Vector3.new(ROAD_WIDTH, 10, 10),
+		Color3.fromRGB(255, 220, 80),
+		{ "FinishZone" },
+		{
+			Grade6 = 50,
+			Grade5 = 65,
+			Grade4 = 80,
+			Grade3 = 100,
+			Grade2 = 130,
+		}
+	)
 end)
 
 -- Auslauf hinter dem Ziel und eine Platzhalter-Schule
 do
 	local s = stationStart(26)
 	road(track, s, s + 120, true)
-	part({ Name = "Schule", Size = Vector3.new(80, 30, 20), CFrame = frame(s + 110, 0, 15), Color = Color3.fromRGB(200, 120, 90), Material = Enum.Material.Brick, Parent = track })
+	part({
+		Name = "Schule",
+		Size = Vector3.new(80, 30, 20),
+		CFrame = frame(s + 110, 0, 15),
+		Color = Color3.fromRGB(200, 120, 90),
+		Material = Enum.Material.Brick,
+		Parent = track,
+	})
 	sign(track, s + 4, "Geschafft! Gleich startet der naechste Lauf (oder T)")
 end
 
 ------------------------------------------------------------------------------------------
 -- Testflaeche fuer Lenkung und Drift (eigene Strecke, im Menue B -> Strecken)
 ------------------------------------------------------------------------------------------
-local flat = model("Testflaeche", nil, nil, { TrackId = "Testflaeche", TrackName = "Testflaeche (Lenkung & Drift)" })
+local flat =
+	model("Testflaeche", nil, nil, { TrackId = "Testflaeche", TrackName = "Testflaeche (Lenkung & Drift)" })
 local FLAT_CENTER = Vector3.new(-700, 40, 0)
-part({ Name = "Boden", Size = Vector3.new(500, 4, 500), CFrame = CFrame.new(FLAT_CENTER - Vector3.new(0, 2, 0)), Color = Color3.fromRGB(110, 110, 118), Material = Enum.Material.Concrete, Parent = flat })
-part({ Name = "StartZone", Size = Vector3.new(24, 10, 20), CFrame = CFrame.new(FLAT_CENTER + Vector3.new(0, 4, 200)), Color = COLORS.zone, Transparency = 0.8, CanCollide = false, Tags = { "StartZone" }, Parent = flat })
-part({ Name = "FinishZone", Size = Vector3.new(60, 10, 10), CFrame = CFrame.new(FLAT_CENTER + Vector3.new(0, 4, -235)), Color = Color3.fromRGB(255, 220, 80), Transparency = 0.8, CanCollide = false, Tags = { "FinishZone" }, Parent = flat })
+part({
+	Name = "Boden",
+	Size = Vector3.new(500, 4, 500),
+	CFrame = CFrame.new(FLAT_CENTER - Vector3.new(0, 2, 0)),
+	Color = Color3.fromRGB(110, 110, 118),
+	Material = Enum.Material.Concrete,
+	Parent = flat,
+})
+part({
+	Name = "StartZone",
+	Size = Vector3.new(24, 10, 20),
+	CFrame = CFrame.new(FLAT_CENTER + Vector3.new(0, 4, 200)),
+	Color = COLORS.zone,
+	Transparency = 0.8,
+	CanCollide = false,
+	Tags = { "StartZone" },
+	Parent = flat,
+})
+part({
+	Name = "FinishZone",
+	Size = Vector3.new(60, 10, 10),
+	CFrame = CFrame.new(FLAT_CENTER + Vector3.new(0, 4, -235)),
+	Color = Color3.fromRGB(255, 220, 80),
+	Transparency = 0.8,
+	CanCollide = false,
+	Tags = { "FinishZone" },
+	Parent = flat,
+})
 -- Slalom (Pylonen sind Props: umfahren erlaubt, kein Crash)
 for i = 0, 7 do
 	part({
@@ -551,14 +843,23 @@ for i = 0, 23 do
 	part({
 		Name = "KreisMarke",
 		Size = Vector3.new(2, 0.1, 6),
-		CFrame = CFrame.new(FLAT_CENTER + Vector3.new(120 + math.cos(angle) * radius, 0.05, math.sin(angle) * radius)) * CFrame.Angles(0, -angle, 0),
+		CFrame = CFrame.new(
+			FLAT_CENTER + Vector3.new(120 + math.cos(angle) * radius, 0.05, math.sin(angle) * radius)
+		) * CFrame.Angles(0, -angle, 0),
 		Color = Color3.fromRGB(255, 255, 255),
 		CanCollide = false,
 		Parent = flat,
 	})
 end
 do
-	local board = part({ Name = "Schild", Size = Vector3.new(30, 8, 0.4), CFrame = CFrame.new(FLAT_CENTER + Vector3.new(-30, 6, 180)), Color = COLORS.sign, CanCollide = false, Parent = flat })
+	local board = part({
+		Name = "Schild",
+		Size = Vector3.new(30, 8, 0.4),
+		CFrame = CFrame.new(FLAT_CENTER + Vector3.new(-30, 6, 180)),
+		Color = COLORS.sign,
+		CanCollide = false,
+		Parent = flat,
+	})
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Back
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
@@ -571,7 +872,8 @@ do
 	label.FontFace = roblox.Font.fromEnum(Enum.Font.GothamBold)
 	label.TextScaled = true
 	label.TextWrapped = true
-	label.Text = "Testflaeche: A/D = Drift (Standard) · Shift halten = normal lenken · Leertaste = Hopp · Slalom geradeaus, Drift-Kreis rechts · T = Start"
+	label.Text =
+		"Testflaeche: A/D = Drift (Standard) · Shift halten = normal lenken · Leertaste = Hopp · Slalom geradeaus, Drift-Kreis rechts · T = Start"
 	label.Parent = gui
 end
 
@@ -580,8 +882,24 @@ end
 ------------------------------------------------------------------------------------------
 local templates = Instance.new("Folder")
 templates.Name = "Templates"
-part({ Name = "Stein1", Shape = Enum.PartType.Ball, Size = Vector3.new(4, 4, 4), CFrame = CFrame.new(0, 10, 0), Color = Color3.fromRGB(120, 115, 110), Material = Enum.Material.Slate, Parent = templates })
-part({ Name = "Stein2", Shape = Enum.PartType.Ball, Size = Vector3.new(2.6, 2.6, 2.6), CFrame = CFrame.new(5, 10, 0), Color = Color3.fromRGB(100, 95, 90), Material = Enum.Material.Slate, Parent = templates })
+part({
+	Name = "Stein1",
+	Shape = Enum.PartType.Ball,
+	Size = Vector3.new(4, 4, 4),
+	CFrame = CFrame.new(0, 10, 0),
+	Color = Color3.fromRGB(120, 115, 110),
+	Material = Enum.Material.Slate,
+	Parent = templates,
+})
+part({
+	Name = "Stein2",
+	Shape = Enum.PartType.Ball,
+	Size = Vector3.new(2.6, 2.6, 2.6),
+	CFrame = CFrame.new(5, 10, 0),
+	Color = Color3.fromRGB(100, 95, 90),
+	Material = Enum.Material.Slate,
+	Parent = templates,
+})
 car(templates, CFrame.new(10, 10, 0), "Auto", Color3.fromRGB(220, 40, 40))
 
 -- SpawnLocation neben dem Start

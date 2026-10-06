@@ -22,7 +22,9 @@ describe("Test-Place-Projekt", function()
 
 	it("nutzt dieselben Skript-Ordner (Live-Sync mit rojo serve)", function()
 		expect(test.tree.ReplicatedStorage.Shared["$path"]).toBe(main.tree.ReplicatedStorage.Shared["$path"])
-		expect(test.tree.ServerScriptService.Server["$path"]).toBe(main.tree.ServerScriptService.Server["$path"])
+		expect(test.tree.ServerScriptService.Server["$path"]).toBe(
+			main.tree.ServerScriptService.Server["$path"]
+		)
 		expect(test.tree.StarterPlayer.StarterPlayerScripts.Client["$path"]).toBe(
 			main.tree.StarterPlayer.StarterPlayerScripts.Client["$path"]
 		)

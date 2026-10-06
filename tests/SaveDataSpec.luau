@@ -102,15 +102,20 @@ describe("SaveData.withRetry", function()
 	it("versucht es nach Fehlern erneut, mit wachsender Wartezeit", function()
 		local calls = 0
 		local waits = {}
-		local ok, result, tries = SaveData.withRetry(function()
-			calls += 1
-			if calls < 3 then
-				error("Netzwerkfehler")
+		local ok, result, tries = SaveData.withRetry(
+			function()
+				calls += 1
+				if calls < 3 then
+					error("Netzwerkfehler")
+				end
+				return "Daten"
+			end,
+			5,
+			1,
+			function(seconds)
+				table.insert(waits, seconds)
 			end
-			return "Daten"
-		end, 5, 1, function(seconds)
-			table.insert(waits, seconds)
-		end)
+		)
 		expect(ok).toBe(true)
 		expect(result).toBe("Daten")
 		expect(tries).toBe(3)
@@ -139,8 +144,12 @@ describe("SaveData.withRetry", function()
 
 	it("erkennt Zugriffsfehler, aber nicht normale Fehler", function()
 		expect(SaveData.isAccessError("StudioAccessToApisNotAllowed")).toBe(true)
-		expect(SaveData.isAccessError("502: API Services rejected request with error. HTTP 403 (Forbidden)")).toBe(true)
-		expect(SaveData.isAccessError("You must publish this place to the web to access DataStore.")).toBe(true)
+		expect(SaveData.isAccessError("502: API Services rejected request with error. HTTP 403 (Forbidden)")).toBe(
+			true
+		)
+		expect(SaveData.isAccessError("You must publish this place to the web to access DataStore.")).toBe(
+			true
+		)
 		expect(SaveData.isAccessError("502: API Services rejected request with error. HTTP 500")).toBe(false)
 		expect(SaveData.isAccessError("Request was throttled")).toBe(false)
 	end)
