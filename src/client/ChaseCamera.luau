@@ -7,6 +7,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local Settings = require(script.Parent:WaitForChild("Settings"))
 
 local ChaseCamera = {}
 
@@ -88,6 +89,9 @@ local function update(dt: number)
 		* math.clamp((speed - C.ShakeSpeedStart) / math.max(C.FovFullSpeed - C.ShakeSpeedStart, 1), 0, 1)
 	landingShake *= math.exp(-C.ShakeDecay * dt)
 	local shake = math.min(speedShake + landingShake, C.ShakeMaxAngle)
+	if not Settings.get("CameraShake") then
+		shake = 0 -- Einstellung "Kamera-Wackeln" aus
+	end
 	shakeTime += dt * C.ShakeFrequency
 	local shakeRotation = CFrame.Angles(
 		math.rad(math.noise(shakeTime, 0.3) * 2 * shake),

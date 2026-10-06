@@ -18,11 +18,15 @@ local DevPanel = require(script.Parent:WaitForChild("DevPanel"))
 local DriftEffects = require(script.Parent:WaitForChild("DriftEffects"))
 local EnterPrompt = require(script.Parent:WaitForChild("EnterPrompt"))
 local AchievementUI = require(script.Parent:WaitForChild("AchievementUI"))
+local ControlsInfo = require(script.Parent:WaitForChild("ControlsInfo"))
 local GarageUI = require(script.Parent:WaitForChild("GarageUI"))
 local GhostClient = require(script.Parent:WaitForChild("GhostClient"))
 local HomeworkUI = require(script.Parent:WaitForChild("HomeworkUI"))
 local LeaderboardClient = require(script.Parent:WaitForChild("LeaderboardClient"))
+local Onboarding = require(script.Parent:WaitForChild("Onboarding"))
 local PaintShopUI = require(script.Parent:WaitForChild("PaintShopUI"))
+local Settings = require(script.Parent:WaitForChild("Settings"))
+local SettingsUI = require(script.Parent:WaitForChild("SettingsUI"))
 local LaunchablesClient = require(script.Parent:WaitForChild("LaunchablesClient"))
 local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 local ProgressClient = require(script.Parent:WaitForChild("ProgressClient"))
@@ -183,8 +187,17 @@ HomeworkUI.init() -- Hausaufgaben (Reiter im Menue)
 GarageUI.init() -- Fahrzeuge (Reiter im Menue)
 PaintShopUI.init() -- Farben und Spur (Reiter im Menue)
 AchievementUI.init() -- Erfolge (Reiter im Menue, Popup)
+SettingsUI.init() -- Einstellungen und Steuerung (Reiter im Menue)
+Onboarding.init() -- einmalige Hinweise beim ersten Lauf
 ProgressClient.onChanged(function(snapshot)
 	Abilities.setLevels(snapshot.upgrades) -- gekaufte Upgrade-Stufen
+	Settings.load(snapshot) -- gespeicherte Einstellungen (einmal nach dem Laden)
+	Onboarding.load(snapshot)
+end)
+-- Hilfezeile unten passend zum Geraet (Tastatur, Gamepad, Touch)
+RaceUI.setHelpText(ControlsInfo.helpLine(ControlsInfo.device()))
+UserInputService.LastInputTypeChanged:Connect(function()
+	RaceUI.setHelpText(ControlsInfo.helpLine(ControlsInfo.device()))
 end)
 Obstacles.init() -- bewegte Hindernisse (Mover, Spinner, Pendulum)
 RandomEventsClient.init() -- Zufallsereignisse ein-/ausblenden
@@ -423,6 +436,7 @@ local function onCrash(reason: string, base: BasePart, text: string?)
 		helmetSave(reason, base, true)
 		return
 	end
+	Onboarding.onCrash() -- Hinweis "R = Checkpoint, T = Neustart" (nur beim ersten Mal)
 	enterCrashed(base)
 	RaceUI.showMessage("CRASH!", Color3.fromRGB(255, 80, 60), text or CRASH_TEXTS[reason])
 	SoundSystem.play("Crash")
@@ -601,6 +615,7 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 			runPhase = "Ready"
 			gameOver = false
 			GhostClient.stopRun()
+			Onboarding.onRunEnded()
 			RaceUI.hideResult()
 			RaceUI.hideGameOver()
 			Abilities.reset("Full")
@@ -661,10 +676,12 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		onExited(...)
 	elseif kind == "Aborted" then
 		GhostClient.stopRun()
+		Onboarding.onRunEnded()
 		runPhase = "Aborted"
 		RaceUI.showMessage("Lauf abgebrochen", Color3.fromRGB(255, 200, 80), "R: Neustart", 2)
 	elseif kind == "Started" then
 		GhostClient.startRun() -- Geist faehrt los
+		Onboarding.onRunStarted() -- Einstiegs-Hinweise (nur beim ersten Mal)
 		runPhase = "Running"
 		ShopUI.close() -- Lauf beginnt: Menue zu
 		runStartedAt = os.clock()
@@ -672,6 +689,7 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		local result: RunResult = ...
 		runPhase = "Finished"
 		StatReporter.flush()
+		Onboarding.onRunEnded()
 		finishedTime = result.time
 		RaceUI.setBest(result.bestTime)
 		showResult(result)
@@ -739,6 +757,39 @@ local function isDown(...: Enum.KeyCode): boolean
 	return false
 end
 
+-- Roblox-Steuermodul (PlayerModule): liefert die Bewegungsrichtung von Touch-Joystick und
+-- Gamepad-Stick (wie Input.GetAxis in Unity). Laedt im Hintergrund.
+local playerControls: any = nil
+task.spawn(function()
+	local ok, module = pcall(function()
+		local scripts = player:WaitForChild("PlayerScripts")
+		return (require :: any)(scripts:WaitForChild("PlayerModule"))
+	end)
+	if ok and module then
+		playerControls = module:GetControls()
+	end
+end)
+
+-- Gamepad: RT = Gas, LT = Bremse/rueckwaerts (analog 0..1)
+local function triggerThrottle(): number
+	if not UserInputService.GamepadEnabled then
+		return 0
+	end
+	local value = 0
+	for _, input in UserInputService:GetGamepadState(Enum.UserInputType.Gamepad1) do
+		local amount = input.Position.Z
+		if amount > Config.Input.TriggerDeadzone then
+			if input.KeyCode == Enum.KeyCode.ButtonR2 then
+				value += amount
+			elseif input.KeyCode == Enum.KeyCode.ButtonL2 then
+				value -= amount
+			end
+		end
+	end
+	return value
+end
+
+-- Gas (-1..1) und Lenkung (-1..1) aus Tastatur, Gamepad (Stick + Trigger) und Touch-Joystick
 local function readInput(): (number, number)
 	-- Beim Tippen im Chat nicht fahren
 	if UserInputService:GetFocusedTextBox() then
@@ -758,6 +809,21 @@ local function readInput(): (number, number)
 	if isDown(Enum.KeyCode.A, Enum.KeyCode.Left) then
 		steer -= 1
 	end
+	-- Stick / Touch-Joystick: nach vorne = Gas, zur Seite = lenken. Die Tastatur steckt hier
+	-- auch drin, deshalb nur nehmen, wenn keine Taste gedrueckt ist.
+	local controls = playerControls
+	if controls and throttle == 0 and steer == 0 then
+		local ok, move = pcall(function()
+			return controls:GetMoveVector()
+		end)
+		if ok and typeof(move) == "Vector3" then
+			throttle = -move.Z
+			steer = move.X
+			-- Lenkung ab kleiner Auslenkung voll (der Stick soll nicht "zaeh" wirken)
+			steer = math.clamp(steer * Config.Input.StickSteerGain, -1, 1)
+		end
+	end
+	throttle = math.clamp(throttle + triggerThrottle(), -1, 1)
 	return throttle, steer
 end
 

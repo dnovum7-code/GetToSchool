@@ -10,11 +10,20 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local Settings = require(script.Parent:WaitForChild("Settings"))
 
 local SoundSystem = {}
 
--- Dauer-Sounds am Wagen; alle anderen Eintraege in Config.Sounds sind Einmal-Sounds
-local LOOPED = { Engine = true, Drift = true }
+-- Dauer-Sounds; alle anderen Eintraege in Config.Sounds sind Einmal-Sounds
+local LOOPED = { Engine = true, Drift = true, Music = true }
+
+-- Lautstaerke-Gruppen (Einstellungen: Musik / Effekte), wie Mixer-Gruppen in Unity
+local effectsGroup = Instance.new("SoundGroup")
+effectsGroup.Name = "Effects"
+effectsGroup.Parent = SoundService
+local musicGroup = Instance.new("SoundGroup")
+musicGroup.Name = "Music"
+musicGroup.Parent = SoundService
 
 local oneShots: { [string]: Sound } = {}
 local engineSound: Sound? = nil
@@ -47,11 +56,28 @@ local function makeSound(name: string, parent: Instance, looped: boolean): Sound
 	sound.SoundId = soundId
 	sound.Volume = if type(settings.Volume) == "number" then settings.Volume else 0.5
 	sound.Looped = looped
+	sound.SoundGroup = if name == "Music" then musicGroup else effectsGroup
 	sound.Parent = parent
 	return sound
 end
 
+local function applyVolumes()
+	effectsGroup.Volume = Settings.get("EffectsVolume")
+	musicGroup.Volume = Settings.get("MusicVolume")
+end
+
 function SoundSystem.init()
+	applyVolumes()
+	Settings.onChanged(function(key)
+		if key == "EffectsVolume" or key == "MusicVolume" then
+			applyVolumes()
+		end
+	end)
+	-- Hintergrundmusik (nur mit Id in Config.Sounds.Music)
+	local music = makeSound("Music", SoundService, true)
+	if music then
+		music:Play()
+	end
 	for name in Config.Sounds :: { [string]: any } do
 		if LOOPED[name] then
 			continue
@@ -85,6 +111,7 @@ function SoundSystem.playId(id: unknown, volume: number?, fallback: string?)
 	local sound = Instance.new("Sound")
 	sound.SoundId = soundId
 	sound.Volume = volume or 0.8
+	sound.SoundGroup = effectsGroup
 	sound.Parent = SoundService
 	sound.Ended:Once(function()
 		sound:Destroy()

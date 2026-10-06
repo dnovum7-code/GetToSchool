@@ -275,6 +275,12 @@ Config.Cosmetics = {
 	} :: { CosmeticDef },
 }
 
+-- Eingabe: Gamepad (Stick = lenken/Gas, RT = Gas, LT = Bremse) und Touch-Joystick
+Config.Input = {
+	TriggerDeadzone = 0.1, -- RT/LT erst ab diesem Druck (0..1)
+	StickSteerGain = 1.3, -- Stick-Lenkung verstaerken (1 = genau wie der Stick)
+}
+
 -- Streckenbausteine: normale Parts mit Tag (CollectionService). Werte hier sind
 -- Standardwerte; einzelne Parts koennen sie per Attribut ueberschreiben (in Klammern).
 Config.Track = {
@@ -517,6 +523,7 @@ Config.Sounds = {
 	SkyStar = { Id = "", Volume = 0.6 }, -- Stern-Blinken, wenn ein Objekt im Himmel verschwindet
 	Finish = { Id = "", Volume = 0.8 }, -- im Ziel
 	Achievement = { Id = "", Volume = 0.8 }, -- Erfolg freigeschaltet (Fanfare)
+	Music = { Id = "", Volume = 0.35 }, -- Hintergrundmusik (laeuft dauernd; Lautstaerke in den Einstellungen)
 }
 
 -- Tuning-Panel (nur in Studio, Taste F2): welche Werte als Regler erscheinen.
@@ -597,6 +604,17 @@ Config.Debug = {
 	AllUpgrades = false,
 	-- true = Baukasten meldet im Output, welche Signale ausgeloest werden und wer reagiert
 	Toolkit = false,
+	-- true = Einstiegs-Hinweise bei jedem Play zeigen (sonst nur einmal pro Spieler)
+	ShowHintsAlways = false,
+}
+
+-- Einstieg: einmalige Hinweise beim ersten Lauf (Fahren, Drift, Neustart). Texte passen sich
+-- an Tastatur / Gamepad / Touch an (src/client/ControlsInfo).
+Config.Onboarding = {
+	Enabled = true,
+	HintTime = 7, -- so lange (s) bleibt ein Hinweis stehen
+	DriftHintDelay = 7, -- Drift-Hinweis so viele Sekunden nach dem Losfahren
+	RestartHintDelay = 25, -- Neustart-Hinweis spaetestens dann (oder beim ersten Crash)
 }
 
 -- Verfolgerkamera
@@ -806,7 +824,7 @@ Config.Tracks = {
 -- er gespeichert (eigener DataStore) und beim naechsten Lauf als halbdurchsichtiger Wagen
 -- abgespielt. In den Einstellungen abschaltbar.
 Config.Ghost = {
-	Enabled = true, -- Standard fuer die Einstellung "Geist"
+	Enabled = true, -- false = Geist ganz aus (fuer alle); sonst entscheidet die Einstellung "Geist"
 	SampleInterval = 0.1, -- alle x Sekunden eine Aufnahme (kleiner = genauer, groesser = weniger Daten)
 	MaxDuration = 600, -- laengere Laeufe (s) werden nicht als Geist gespeichert
 	StoreName = "Ghosts_v1", -- DataStore fuer die Geister (aendern = alle Geister neu)

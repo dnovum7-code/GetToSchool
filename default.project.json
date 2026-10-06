@@ -48,6 +48,9 @@
         },
         "ReportStat": {
           "$className": "RemoteEvent"
+        },
+        "Settings": {
+          "$className": "RemoteEvent"
         }
       }
     },

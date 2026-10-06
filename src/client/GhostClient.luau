@@ -125,7 +125,7 @@ end
 function GhostClient.startRun()
 	local track = currentTrack
 	local ghost = if track then ghosts[track] else nil
-	if not ghost or not Settings.get("Ghost") then
+	if not ghost or not Config.Ghost.Enabled or not Settings.get("Ghost") then
 		playing = nil
 		setVisible(false)
 		return

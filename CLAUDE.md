@@ -43,8 +43,8 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
   Config.TuningPanel. Fehlersuche bei Bodenbausteinen: Config.Debug.TrackPieces.
 
 ## Aktueller Meilenstein
-M4 – Wiederspielwert (in Arbeit, Reihenfolge: Geist, Bestenlisten, Hausaufgaben, Fahrzeuge,
-Kosmetik, Erfolge, Einstellungen/Einstieg; noch nicht in Studio getestet):
+M4 – Wiederspielwert (gebaut, noch nicht in Studio getestet; Testliste im README
+„Wichtigste Studio-Tests M4“):
 - Geist vom besten Lauf: Server zeichnet jeden Lauf auf (src/server/Ghosts, kompakt mit
   src/shared/Progression/GhostCodec), speichert bei neuer Bestzeit (eigener DataStore
   Config.Ghost.StoreName, Schlüssel pro Spieler und Strecke), Client spielt ihn ab dem Start
@@ -73,6 +73,12 @@ Kosmetik, Erfolge, Einstellungen/Einstieg; noch nicht in Studio getestet):
 - Erfolge: Config.Achievements (Liste, Badge-Ids, 0 = kein Badge), Logik in
   Progression/Achievements, server/Achievements (Popup über Progress-Remote "Achievement"),
   Reiter „Erfolge“. Spielstand: achievements, stats.driftSeconds.
+- Einstellungen: Reiter „Einstellungen“ (Musik/Effekte über SoundGroups, Kamera-Wackeln,
+  Geist, Steuerungstabelle), gespeichert im Spielstand (settings, server/PlayerSettings,
+  Remote "Settings"). Einstieg: einmalige Hinweise (src/client/Onboarding, hintsSeen,
+  Config.Onboarding, Debug.ShowHintsAlways). Steuerungstexte je Gerät: src/client/ControlsInfo.
+- Eingabe: Gamepad (RT/LT, Stick) und Touch-Joystick über das Roblox-Steuermodul
+  (CartClient readInput, Config.Input). Vorher ging Fahren nur mit Tastatur.
 M3 – Progression (gebaut, noch nicht in Studio getestet):
 - Münzen: Baustein `Coin`, Server prüft das Einsammeln (Abstand), Zielbelohnung
   (Grundbetrag + Notenbonus), Münzen bleiben nach Crash/Abbruch. Eingesammelte Münzen erscheinen
@@ -114,9 +120,6 @@ Checkpoints, Hindernisse, Zufallsereignisse, Sound; drei Feedback-Runden: Drift 
 Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 
 ## Später
-- M4 – Wiederspielwert (nach M2.5, Reihenfolge einhalten): Geist vom besten Lauf, globale
-  Bestenlisten, Hausaufgaben (tägliche Aufgaben), Fahrzeuge (Garage), Kosmetik, Erfolge
-  (Badge-IDs vorbereiten), Einstellungen und Einstieg. Jeweils Lune-Tests für die Logik.
 - M5 – Spaß-Extras (nach M4): Lufttricks (Q/E in der Luft drehen, Münzen bei sauberer
   Landung, Crash bei schiefer Landung; E am Boden bleibt Aussteigen), Kuh-Kombo
   (Multiplikator für Bonus-Münzen, große Anzeige „3x KOMBO!“), tägliches Glücksrad
@@ -126,8 +129,8 @@ Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 ## Steuerung
 | Aktion | Tastatur | Gamepad | Touch |
 |---|---|---|---|
-| Anschieben / Bremsen, rückwärts | W / S (Pfeil hoch/runter) | – | – |
-| Lenken | A / D (Pfeil links/rechts) | – | – |
+| Anschieben / Bremsen, rückwärts | W / S (Pfeil hoch/runter) | RT / LT (oder linker Stick vor/zurück) | Joystick vor/zurück |
+| Lenken | A / D (Pfeil links/rechts) | Linker Stick | Joystick links/rechts |
 | Aussteigen (im Wagen) | E | X | Button „Raus“ |
 | Einsteigen (am eigenen leeren Wagen) | E | X | Hinweis antippen |
 | Zurück zum letzten Checkpoint (auch nach Crash, überspringt Wartezeit; ohne Checkpoint: Start, Lauf läuft weiter) | R | Y | Button „R“ |
@@ -137,4 +140,4 @@ Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 | Hopp (kleiner Sprung, schneller Richtungswechsel); mit Sprungfeder: Sprung, in der Luft nochmal = Doppelsprung | Leertaste | A | Button „Hopp“ |
 | Fallschirm (Upgrade): in der Luft halten | Leertaste halten | A halten | Button „Hopp“ halten |
 | Turbo-Pausenbrot (Upgrade) | F | RB | Button „Turbo“ |
-| Menü „Pausen-Kiosk“ (Shop, Strecken, Rekorde; nur außerhalb eines Laufs) | B | Select | Button „Shop“ |
+| Menü „Pausen-Kiosk“ (Shop, Strecken, Rekorde, Bestenliste, Hausaufgaben, Garage, Lackiererei, Erfolge, Einstellungen; nur außerhalb eines Laufs) | B | Select | Button „Shop“ |

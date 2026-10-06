@@ -42,6 +42,9 @@
         "RunState": {
           "$className": "RemoteEvent"
         },
+        "Settings": {
+          "$className": "RemoteEvent"
+        },
         "ShopRequest": {
           "$className": "RemoteEvent"
         }

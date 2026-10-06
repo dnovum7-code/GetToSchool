@@ -52,6 +52,22 @@ export type Cosmetics = {
 	trail: string, -- gewaehlte Spur ("" = keine)
 }
 
+-- Einstellungen des Spielers (Menue B -> Einstellungen)
+export type Settings = {
+	Ghost: boolean, -- Geist vom besten Lauf zeigen
+	CameraShake: boolean, -- Kamera-Wackeln
+	MusicVolume: number, -- 0..1
+	EffectsVolume: number, -- 0..1
+}
+
+-- Standardwerte; nur diese Schluessel gibt es (der Client darf nichts anderes setzen)
+SaveData.SETTINGS_DEFAULTS = {
+	Ghost = true,
+	CameraShake = true,
+	MusicVolume = 0.5,
+	EffectsVolume = 1,
+} :: Settings
+
 export type Data = {
 	version: number,
 	coins: number,
@@ -66,6 +82,8 @@ export type Data = {
 	homework: HomeworkState,
 	cosmetics: Cosmetics,
 	achievements: { [string]: boolean }, -- freigeschaltete Erfolge
+	settings: Settings,
+	hintsSeen: { [string]: boolean }, -- Einstiegs-Hinweise, die schon gezeigt wurden
 }
 
 local DEFAULT_VEHICLE = "ShoppingCart"
@@ -85,7 +103,27 @@ function SaveData.new(): Data
 		homework = SaveData.newHomework(),
 		cosmetics = { colors = {}, trails = {}, vehicleColors = {}, trail = "" },
 		achievements = {},
+		settings = table.clone(SaveData.SETTINGS_DEFAULTS),
+		hintsSeen = {},
 	}
+end
+
+-- Einstellung pruefen: gibt (ok, bereinigter Wert) zurueck. Zahlen werden auf 0..1 begrenzt.
+function SaveData.validateSetting(key: unknown, value: unknown): (boolean, any)
+	if type(key) ~= "string" then
+		return false, nil
+	end
+	local default = (SaveData.SETTINGS_DEFAULTS :: any)[key]
+	if default == nil or type(value) ~= type(default) then
+		return false, nil
+	end
+	if type(value) == "number" then
+		if value ~= value then
+			return false, nil
+		end
+		return true, math.clamp(value, 0, 1)
+	end
+	return true, value
 end
 
 function SaveData.newHomework(): HomeworkState
@@ -209,6 +247,14 @@ function SaveData.sanitize(raw: { [any]: any }): Data
 		driftSeconds = if isNumber(stats.driftSeconds) then math.max(stats.driftSeconds, 0) else 0,
 	}
 	data.achievements = sanitizeFlags(raw.achievements)
+	local settings = if type(raw.settings) == "table" then raw.settings else {}
+	for key in SaveData.SETTINGS_DEFAULTS :: any do
+		local ok, value = SaveData.validateSetting(key, settings[key])
+		if ok then
+			(data.settings :: any)[key] = value
+		end
+	end
+	data.hintsSeen = sanitizeFlags(raw.hintsSeen)
 	data.homework = sanitizeHomework(raw.homework)
 	local cosmetics = if type(raw.cosmetics) == "table" then raw.cosmetics else {}
 	local vehicleColors: { [string]: string } = {}
@@ -307,6 +353,9 @@ function SaveData.merge(stored: Data, session: Data): Data
 	result.stats.driftSeconds += session.stats.driftSeconds
 	for id in session.achievements do
 		result.achievements[id] = true
+	end
+	for id in session.hintsSeen do
+		result.hintsSeen[id] = true
 	end
 	-- Kosmetik: Gekauftes zusammen, Auswahl aus der Sitzung
 	for id in session.cosmetics.colors do

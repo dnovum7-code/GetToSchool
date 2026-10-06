@@ -169,7 +169,6 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/shared/Progression/GhostCodec.luau` | beiden | Reine Logik (getestet): Geist-Aufnahme platzsparend speichern und abspielen |
 | `src/server/Ghosts.luau` | Server | Zeichnet Läufe auf, speichert den Geist der Bestzeit (eigener DataStore) |
 | `src/client/GhostClient.luau` | Client | Spielt den Geist als halbdurchsichtigen Wagen ab |
-| `src/client/Settings.luau` | Client | Einstellungen des Spielers (Geist, Kamera-Wackeln, Lautstärke) |
 | `src/shared/Progression/RunValidation.luau`, `LeaderboardMath.luau` | beiden | Reine Logik (getestet): Plausibilitätsprüfung für die Bestenliste, Plätze und Werte |
 | `src/server/Leaderboards.luau` | Server | Bestenlisten: OrderedDataStore pro Strecke + Kuh-Wurf, Ansichten Global/Server/Freunde |
 | `src/client/LeaderboardClient.luau` | Client | Reiter „Bestenliste“ im Menü, Bretter in der Welt |
@@ -184,6 +183,9 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/shared/Progression/Cosmetics.luau` | beiden | Reine Logik (getestet): Farbe pro Fahrzeug, Spur, besessen? |
 | `src/server/Cosmetics.luau` | Server | Lackiererei: Farben/Spuren kaufen, wählen, am Wagen anwenden |
 | `src/client/PaintShopUI.luau` | Client | Reiter „Lackiererei“ im Menü |
+| `src/client/Settings.luau`, `SettingsUI.luau` | Client | Einstellungen (gespeichert über `server/PlayerSettings.luau`) und Reiter „Einstellungen“ |
+| `src/client/ControlsInfo.luau` | Client | Steuerung als Text je Gerät (Tabelle, Hilfezeile, Hinweise) |
+| `src/client/Onboarding.luau` | Client | Einmalige Einstiegs-Hinweise (Fahren, Drift, Neustart) |
 | `src/server/PlayerEvents.luau` | Server | Verteilt Ereignisse (Ziel, Wurf, Münzen, Drift) an Hausaufgaben und Erfolge; prüft die Drift-Meldungen |
 | `src/shared/Progression/Achievements.luau` | beiden | Reine Logik (getestet): Erfolge prüfen, Fortschritt |
 | `src/server/Achievements.luau` | Server | Erfolge freischalten, speichern, Popup, Roblox-Badges |
@@ -670,9 +672,9 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | ForceZone | Wind-Zone durchfahren | Wagen wird seitlich gedrückt; mit `Pulse` im Takt |
 | Chaser | In den Radius des Hundes fahren | Hund rennt hinterher, gibt nach ~6 s auf, läuft heim; R/T: sofort zu Hause |
 | UpgradeDoor | Tür mit `RequiredUpgrade` = `Spring` | Ohne Upgrade: Schild „nur mit Trampolin-Sprungfeder“, Tür fest. Sprungfeder kaufen (B): Tür fährt weg |
-| Tests | `lune run tests/run` | „77 von 77 Tests bestanden“ |
+| Tests | `lune run tests/run` | alle Tests bestanden (aktuell 143) |
 
-### Wichtigste Studio-Tests (nach Wichtigkeit)
+### Wichtigste Studio-Tests M3/M2.5 (nach Wichtigkeit)
 
 1. **Spiel startet ohne Fehler**: Play, Output auf rote Fehler prüfen; Wagen steht am Start,
    Münzzähler, 5 Schulranzen, Shop-Knopf sind sichtbar.
@@ -712,7 +714,7 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Hausaufgaben (Menü) | B → „Hausaufgaben“ | 3 Aufgaben mit Text, Balken, „0 / 5“, Belohnung; unten Bonus und „Neue Hausaufgaben in … Std“ |
 | Hausaufgaben (Fortschritt) | Passend zur Aufgabe fahren (Kuh umfahren, driften, Münzen sammeln, Lauf beenden) | Balken füllt sich; bei „erledigt“ grüner Hinweis „Hausaufgabe erledigt: … +60“, Münzen steigen |
 | Hausaufgaben (Bonus) | Alle drei erledigen | Hinweis „Alle Hausaufgaben erledigt! Bonus +50“ |
-| Hausaufgaben (Tageswechsel) | In `Config.Homework` `ResetHourUtc` auf die aktuelle UTC-Stunde + 1 setzen, Play, eine Stunde warten – oder einfacher: SaveData löschen | Neue Aufgaben, Hinweis „Neue Hausaufgaben!“ |
+| Hausaufgaben (Tageswechsel) | `Config.Homework.ResetHourUtc` auf die nächste volle UTC-Stunde stellen, Play, bis dahin im Spiel bleiben | Nach dem Wechsel neue Aufgaben (innerhalb von 30 s), Hinweis „Neue Hausaufgaben!“ |
 | Hausaufgaben (Drift) | Aufgabe „Drifte 30 Sekunden“ (ggf. im Pool `weight` der anderen auf 0) | Balken steigt während Kurven-Drifts im Lauf, alle 5 s |
 | Garage | B → „Garage“ | Drei Fahrzeuge mit Beschreibung und Balken (Tempo, Wendigkeit, Stabilität); Einkaufswagen „Gewählt“ |
 | Fahrzeug kaufen | Mit genug Münzen „Kaufen 400“ beim Bürostuhl (oder `Debug.AllUpgrades`) | Münzen weg, Hinweis „Gekauft“, neuer Wagen steht am Start |
@@ -733,6 +735,36 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Erfolge (Menü) | B → „Erfolge“ | „X von 12 Erfolgen“, erreichte golden mit 🏆, andere mit 🔒 und Fortschritt „3 / 25“ |
 | Speichern | Stop, Play | Erreichte Erfolge bleiben, kein zweites Popup |
 | Badges | Badge im Creator Dashboard anlegen, Id in `Config.Achievements.List` (`badge`) eintragen, im veröffentlichten Spiel freischalten | Roblox-Badge wird vergeben (in Studio nur mit echtem Spieler, Testspieler werden übersprungen) |
+| Einstellungen | B → „Einstellungen“ | Musik/Effekte mit −/+ (10-%-Schritte), Kamera-Wackeln und Geist An/Aus, „Hinweise nochmal zeigen“, Steuerungstabelle (Spalte deines Geräts gelb) |
+| Lautstärke | Effekte auf 0 % | Keine Geräusche mehr (Musik bleibt); Musik braucht eine Id in `Config.Sounds.Music` |
+| Kamera-Wackeln aus | Aus, dann schnell fahren / hart landen | Kamera bleibt ruhig |
+| Geist aus | Aus, T, losfahren | Kein Geist; wieder an: beim nächsten Start da |
+| Einstellungen speichern | Etwas umstellen, Stop, Play | Einstellungen sind wieder so |
+| Einstiegs-Hinweise | Neuer Spielstand (oder „Nochmal zeigen“, oder `Debug.ShowHintsAlways`), losfahren | Unten „💡 Los geht's!“ (Gas/Lenken), nach ~7 s „Driften“, beim ersten Crash „Hingefallen? …“; je nur einmal |
+| Hinweise je Gerät | Mit Gamepad losfahren | Texte nennen RT/LT/Stick/Y statt W/S/R |
+| Gamepad fahren | Gamepad anschließen: RT Gas, LT Bremse, linker Stick lenken (oder nach vorne = Gas) | Wagen fährt und lenkt analog; B = normal fahren, A = Hopp, Y = Checkpoint, Steuerkreuz hoch = Neustart, Select = Menü |
+| Touch fahren | Studio: *Test → Device* (Handy) | Joystick links: Gas/Lenken; Knöpfe Hopp, Normal, R, Start, Raus, Turbo, Shop; Hilfezeile unten ausgeblendet. Prüfen: Knöpfe überlappen nicht |
+| Menü mit Gamepad | Select, dann Steuerkreuz/Stick | Knöpfe lassen sich auswählen, A drückt; Reiter oben scrollen mit |
+
+### Wichtigste Studio-Tests M4 (nach Wichtigkeit)
+
+1. **Spiel startet ohne Fehler**: Play, Output auf rote Fehler prüfen (viele neue Module).
+   Menü (B) hat die Reiter Upgrades, Strecken, Rekorde, Bestenliste, Hausaufgaben, Garage,
+   Lackiererei, Erfolge, Einstellungen.
+2. **Fahren wie vorher** (Einkaufswagen): Drift, Hopp, Boost, Crash, R/T – die Fahrphysik
+   liest jetzt Werte pro Fahrzeug, muss sich aber gleich anfühlen.
+3. **Gamepad und Touch fahren** (neu, vorher ging das gar nicht): RT/LT/Stick bzw. Joystick.
+4. **Spielstand**: Stop/Play – Münzen, Fahrzeug, Farbe, Einstellungen, Erfolge bleiben;
+   alte Spielstände (Version 1) laden ohne Fehler (werden zu Version 2).
+5. **Fahrzeuge**: Bürostuhl und Schultisch kaufen/wählen (oder `Debug.AllUpgrades`),
+   fahren sich deutlich anders, steigen sauber ein, Ausstieg landet daneben.
+6. **Geist**: nach einer Bestzeit fährt er beim nächsten Lauf mit; aus in den Einstellungen.
+7. **Bestenliste**: Zeit erscheint (Studio: Liste `…_Studio` bzw. Arbeitsspeicher); Tafel an
+   der Schulwand; unplausibler Lauf zeigt den Grund im Ergebnis.
+8. **Hausaufgaben**: Fortschritt steigt, Belohnung und Bonus kommen.
+9. **Erfolge**: Popup beim ersten Lauf, Liste im Menü.
+10. **Lackiererei**: Farbe pro Fahrzeug, Spur sichtbar (auch für einen zweiten Spieler).
+11. **Einstiegs-Hinweise**: erscheinen einmal, „Nochmal zeigen“ funktioniert.
 
 ## Tuning-Ablauf
 

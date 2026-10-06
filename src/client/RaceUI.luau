@@ -12,6 +12,7 @@ local RaceTime = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("
 local RaceUI = {}
 
 local gui: ScreenGui
+local helpLabel: TextLabel? = nil
 local messageLabel: TextLabel
 local subMessageLabel: TextLabel
 local timerLabel: TextLabel
@@ -236,18 +237,24 @@ function RaceUI.init()
 	speedBarFill.BorderSizePixel = 0
 	speedBarFill.Parent = barBackground
 
-	-- Steuerungshilfe unten
-	makeLabel({
+	-- Steuerungshilfe unten (Text je nach Geraet, siehe RaceUI.setHelpText / ControlsInfo)
+	helpLabel = makeLabel({
 		Name = "Help",
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -10),
-		Size = UDim2.new(0.6, 0, 0, 22),
+		Size = UDim2.new(0.8, 0, 0, 22),
 		Font = Enum.Font.Gotham,
-		Text = "W/S: Anschieben/Bremsen   A/D: Lenken   " .. (if Config.Drift.DriftByDefault
-			then "Shift: normal fahren"
-			else "Shift: Drift") .. "   Leertaste: Hopp   E: Aus-/Einsteigen   R: Checkpoint   T: Neustart",
+		Text = "",
 		TextTransparency = 0.2,
 	})
+end
+
+-- Steuerungshilfe unten setzen ("" = ausblenden, z. B. auf dem Handy)
+function RaceUI.setHelpText(text: string)
+	if helpLabel then
+		helpLabel.Text = text
+		helpLabel.Visible = text ~= ""
+	end
 end
 
 -- Zeigt eine grosse Meldung fuer `duration` Sekunden (nil = bis zum naechsten Aufruf).

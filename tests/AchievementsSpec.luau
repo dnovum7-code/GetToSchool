@@ -136,3 +136,37 @@ describe("Achievements (Erfolge)", function()
 		expect(merged.stats.driftSeconds).toBe(12.5)
 	end)
 end)
+
+describe("SaveData: Einstellungen und Hinweise", function()
+	it("Standardwerte und Pruefung", function()
+		local data = SaveData.new()
+		expect(data.settings.Ghost).toBe(true)
+		expect(data.settings.MusicVolume).toBe(0.5)
+		local ok, value = SaveData.validateSetting("MusicVolume", 1.7)
+		expect(ok).toBe(true)
+		expect(value).toBe(1)
+		expect((SaveData.validateSetting("MusicVolume", "laut"))).toBe(false)
+		expect((SaveData.validateSetting("Unbekannt", true))).toBe(false)
+		expect((SaveData.validateSetting("Ghost", 0 / 0))).toBe(false)
+		expect((SaveData.validateSetting("CameraShake", false))).toBe(true)
+	end)
+
+	it("gespeicherte Einstellungen werden bereinigt, Hinweise zusammengefuehrt", function()
+		local data = SaveData.migrate({
+			version = 2,
+			settings = { Ghost = false, EffectsVolume = -3, MusicVolume = "x", Hack = true },
+			hintsSeen = { Drive = true },
+		})
+		assert(data)
+		expect(data.settings.Ghost).toBe(false)
+		expect(data.settings.EffectsVolume).toBe(0)
+		expect(data.settings.MusicVolume).toBe(0.5)
+		expect((data.settings :: any).Hack).toBeNil()
+		local session = SaveData.new()
+		session.hintsSeen.Drift = true
+		local merged = SaveData.merge(data, session)
+		expect(merged.hintsSeen.Drive).toBe(true)
+		expect(merged.hintsSeen.Drift).toBe(true)
+		expect(merged.settings.Ghost).toBe(false)
+	end)
+end)

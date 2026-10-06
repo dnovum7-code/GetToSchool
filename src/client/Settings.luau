@@ -1,28 +1,23 @@
 --!strict
--- Einstellungen des Spielers (nur Client): Geist an/aus, Kamera-Wackeln, Lautstaerken ...
--- Andere Module fragen hier nach und melden sich fuer Aenderungen an.
--- Gespeichert werden sie im Spielstand (siehe Einstellungsmenue).
+-- Einstellungen des Spielers (Client): Geist an/aus, Kamera-Wackeln, Lautstaerken.
+-- Andere Module fragen hier nach (Settings.get) und melden sich fuer Aenderungen an.
+-- Gespeichert werden sie im Spielstand: Settings.change schickt die Aenderung an den Server
+-- (server/PlayerSettings), beim Laden kommen sie mit dem Snapshot zurueck (Settings.load).
+-- Erlaubte Namen und Standardwerte: SaveData.SETTINGS_DEFAULTS.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local SaveData =
+	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression"):WaitForChild("SaveData"))
+
+local settingsRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Settings") :: RemoteEvent
 
 local Settings = {}
 
-export type Values = {
-	Ghost: boolean,
-	CameraShake: boolean,
-	MusicVolume: number,
-	EffectsVolume: number,
-}
+export type Values = SaveData.Settings
 
-local values: Values = {
-	Ghost = Config.Ghost.Enabled,
-	CameraShake = true,
-	MusicVolume = 0.5,
-	EffectsVolume = 1,
-}
-
+local values: Values = table.clone(SaveData.SETTINGS_DEFAULTS)
+local loaded = false
 local listeners: { (key: string, value: any) -> () } = {}
 
 function Settings.get(key: string): any
@@ -33,20 +28,31 @@ function Settings.getAll(): Values
 	return table.clone(values)
 end
 
+-- Wert lokal setzen (ohne Speichern)
 function Settings.set(key: string, value: any)
-	local current = (values :: any)[key]
-	if current == nil or type(current) ~= type(value) or current == value then
+	local ok, clean = SaveData.validateSetting(key, value)
+	if not ok or (values :: any)[key] == clean then
 		return
 	end
-	(values :: any)[key] = value
+	(values :: any)[key] = clean
 	for _, callback in listeners do
-		task.spawn(callback, key, value)
+		task.spawn(callback, key, clean)
 	end
 end
 
--- Mehrere Werte auf einmal (z. B. gespeicherte Einstellungen vom Server)
-function Settings.apply(newValues: { [string]: any })
-	for key, value in newValues do
+-- Vom Spieler geaendert (Menue): setzen und speichern lassen
+function Settings.change(key: string, value: any)
+	Settings.set(key, value)
+	settingsRemote:FireServer("Set", key, (values :: any)[key])
+end
+
+-- Gespeicherte Einstellungen aus dem Snapshot uebernehmen (einmal, wenn geladen)
+function Settings.load(snapshot: { [string]: any })
+	if loaded or snapshot.state ~= "Ready" or type(snapshot.settings) ~= "table" then
+		return
+	end
+	loaded = true
+	for key, value in snapshot.settings do
 		Settings.set(key, value)
 	end
 end

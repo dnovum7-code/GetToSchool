@@ -15,6 +15,7 @@ local Homework = require(script.Parent:WaitForChild("Homework"))
 local Launchables = require(script.Parent:WaitForChild("Launchables"))
 local Leaderboards = require(script.Parent:WaitForChild("Leaderboards"))
 local PlayerEvents = require(script.Parent:WaitForChild("PlayerEvents"))
+local PlayerSettings = require(script.Parent:WaitForChild("PlayerSettings"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local ProgressSync = require(script.Parent:WaitForChild("ProgressSync"))
 local RaceManager = require(script.Parent:WaitForChild("RaceManager"))
@@ -54,6 +55,7 @@ TrackUnlocks.init() -- Strecken freischalten und waehlen
 Garage.init() -- Fahrzeuge kaufen und waehlen
 Cosmetics.init() -- Lackiererei: Farben und Spur
 Achievements.init() -- Erfolge (Popup, Badges)
+PlayerSettings.init() -- Einstellungen und Einstiegs-Hinweise speichern
 Leaderboards.init() -- Bestenlisten (Global, Server, Freunde)
 PlayerEvents.init() -- Ereignisse (Ziel, Wurf, Drift ...) fuer Hausaufgaben und Erfolge
 Homework.init() -- Hausaufgaben (taegliche Aufgaben)
