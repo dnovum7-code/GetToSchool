@@ -37,6 +37,7 @@ local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
 local ShopUI = require(script.Parent:WaitForChild("ShopUI"))
 local TrackSensors = require(script.Parent:WaitForChild("TrackSensors"))
 local Tricks = require(script.Parent:WaitForChild("Tricks"))
+local VisualFX = require(script.Parent:WaitForChild("VisualFX"))
 local Toolkit = require(script.Parent:WaitForChild("Toolkit"))
 local Obstacles = require(script.Parent:WaitForChild("Obstacles"))
 local RandomEventsClient = require(script.Parent:WaitForChild("RandomEventsClient"))
@@ -215,6 +216,7 @@ remotes:WaitForChild("Progress").OnClientEvent:Connect(function(kind: string, us
 end)
 Onboarding.init() -- einmalige Hinweise beim ersten Lauf
 Tricks.init() -- Lufttricks (Anzeige)
+VisualFX.init() -- Speed-Linien, Konfetti ...
 ComboUI.init() -- Kuh-Kombo-Anzeige
 ProgressClient.onChanged(function(snapshot)
 	Abilities.setLevels(snapshot.upgrades) -- gekaufte Upgrade-Stufen
@@ -272,6 +274,7 @@ local function deactivate()
 	jumpHeld = false
 	Abilities.deactivate()
 	Tricks.deactivate()
+	VisualFX.detach()
 	DriftEffects.detach()
 	SoundSystem.detach()
 	local humanoid = activeHumanoid
@@ -346,6 +349,7 @@ local function activate(seat: BasePart, humanoid: Humanoid)
 	end)
 
 	DriftEffects.attach(cart, character)
+	VisualFX.attach(cart) -- Staub, Boost-Flammen
 	SoundSystem.attach(cart)
 end
 
@@ -738,6 +742,7 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		RaceUI.setBest(result.bestTime)
 		showResult(result)
 		SoundSystem.play("Finish")
+		VisualFX.confetti(result.isNewBest) -- Konfetti (neue Bestzeit: mehr)
 	end
 end)
 
@@ -968,6 +973,7 @@ RunService.PreSimulation:Connect(function(dt)
 		crashDetector:relaxImpact(Config.Track.JumpLandingTolerance, airTime)
 	end
 	DriftEffects.update(dt, telemetry)
+	VisualFX.update(dt, telemetry) -- Speed-Linien, Boost-Flammen
 	StatReporter.step(dt, telemetry, runPhase == "Running") -- Driftzeit fuer die Hausaufgaben
 	SoundSystem.update(telemetry.speed, telemetry.grounded, telemetry.skidding)
 	if telemetry.padEvent == "Boost" or telemetry.boostStarted then
@@ -983,6 +989,7 @@ RunService.PreSimulation:Connect(function(dt)
 		if fallSpeed > C.LandingShakeMinSpeed then
 			ChaseCamera.addShake((fallSpeed - C.LandingShakeMinSpeed) * C.LandingShakePerSpeed)
 		end
+		VisualFX.landing(fallSpeed) -- Staubwolke
 	end
 	wasGrounded = telemetry.grounded
 

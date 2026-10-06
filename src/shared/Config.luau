@@ -275,6 +275,20 @@ Config.Cosmetics = {
 	} :: { CosmeticDef },
 }
 
+-- Visuelle Extras (nur Optik, nur beim eigenen Spieler; in den Einstellungen abschaltbar):
+-- Speed-Linien am Bildrand, Staub bei harten Landungen, Flammen beim Boost, Konfetti im Ziel.
+Config.Effects = {
+	SpeedLinesStart = 90, -- ab diesem Tempo (Studs/s) erscheinen Speed-Linien ...
+	SpeedLinesFull = 180, -- ... und sind hier voll da
+	SpeedLineCount = 16,
+	SpeedLineTransparency = 0.55, -- 0 = deckend, 1 = unsichtbar (bei vollem Tempo)
+	DustMinFallSpeed = 30, -- ab dieser Fallgeschwindigkeit (Studs/s) staubt die Landung
+	DustPerSpeed = 0.6, -- Staubteilchen pro Studs/s Fallgeschwindigkeit
+	BoostFlameRate = 80, -- Flammen-Teilchen pro Sekunde beim Boost
+	ConfettiCount = 70, -- Konfetti-Schnipsel im Ziel (neue Bestzeit: doppelt)
+	ConfettiTime = 2.5, -- so lange (s) faellt das Konfetti
+}
+
 -- Taegliches Gluecksrad (Menue B -> Gluecksrad): einmal pro Tag gratis drehen (Wechsel wie
 -- die Hausaufgaben, Config.Homework.ResetHourUtc). Gewinne: Muenzen oder Powerups, die beim
 -- naechsten Lauf automatisch wirken (je Lauf eins von jeder Sorte). weight = Wahrscheinlichkeit.

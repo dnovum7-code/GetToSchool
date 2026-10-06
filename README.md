@@ -190,6 +190,7 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/shared/Progression/Combo.luau` | beiden | Reine Logik (getestet): Kuh-Kombo zählen, Multiplikator, Bonus |
 | `src/shared/Progression/DailySpin.luau` | beiden | Reine Logik (getestet): Glücksrad würfeln, Gewinne, Powerups pro Lauf verbrauchen |
 | `src/server/DailySpin.luau`, `src/client/SpinUI.luau` | beide | Glücksrad: Server würfelt und schreibt gut / Reiter mit drehendem Rad |
+| `src/client/VisualFX.luau` | Client | Visuelle Extras: Speed-Linien, Landestaub, Boost-Flammen, Konfetti |
 | `src/client/ComboUI.luau` | Client | Große Anzeige „3x KOMBO!“ mit ablaufendem Zeitbalken |
 | `src/client/Tricks.luau`, `src/server/Tricks.luau` | beide | Lufttricks: drehen, Anzeige, Crash bei schiefer Landung / Münzen prüfen und gutschreiben |
 | `src/server/PlayerEvents.luau` | Server | Verteilt Ereignisse (Ziel, Wurf, Münzen, Drift) an Hausaufgaben und Erfolge; prüft die Drift-Meldungen |
@@ -793,6 +794,11 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Einmal pro Tag | Nochmal drehen | Geht nicht („Heute schon gedreht“); zum Testen `Config.Debug.FreeSpins = true` |
 | Powerups | Extra-Leben / Helm / Start-Turbo gewinnen, losfahren | Beim Verlassen der Startzone „Powerup: 🎒 Extra-Schulranzen“; 6 Ranzen bzw. ein Helm mehr; Start-Turbo gibt Schub. Im Reiter steht, was noch übrig ist |
 | Speichern | Gewinnen, Stop, Play | Powerups und „heute schon gedreht“ bleiben |
+| Speed-Linien | Bergab schnell fahren (Tacho > ~90 Studs/s) | Weiße Linien ziehen vom Bildrand nach außen, mehr bei mehr Tempo |
+| Landestaub | Vom JumpPad hart landen | Staubwolke unter dem Wagen |
+| Boost-Flammen | Drift-Boost, Turbo-Pausenbrot oder Start-Turbo | Orange Flammen hinten am Wagen, solange der Schub läuft |
+| Konfetti | Ins Ziel fahren | Konfetti fällt von oben; bei neuer Bestzeit doppelt so viel |
+| Effekte aus | Einstellungen → „Extra-Effekte“ aus | Nichts davon mehr zu sehen |
 
 ## Tuning-Ablauf
 

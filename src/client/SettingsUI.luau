@@ -87,7 +87,8 @@ local function render(_snapshot: ProgressClient.Snapshot)
 	volumeRow(2, "Effekte (Gerauesche)", "EffectsVolume")
 	toggleRow(3, "Kamera-Wackeln", "CameraShake")
 	toggleRow(4, "Geist vom besten Lauf", "Ghost")
-	local hints = row(5, "Einstiegs-Hinweise")
+	toggleRow(5, "Extra-Effekte (Speed-Linien, Staub, Konfetti)", "VisualEffects")
+	local hints = row(6, "Einstiegs-Hinweise")
 	local again = ShopUI.button(hints, {
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -14, 0.5, 0),

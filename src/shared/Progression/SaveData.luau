@@ -56,6 +56,7 @@ export type Cosmetics = {
 export type Settings = {
 	Ghost: boolean, -- Geist vom besten Lauf zeigen
 	CameraShake: boolean, -- Kamera-Wackeln
+	VisualEffects: boolean, -- Extra-Effekte (Speed-Linien, Staub, Flammen, Konfetti)
 	MusicVolume: number, -- 0..1
 	EffectsVolume: number, -- 0..1
 }
@@ -64,6 +65,7 @@ export type Settings = {
 SaveData.SETTINGS_DEFAULTS = {
 	Ghost = true,
 	CameraShake = true,
+	VisualEffects = true,
 	MusicVolume = 0.5,
 	EffectsVolume = 1,
 } :: Settings

@@ -57,6 +57,8 @@ visuelle Extras; noch nicht in Studio getestet):
   „Gluecksrad“ (src/client/SpinUI). Powerups (Extra-Leben, Ersatz-Helm, Start-Turbo) werden
   beim Start des nächsten Laufs verbraucht (PlayerEvents "RunStarted",
   RaceManager.addRunBonus). Spielstand: spinDay, items. Debug.FreeSpins zum Testen.
+- Visuelle Extras: src/client/VisualFX (Speed-Linien, Landestaub, Boost-Flammen, Konfetti),
+  Werte Config.Effects, Einstellung „Extra-Effekte“ (settings.VisualEffects).
 M4 – Wiederspielwert (gebaut, noch nicht in Studio getestet; Testliste im README
 „Wichtigste Studio-Tests M4“):
 - Geist vom besten Lauf: Server zeichnet jeden Lauf auf (src/server/Ghosts, kompakt mit
