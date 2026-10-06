@@ -150,7 +150,7 @@ function RaceManager.restart(player: Player)
 	if not Track.exists(race.trackId) then
 		race.trackId = Track.defaultTrackId()
 	end
-	local spawnCFrame = CartManager.reset(player)
+	local spawnCFrame = CartManager.reset(player, nil, true) -- kompletter Neustart: Fahrzeug darf wechseln
 	if not spawnCFrame then
 		return
 	end
@@ -361,7 +361,7 @@ local function checkCheckpoints(player: Player, race: RaceState, base: BasePart)
 		end
 
 		-- Zwischenzeit: beim ersten Durchfahren in diesem Lauf mit der Bestzeit vergleichen
-		local key = instance:GetFullName()
+		local key = Track.checkpointKey(instance)
 		local elapsed = os.clock() - race.startTime
 		local delta: number? = nil
 		if race.splits[key] == nil then
@@ -399,7 +399,7 @@ local function trackCheckpoints(trackId: string): { RunValidation.TrackCheckpoin
 		end
 		local order = instance:GetAttribute("Order")
 		table.insert(result, {
-			key = instance:GetFullName(),
+			key = Track.checkpointKey(instance),
 			order = if type(order) == "number" then order else nil,
 			optional = optional,
 		})

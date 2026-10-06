@@ -784,7 +784,8 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | E am Boden | Am Boden E | Aussteigen wie immer |
 | Normaler Sprung | JumpPad ohne Q/E | Keine Trick-Anzeige, normale Landung |
 | Gamepad / Touch | LB bzw. Knopf „Trick“ in der Luft | Dreht in Lenkrichtung (ohne Lenkung: rechts) |
-| Spam-Schutz | Viele Tricks schnell hintereinander | Höchstens 90 Trick-Münzen pro Minute (`Config.Tricks.MaxCoinsPerMinute`) |
+| Spam-Schutz | Viele Tricks schnell hintereinander | Höchstens 90 Trick-Münzen pro Minute (`Config.Tricks.MaxCoinsPerMinute`); der Server zählt nur Drehungen, die in die Flugzeit passen |
+| E kurz nach dem Absprung | Direkt an der Schanzenkante E drücken | Kein Aussteigen, der Trick startet kurz danach |
 | Tuning | F2 → „Trick-Drehtempo“, „Trick: sauber bis“, „Trick: Crash ab“ | Wirkt sofort |
 | Kuh-Kombo | Testfläche → Kuh-Reihe (4 Kühe), alle in einem Rutsch umfahren | Ab der 2. Kuh groß „2x KOMBO! +…“, dann 3x, 4x (Farbe wird wärmer), Zeitbalken läuft ab; Kamera wackelt stärker |
 | Kombo-Bonus | Münzzähler beobachten | Pro Treffer: Flugbonus × Multiplikator + 4 pro Stufe (`Config.Combo`) |

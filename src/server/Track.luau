@@ -316,6 +316,17 @@ TagList.watch("Checkpoint", function(instance)
 end)
 
 -- Checkpoints dieser Strecke
+-- Eindeutiger, stabiler Schluessel eines Checkpoints (Zwischenzeiten, Plausibilitaet).
+-- Kopien mit Strg+D heissen gleich - deshalb kommt die (gerundete) Position dazu.
+function Track.checkpointKey(instance: Instance): string
+	local name = instance:GetFullName()
+	if instance:IsA("BasePart") then
+		local p = instance.Position
+		return `{name}@{math.floor(p.X + 0.5)},{math.floor(p.Y + 0.5)},{math.floor(p.Z + 0.5)}`
+	end
+	return name
+end
+
 function Track.getCheckpoints(trackId: string): { Instance }
 	local result = {}
 	for _, instance in TagList.get("Checkpoint") do

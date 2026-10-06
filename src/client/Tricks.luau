@@ -35,8 +35,10 @@ local label: TextLabel? = nil
 local labelScale: UIScale? = nil
 local labelToken = 0
 
+-- In der Luft gehoeren Q/E der Trick-Taste (auch kurz nach dem Abheben, damit E dann nicht
+-- aussteigen laesst); die Drehung selbst beginnt erst nach MinAirTime (siehe step).
 local function canTrick(): boolean
-	return Config.Tricks.Enabled and wasAirborne and airTime >= Config.Tricks.MinAirTime
+	return Config.Tricks.Enabled and wasAirborne
 end
 
 local function showText(text: string, color: Color3)
@@ -162,6 +164,7 @@ function Tricks.step(
 	if not wasAirborne then
 		return nil
 	end
+	held.left, held.right, held.auto = false, false, 0 -- naechster Trick: neu druecken
 	local didTrick = usedTrick
 	local spun = totalYaw
 	reset()

@@ -262,11 +262,11 @@ local function watchSeat(player: Player, state: PlayerState, cart: Model)
 	end)
 end
 
-local function createCart(player: Player, state: PlayerState, at: CFrame): Model
+local function createCart(player: Player, state: PlayerState, at: CFrame, vehicleId: string): Model
 	if state.cart then
 		state.cart:Destroy()
 	end
-	local cart = CartBuilder.build(player, at, vehicleResolver(player))
+	local cart = CartBuilder.build(player, at, vehicleId)
 	for _, callback in builtCallbacks do
 		callback(player, cart)
 	end
@@ -340,7 +340,9 @@ end
 -- (z. B. ins Nichts gefallen), wird ein neuer gebaut. Gibt die Startposition zurueck,
 -- oder nil, wenn gerade kein Neustart moeglich ist (Figur tot / noch nicht da).
 -- `at`: anderer Ort als der Start (z. B. ein Checkpoint).
-function CartManager.reset(player: Player, at: CFrame?): CFrame?
+-- `changeVehicle`: nur beim kompletten Neustart darf ein anderes Fahrzeug (Garage) kommen;
+-- beim Checkpoint-Neustart mitten im Lauf bleibt es beim bisherigen.
+function CartManager.reset(player: Player, at: CFrame?, changeVehicle: boolean?): CFrame?
 	local humanoid = getAliveHumanoid(player)
 	if not humanoid then
 		return nil
@@ -354,19 +356,22 @@ function CartManager.reset(player: Player, at: CFrame?): CFrame?
 		state.mode = "Riding"
 		setCharacterMode(character, "Riding")
 	end
-	local vehicleId = vehicleResolver(player)
+	local cart = state.cart
+	local currentVehicle = if cart then cart:GetAttribute("VehicleId") else nil
+	local vehicleId = if changeVehicle or type(currentVehicle) ~= "string"
+		then vehicleResolver(player)
+		else currentVehicle :: string
 	-- Startpositionen sind fuer den Einkaufswagen berechnet: andere Fahrzeuge stehen hoeher/tiefer
 	local lift = CartBuilder.getRideHeight(vehicleId) - CartBuilder.getRideHeight(nil)
 	local spawnCFrame = (at or spawnResolver(player)) * CFrame.new(0, lift, 0)
-	local cart = state.cart
-	if cart and cart:GetAttribute("VehicleId") ~= vehicleId then
+	if cart and currentVehicle ~= vehicleId then
 		cart = nil -- anderes Fahrzeug gewaehlt (Garage): neu bauen
 	end
 	if cart and isCartIntact(cart) then
 		-- PivotTo verschiebt das ganze Modell; ein angeschweisster Fahrer kommt mit.
 		cart:PivotTo(spawnCFrame)
 	else
-		cart = createCart(player, state, spawnCFrame)
+		cart = createCart(player, state, spawnCFrame, vehicleId)
 	end
 	local seat = getSeat(cart :: Model)
 	if seat.Occupant ~= humanoid then

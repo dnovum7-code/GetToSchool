@@ -47,7 +47,8 @@ M5 – Spaß-Extras (gebaut, noch nicht in Studio getestet; Testliste im README
 „Wichtigste Studio-Tests M5“):
 - Lufttricks: Q/E in der Luft (Gamepad LB, Touch „Trick“) drehen um die Hochachse;
   Logik Progression/TrickMath, Client src/client/Tricks (Drehmoment nach der Fahrphysik,
-  Landung bewerten, Landehilfe), Server src/server/Tricks (Münzen, Spam-Schutz),
+  Landung bewerten, Landehilfe), Server src/server/Tricks (Münzen, Spam-Schutz; prüft per
+  Raycast selbst, ob der Wagen in der Luft war, Drehungen höchstens passend zur Flugzeit),
   Crash-Grund BadLanding. Werte: Config.Tricks.
 - Kuh-Kombo: Treffer innerhalb Config.Combo.Window erhöhen den Multiplikator (Server in
   server/Launchables, Logik Progression/Combo), Bonus = Flugbonus × Multiplikator +
@@ -69,7 +70,8 @@ M4 – Wiederspielwert (gebaut, noch nicht in Studio getestet; Testliste im READ
   Config.Leaderboard; in Studio eigene Listen mit Suffix, ohne API im Arbeitsspeicher).
   Ansichten Global / Server / Freunde, Reiter „Bestenliste“ im Menü, Bretter in der Welt
   (Tag Leaderboard). Plausibilität vor dem globalen Eintrag (src/shared/Progression/
-  RunValidation): Mindestzeit (Config.Tracks minTime), alle Checkpoints (gleiche Order =
+  RunValidation; Checkpoint-Schlüssel = Track.checkpointKey, Name + Position, damit
+  Strg+D-Kopien unterscheidbar sind): Mindestzeit (Config.Tracks minTime), alle Checkpoints (gleiche Order =
   alternative Wege, Optional = true, in RandomEvent = optional), Reihenfolge, Mindestzeit
   zwischen Checkpoints, Höchsttempo pro Abschnitt (Luftlinie). Unplausibel = nur persönlich.
 - Menü: Reiter melden sich mit ShopUI.addTab an (eigene Module zeichnen mit ShopUI.card ...).

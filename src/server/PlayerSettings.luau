@@ -16,16 +16,22 @@ local settingsRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("S
 local PlayerSettings = {}
 
 local MAX_HINTS = 50 -- Schutz: so viele Hinweis-Ids hoechstens
-local MIN_INTERVAL = 0.1 -- Spam-Schutz
-local lastRequest: { [Player]: number } = {}
+local MAX_PER_SECOND = 30 -- Spam-Schutz (normale Klicks gehen nie verloren)
+type Window = { start: number, count: number }
+local window: { [Player]: Window } = {}
 
 function PlayerSettings.init()
 	settingsRemote.OnServerEvent:Connect(function(player, kind, key, value)
 		local now = os.clock()
-		if now - (lastRequest[player] or 0) < MIN_INTERVAL then
+		local current: Window = window[player] or { start = now, count = 0 }
+		if now - current.start >= 1 then
+			current = { start = now, count = 0 }
+		end
+		window[player] = current
+		current.count += 1
+		if current.count > MAX_PER_SECOND then
 			return
 		end
-		lastRequest[player] = now
 		local data = Profiles.get(player)
 		if kind == "Set" then
 			local ok, clean = SaveData.validateSetting(key, value)
@@ -56,7 +62,7 @@ function PlayerSettings.init()
 		snapshot.hintsSeen = table.clone(data.hintsSeen)
 	end)
 	Players.PlayerRemoving:Connect(function(player)
-		lastRequest[player] = nil
+		window[player] = nil
 	end)
 end
 
