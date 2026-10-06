@@ -173,6 +173,10 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/shared/Progression/RunValidation.luau`, `LeaderboardMath.luau` | beiden | Reine Logik (getestet): Plausibilitätsprüfung für die Bestenliste, Plätze und Werte |
 | `src/server/Leaderboards.luau` | Server | Bestenlisten: OrderedDataStore pro Strecke + Kuh-Wurf, Ansichten Global/Server/Freunde |
 | `src/client/LeaderboardClient.luau` | Client | Reiter „Bestenliste“ im Menü, Bretter in der Welt |
+| `src/shared/Progression/Homework.luau` | beiden | Reine Logik (getestet): Hausaufgaben auswürfeln, Fortschritt, Tageswechsel |
+| `src/server/Homework.luau` | Server | Hausaufgaben: Ereignisse verbuchen, Belohnung, Tageswechsel |
+| `src/client/HomeworkUI.luau` | Client | Reiter „Hausaufgaben“ mit Fortschrittsbalken |
+| `src/client/StatReporter.luau` | Client | Meldet Werte, die nur der Client kennt (Driftzeit), der Server begrenzt sie |
 
 Unity-Vergleich: `*.server.luau` / `*.client.luau` sind wie MonoBehaviours, die von selbst
 starten. Alle anderen `.luau`-Dateien sind ModuleScripts, also normale Klassen/Bibliotheken,
@@ -667,6 +671,11 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Plausibilität (Mindestzeit) | `Config.Tracks` → Track1 `minTime = 200`, Lauf beenden | „Nicht in der Bestenliste: Zu schnell für diese Strecke“ |
 | Server / Freunde | *Test → 2 Players*, beide fahren ins Ziel | „Server“ zeigt beide; „Freunde“ in Studio: „Keine Freunde gefunden“ |
 | Brett in der Welt | Teststrecke, Schulwand (Station 26) | Tafeln zeigen Top 10, „Du: Platz …“; nach einem neuen Eintrag spätestens nach 60 s aktuell |
+| Hausaufgaben (Menü) | B → „Hausaufgaben“ | 3 Aufgaben mit Text, Balken, „0 / 5“, Belohnung; unten Bonus und „Neue Hausaufgaben in … Std“ |
+| Hausaufgaben (Fortschritt) | Passend zur Aufgabe fahren (Kuh umfahren, driften, Münzen sammeln, Lauf beenden) | Balken füllt sich; bei „erledigt“ grüner Hinweis „Hausaufgabe erledigt: … +60“, Münzen steigen |
+| Hausaufgaben (Bonus) | Alle drei erledigen | Hinweis „Alle Hausaufgaben erledigt! Bonus +50“ |
+| Hausaufgaben (Tageswechsel) | In `Config.Homework` `ResetHourUtc` auf die aktuelle UTC-Stunde + 1 setzen, Play, eine Stunde warten – oder einfacher: SaveData löschen | Neue Aufgaben, Hinweis „Neue Hausaufgaben!“ |
+| Hausaufgaben (Drift) | Aufgabe „Drifte 30 Sekunden“ (ggf. im Pool `weight` der anderen auf 0) | Balken steigt während Kurven-Drifts im Lauf, alle 5 s |
 
 ## Tuning-Ablauf
 

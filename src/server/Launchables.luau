@@ -14,6 +14,7 @@ local Config = require(Shared:WaitForChild("Config"))
 local LaunchMath = require(Shared:WaitForChild("Progression"):WaitForChild("LaunchMath"))
 local TagList = require(Shared:WaitForChild("TagList"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
+local Homework = require(script.Parent:WaitForChild("Homework"))
 local Leaderboards = require(script.Parent:WaitForChild("Leaderboards"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 
@@ -132,6 +133,7 @@ function Launchables.tryLaunch(player: Player, object: unknown): LaunchInfo?
 	end
 	data.stats.objectsLaunched += 1
 	Leaderboards.submitFlight(player, meters) -- Bestenliste "Weitester Kuh-Wurf"
+	Homework.report(player, { type = "Launch", name = name, meters = meters })
 	if bonus > 0 then
 		Profiles.addCoins(player, bonus) -- meldet die Aenderung
 	else

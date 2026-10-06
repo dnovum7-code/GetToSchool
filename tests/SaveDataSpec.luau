@@ -87,6 +87,50 @@ describe("SaveData", function()
 		expect(merged.stats.finishedRuns).toBe(1)
 	end)
 
+	it("Version 1 wird auf Version 2 hochgestuft (Hausaufgaben leer)", function()
+		local data, note = SaveData.migrate({ version = 1, coins = 12 })
+		expect(note).toBe("migrated")
+		assert(data)
+		expect(data.version).toBe(2)
+		expect(data.coins).toBe(12)
+		expect(data.homework.day).toBe(-1)
+		expect(#data.homework.tasks).toBe(0)
+	end)
+
+	it("Hausaufgaben werden bereinigt", function()
+		local data = SaveData.migrate({
+			version = 2,
+			homework = {
+				day = 20000,
+				tasks = { { id = "A", progress = 3, done = false }, { id = 5 }, { id = "B", progress = -2, done = true } },
+				bonusDone = "ja",
+			},
+		})
+		assert(data)
+		expect(data.homework.day).toBe(20000)
+		expect(#data.homework.tasks).toBe(2)
+		expect(data.homework.tasks[2].progress).toBe(0)
+		expect(data.homework.tasks[2].done).toBe(true)
+		expect(data.homework.bonusDone).toBe(false)
+	end)
+
+	it("merge: Hausaufgaben vom neueren Tag, sonst groesserer Fortschritt", function()
+		local stored = SaveData.new()
+		stored.homework = { day = 10, tasks = { { id = "A", progress = 2, done = false } }, bonusDone = false }
+		local session = SaveData.new()
+		session.homework = { day = 10, tasks = { { id = "A", progress = 4, done = true } }, bonusDone = false }
+		local merged = SaveData.merge(stored, session)
+		expect(merged.homework.tasks[1].progress).toBe(4)
+		expect(merged.homework.tasks[1].done).toBe(true)
+		session.homework = { day = 11, tasks = { { id = "B", progress = 1, done = false } }, bonusDone = false }
+		merged = SaveData.merge(stored, session)
+		expect(merged.homework.day).toBe(11)
+		expect(merged.homework.tasks[1].id).toBe("B")
+		session.homework = SaveData.newHomework() -- beim Laden noch nichts
+		merged = SaveData.merge(stored, session)
+		expect(merged.homework.day).toBe(10)
+	end)
+
 	it("serialize -> migrate ergibt dieselben Daten", function()
 		local data = SaveData.new()
 		data.coins = 42

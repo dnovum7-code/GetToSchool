@@ -57,6 +57,10 @@ Kosmetik, Erfolge, Einstellungen/Einstieg; noch nicht in Studio getestet):
   alternative Wege, Optional = true, in RandomEvent = optional), Reihenfolge, Mindestzeit
   zwischen Checkpoints, Höchsttempo pro Abschnitt (Luftlinie). Unplausibel = nur persönlich.
 - Menü: Reiter melden sich mit ShopUI.addTab an (eigene Module zeichnen mit ShopUI.card ...).
+- Hausaufgaben: 3 tägliche Aufgaben (Config.Homework, Wechsel ResetHourUtc), Logik in
+  src/shared/Progression/Homework (fest ausgewürfelt nach Tag + Spieler), Server verbucht
+  Launch/Coins/Finish/Drift (Drift meldet der Client über ReportStat, Server begrenzt auf die
+  echte Zeit), Belohnung sofort + Bonus für alle. Spielstand Version 2 (Feld homework).
 M3 – Progression (gebaut, noch nicht in Studio getestet):
 - Münzen: Baustein `Coin`, Server prüft das Einsammeln (Abstand), Zielbelohnung
   (Grundbetrag + Notenbonus), Münzen bleiben nach Crash/Abbruch. Eingesammelte Münzen erscheinen

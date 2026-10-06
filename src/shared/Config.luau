@@ -701,6 +701,79 @@ Config.Leaderboard = {
 	BoardPixelsPerStud = 40, -- Aufloesung der Schrift auf dem Brett
 }
 
+-- Hausaufgaben: jeden Tag TasksPerDay zufaellige Aufgaben aus dem Pool, Belohnung in Muenzen.
+-- Arten (type): Launch (name = DisplayName oder weglassen), Flight (meters), Coins, Drift
+-- (Sekunden), Finish (track optional), FinishUnder (track, time), Flawless (ohne
+-- Lebensverlust), Grade (grade). Text-Platzhalter: {goal} {time} {track} {meters} {grade}.
+-- weight = wie oft sie vorkommt (0 = nie). Aufgaben fuer gesperrte Strecken kommen nicht vor.
+export type HomeworkDef = {
+	id: string,
+	type: string,
+	text: string,
+	reward: number,
+	goal: number?,
+	weight: number?,
+	name: string?,
+	track: string?,
+	time: number?,
+	meters: number?,
+	grade: number?,
+}
+Config.Homework = {
+	TasksPerDay = 3,
+	ResetHourUtc = 0, -- neue Aufgaben um x Uhr UTC (0 = Mitternacht UTC, 1 Uhr deutscher Winterzeit)
+	AllDoneBonus = 50, -- Extra-Muenzen, wenn alle Aufgaben des Tages erledigt sind
+	DriftReportInterval = 5, -- der Client meldet die Driftzeit alle x Sekunden
+	Pool = {
+		{
+			id = "Cows5",
+			type = "Launch",
+			name = "Kuh",
+			goal = 5,
+			reward = 60,
+			text = "Schleudere {goal} Kuehe",
+		},
+		{ id = "Launch10", type = "Launch", goal = 10, reward = 60, text = "Schleudere {goal} Objekte weg" },
+		{
+			id = "Flight150",
+			type = "Flight",
+			meters = 150,
+			reward = 50,
+			text = "Schleudere etwas {meters} m weit",
+		},
+		{
+			id = "Track1Fast",
+			type = "FinishUnder",
+			track = "Track1",
+			time = 45,
+			reward = 100,
+			text = "Fahre {track} unter {time}",
+		},
+		{ id = "Drift30", type = "Drift", goal = 30, reward = 50, text = "Drifte insgesamt {goal} Sekunden" },
+		{
+			id = "Flawless",
+			type = "Flawless",
+			reward = 80,
+			text = "Beende einen Lauf ohne Leben zu verlieren",
+		},
+		{
+			id = "Coins40",
+			type = "Coins",
+			goal = 40,
+			reward = 40,
+			text = "Sammle {goal} Muenzen auf der Strecke",
+		},
+		{ id = "Runs3", type = "Finish", goal = 3, reward = 50, text = "Beende {goal} Laeufe" },
+		{
+			id = "Grade5",
+			type = "Grade",
+			grade = 5,
+			reward = 70,
+			text = "Schaffe eine Note {grade} oder besser",
+		},
+	} :: { HomeworkDef },
+}
+
 -- Spielstand (DataStore): Muenzen, Upgrades, Bestzeiten, freigeschaltete Tracks ...
 Config.Save = {
 	Enabled = true, -- false = nur im Arbeitsspeicher (nichts wird dauerhaft gespeichert)

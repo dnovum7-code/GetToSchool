@@ -27,6 +27,9 @@
         "ReportCrash": {
           "$className": "RemoteEvent"
         },
+        "ReportStat": {
+          "$className": "RemoteEvent"
+        },
         "RequestEnter": {
           "$className": "RemoteEvent"
         },

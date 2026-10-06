@@ -45,6 +45,9 @@
         },
         "Leaderboard": {
           "$className": "RemoteEvent"
+        },
+        "ReportStat": {
+          "$className": "RemoteEvent"
         }
       }
     },

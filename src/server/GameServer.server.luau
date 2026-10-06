@@ -8,6 +8,7 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
 local Coins = require(script.Parent:WaitForChild("Coins"))
 local DevTuning = require(script.Parent:WaitForChild("DevTuning"))
+local Homework = require(script.Parent:WaitForChild("Homework"))
 local Launchables = require(script.Parent:WaitForChild("Launchables"))
 local Leaderboards = require(script.Parent:WaitForChild("Leaderboards"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
@@ -47,6 +48,7 @@ Launchables.init() -- Objekte zum Wegschleudern
 Shop.init() -- Kaeufe pruefen
 TrackUnlocks.init() -- Strecken freischalten und waehlen
 Leaderboards.init() -- Bestenlisten (Global, Server, Freunde)
+Homework.init() -- Hausaufgaben (taegliche Aufgaben)
 DevTuning.init(cartsFolder) -- Tuning-Panel (nur in Studio aktiv)
 
 -- Eingaben vom Client nie blind vertrauen: Der Client darf nur "bitte Neustart" sagen

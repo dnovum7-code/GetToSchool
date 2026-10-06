@@ -9,11 +9,15 @@
 -- erhoeht und in MIGRATIONS ein Schritt "alte Version -> neue Version" ergaenzt. Alte
 -- Spielstaende werden beim Laden Schritt fuer Schritt hochgestuft.
 --   Version 0: altes Format (nur Bestzeiten, DataStore "BestTimes_v1")
---   Version 1: dieses Format
+--   Version 1: M3 (Muenzen, Upgrades, Bestzeiten, Tracks, Rekorde)
+--   Version 2: M4 (Hausaufgaben, ...). Solange M4/M5 nicht veroeffentlicht sind, kommen neue
+--              Felder ohne neue Version dazu (fehlende Felder bekommen Standardwerte).
+--              Nach der Veroeffentlichung: jedes neue Feld = neue Version, sonst wuerde ein
+--              noch laufender alter Server die neuen Felder beim Speichern loeschen.
 
 local SaveData = {}
 
-SaveData.VERSION = 1
+SaveData.VERSION = 2
 
 export type BestTime = {
 	time: number, -- Sekunden
@@ -26,6 +30,19 @@ export type Stats = {
 	objectsLaunched: number,
 }
 
+-- Hausaufgaben des Tages (siehe Progression/Homework)
+export type HomeworkTask = {
+	id: string, -- Eintrag aus Config.Homework.Pool
+	progress: number,
+	done: boolean,
+}
+
+export type HomeworkState = {
+	day: number, -- Tag (Tage seit 1970, UTC), fuer den die Aufgaben gelten; -1 = noch keine
+	tasks: { HomeworkTask },
+	bonusDone: boolean, -- Bonus fuer "alle erledigt" schon bekommen
+}
+
 export type Data = {
 	version: number,
 	coins: number,
@@ -36,6 +53,7 @@ export type Data = {
 	vehicles: { [string]: boolean },
 	launchRecords: { [string]: number }, -- Objektname (z. B. "Kuh") -> weitester Flug in Metern
 	stats: Stats,
+	homework: HomeworkState,
 }
 
 local DEFAULT_VEHICLE = "ShoppingCart"
@@ -51,7 +69,12 @@ function SaveData.new(): Data
 		vehicles = { [DEFAULT_VEHICLE] = true },
 		launchRecords = {},
 		stats = { finishedRuns = 0, coinsCollected = 0, objectsLaunched = 0 },
+		homework = SaveData.newHomework(),
 	}
+end
+
+function SaveData.newHomework(): HomeworkState
+	return { day = -1, tasks = {}, bonusDone = false }
 end
 
 local function isNumber(value: unknown): boolean
@@ -120,6 +143,33 @@ local function sanitizeFlags(raw: unknown): { [string]: boolean }
 	return result
 end
 
+local MAX_HOMEWORK_TASKS = 10
+
+local function sanitizeHomework(raw: unknown): HomeworkState
+	local result = SaveData.newHomework()
+	if type(raw) ~= "table" then
+		return result
+	end
+	local homework = raw :: { [any]: any }
+	result.day = wholeNumber(homework.day, -1) or -1
+	result.bonusDone = homework.bonusDone == true
+	if type(homework.tasks) == "table" then
+		for _, task in homework.tasks do
+			if #result.tasks >= MAX_HOMEWORK_TASKS then
+				break
+			end
+			if type(task) == "table" and type(task.id) == "string" and isNumber(task.progress) then
+				table.insert(result.tasks, {
+					id = task.id,
+					progress = math.max(task.progress, 0),
+					done = task.done == true,
+				})
+			end
+		end
+	end
+	return result
+end
+
 -- Spielstand der aktuellen Version pruefen: unbekannte oder kaputte Eintraege fallen weg,
 -- fehlende bekommen Standardwerte.
 function SaveData.sanitize(raw: { [any]: any }): Data
@@ -138,6 +188,7 @@ function SaveData.sanitize(raw: { [any]: any }): Data
 		coinsCollected = wholeNumber(stats.coinsCollected, 0) or 0,
 		objectsLaunched = wholeNumber(stats.objectsLaunched, 0) or 0,
 	}
+	data.homework = sanitizeHomework(raw.homework)
 	return data
 end
 
@@ -146,6 +197,12 @@ local MIGRATIONS: { [number]: (raw: { [any]: any }) -> { [any]: any } } = {
 	-- 0 -> 1: Das alte Format war nur "TrackId -> Bestzeit"
 	[0] = function(raw)
 		return { version = 1, bestTimes = raw }
+	end,
+	-- 1 -> 2: nur neue Felder (bekommen Standardwerte)
+	[1] = function(raw)
+		local copy = table.clone(raw)
+		copy.version = 2
+		return copy
 	end,
 }
 
@@ -208,6 +265,21 @@ function SaveData.merge(stored: Data, session: Data): Data
 	result.stats.finishedRuns += session.stats.finishedRuns
 	result.stats.coinsCollected += session.stats.coinsCollected
 	result.stats.objectsLaunched += session.stats.objectsLaunched
+	-- Hausaufgaben: der neuere Tag gewinnt, am selben Tag zaehlt der groessere Fortschritt
+	local kept, fresh = result.homework, session.homework
+	if fresh.day > kept.day then
+		result.homework = sanitizeHomework(fresh)
+	elseif fresh.day == kept.day then
+		for _, task in fresh.tasks do
+			for _, existing in kept.tasks do
+				if existing.id == task.id then
+					existing.progress = math.max(existing.progress, task.progress)
+					existing.done = existing.done or task.done
+				end
+			end
+		end
+		kept.bonusDone = kept.bonusDone or fresh.bonusDone
+	end
 	return result
 end
 

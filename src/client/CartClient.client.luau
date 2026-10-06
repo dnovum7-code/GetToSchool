@@ -18,6 +18,7 @@ local DevPanel = require(script.Parent:WaitForChild("DevPanel"))
 local DriftEffects = require(script.Parent:WaitForChild("DriftEffects"))
 local EnterPrompt = require(script.Parent:WaitForChild("EnterPrompt"))
 local GhostClient = require(script.Parent:WaitForChild("GhostClient"))
+local HomeworkUI = require(script.Parent:WaitForChild("HomeworkUI"))
 local LeaderboardClient = require(script.Parent:WaitForChild("LeaderboardClient"))
 local LaunchablesClient = require(script.Parent:WaitForChild("LaunchablesClient"))
 local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
@@ -30,6 +31,7 @@ local Toolkit = require(script.Parent:WaitForChild("Toolkit"))
 local Obstacles = require(script.Parent:WaitForChild("Obstacles"))
 local RandomEventsClient = require(script.Parent:WaitForChild("RandomEventsClient"))
 local SoundSystem = require(script.Parent:WaitForChild("SoundSystem"))
+local StatReporter = require(script.Parent:WaitForChild("StatReporter"))
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local RaceTime = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RaceTime"))
@@ -174,6 +176,7 @@ ShopUI.init(function()
 	return runPhase == "Ready" or runPhase == "Finished" or runPhase == "Aborted"
 end)
 LeaderboardClient.init() -- Bestenlisten (Reiter im Menue, Bretter in der Welt)
+HomeworkUI.init() -- Hausaufgaben (Reiter im Menue)
 ProgressClient.onChanged(function(snapshot)
 	Abilities.setLevels(snapshot.upgrades) -- gekaufte Upgrade-Stufen
 end)
@@ -662,6 +665,7 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 	elseif kind == "Finished" then
 		local result: RunResult = ...
 		runPhase = "Finished"
+		StatReporter.flush()
 		finishedTime = result.time
 		RaceUI.setBest(result.bestTime)
 		showResult(result)
@@ -842,6 +846,7 @@ RunService.PreSimulation:Connect(function(dt)
 		crashDetector:relaxImpact(Config.Track.JumpLandingTolerance, airTime)
 	end
 	DriftEffects.update(dt, telemetry)
+	StatReporter.step(dt, telemetry, runPhase == "Running") -- Driftzeit fuer die Hausaufgaben
 	SoundSystem.update(telemetry.speed, telemetry.grounded, telemetry.skidding)
 	if telemetry.padEvent == "Boost" or telemetry.boostStarted then
 		SoundSystem.play("Boost")

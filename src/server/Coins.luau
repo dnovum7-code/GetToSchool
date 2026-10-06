@@ -16,6 +16,7 @@ local Config = require(Shared:WaitForChild("Config"))
 local Economy = require(Shared:WaitForChild("Progression"):WaitForChild("Economy"))
 local TagList = require(Shared:WaitForChild("TagList"))
 local CartManager = require(script.Parent:WaitForChild("CartManager"))
+local Homework = require(script.Parent:WaitForChild("Homework"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local Track = require(script.Parent:WaitForChild("Track"))
 
@@ -110,6 +111,7 @@ function Coins.collect(player: Player, coin: unknown)
 	runTotals[player] = (runTotals[player] or 0) + value
 	Profiles.get(player).stats.coinsCollected += value
 	Profiles.addCoins(player, value)
+	Homework.report(player, { type = "Coins", amount = value })
 end
 
 -- Neuer Lauf (T): nur die Lauf-Summe auf 0. Eingesammelte Muenzen bleiben weg.
