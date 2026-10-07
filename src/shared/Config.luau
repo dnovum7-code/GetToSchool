@@ -325,13 +325,16 @@ Config.DailySpin = {
 	ItemOrder = { "ExtraLife", "ExtraShield", "StartBoost" },
 	StartBoostSpeed = 45, -- Start-Turbo: so viel Tempo (Studs/s) kommt dazu ...
 	StartBoostDuration = 1.2, -- ... verteilt auf so viele Sekunden
+	-- kind: "Coins" (amount), "Item" (item, amount), "MeterBoost" (amount = Laeufe x2 Meter),
+	--       "Color" (zufaellige kaufbare Wagenfarbe, die man noch nicht hat; sonst amount Muenzen)
+	-- Die Prozente zeigt das Rad-Fenster selbst an (weight / Summe aller weights).
 	Segments = {
 		{
 			id = "Coins20",
 			text = "20",
 			kind = "Coins",
 			amount = 20,
-			weight = 24,
+			weight = 22,
 			color = Color3.fromRGB(255, 200, 60),
 		},
 		{
@@ -340,7 +343,7 @@ Config.DailySpin = {
 			kind = "Item",
 			item = "ExtraLife",
 			amount = 1,
-			weight = 14,
+			weight = 11,
 			color = Color3.fromRGB(90, 190, 110),
 		},
 		{
@@ -352,21 +355,29 @@ Config.DailySpin = {
 			color = Color3.fromRGB(255, 160, 50),
 		},
 		{
+			id = "MeterBoost",
+			text = "x2 Meter",
+			kind = "MeterBoost",
+			amount = 2,
+			weight = 12,
+			color = Color3.fromRGB(255, 120, 40),
+		},
+		{
 			id = "Shield",
 			text = "Helm",
 			kind = "Item",
 			item = "ExtraShield",
 			amount = 1,
-			weight = 14,
+			weight = 10,
 			color = Color3.fromRGB(80, 150, 230),
 		},
 		{
-			id = "Coins30",
-			text = "30",
-			kind = "Coins",
-			amount = 30,
-			weight = 18,
-			color = Color3.fromRGB(255, 200, 60),
+			id = "Paint",
+			text = "Wagenfarbe",
+			kind = "Color",
+			amount = 60,
+			weight = 8,
+			color = Color3.fromRGB(240, 110, 190),
 		},
 		{
 			id = "Boost",
@@ -374,7 +385,7 @@ Config.DailySpin = {
 			kind = "Item",
 			item = "StartBoost",
 			amount = 2,
-			weight = 10,
+			weight = 9,
 			color = Color3.fromRGB(230, 90, 90),
 		},
 		{

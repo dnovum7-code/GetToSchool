@@ -9,7 +9,9 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
+local CosmeticsLogic = require(Shared:WaitForChild("Progression"):WaitForChild("Cosmetics"))
 local DailySpinLogic = require(Shared:WaitForChild("Progression"):WaitForChild("DailySpin"))
+local Cosmetics = require(script.Parent:WaitForChild("Cosmetics"))
 local DayClock = require(script.Parent:WaitForChild("DayClock"))
 local PlayerEvents = require(script.Parent:WaitForChild("PlayerEvents"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
@@ -52,11 +54,30 @@ local function spin(player: Player, _id: unknown): (boolean, string)
 	local index = DailySpinLogic.pick(segments, random:NextNumber())
 	local segment = segments[index]
 	DailySpinLogic.apply(data :: any, segment, day, Config.DailySpin.MaxItems)
+	local text: string
+	if segment.kind == "Coins" then
+		text = `{segment.amount} Muenzen`
+	elseif segment.kind == "MeterBoost" then
+		text = `x2 Meter fuer {segment.amount} Laeufe`
+	elseif segment.kind == "Color" then
+		-- zufaellige Wagenfarbe, die man noch nicht hat; hat man alle: Muenzen
+		local color = CosmeticsLogic.pickUnowned(
+			Config.Cosmetics.Colors :: any,
+			data.cosmetics.colors,
+			random:NextNumber()
+		)
+		if color then
+			Cosmetics.grantColor(player, color.id)
+			text = `Wagenfarbe "{color.name}"`
+		else
+			data.coins += segment.amount
+			text = `{segment.amount} Muenzen (alle Farben schon da)`
+		end
+	else
+		text = `{segment.amount}x {itemName(segment.item or "")}`
+	end
 	Profiles.markChanged(player)
 	Profiles.saveSoon(player)
-	local text = if segment.kind == "Coins"
-		then `{segment.amount} Muenzen`
-		else `{segment.amount}x {itemName(segment.item or "")}`
 	progressRemote:FireClient(player, "SpinResult", index, text)
 	return true, "Das Rad dreht sich ..."
 end

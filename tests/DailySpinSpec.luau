@@ -26,7 +26,7 @@ describe("DailySpin (Gluecksrad)", function()
 	end)
 
 	it("Muenzen und Items gutschreiben, nur einmal", function()
-		local data = { coins = 5, spinDay = -1, items = {} }
+		local data = { coins = 5, spinDay = -1, items = {}, meterBoostRuns = 0 }
 		expect(DailySpin.apply(data, SEGMENTS[1], 50, 9)).toBe(true)
 		expect(data.coins).toBe(25)
 		expect(data.spinDay).toBe(50)
@@ -37,9 +37,19 @@ describe("DailySpin (Gluecksrad)", function()
 	end)
 
 	it("Items begrenzt", function()
-		local data = { coins = 0, spinDay = -1, items = { ExtraLife = 9 } }
+		local data = { coins = 0, spinDay = -1, items = { ExtraLife = 9 }, meterBoostRuns = 0 }
 		DailySpin.apply(data, SEGMENTS[2], 1, 9)
 		expect(data.items.ExtraLife).toBe(9)
+	end)
+
+	it("x2-Meter-Boost und Prozente", function()
+		local data = { coins = 0, spinDay = -1, items = {}, meterBoostRuns = 1 }
+		local segment = { id = "B", text = "x2", kind = "MeterBoost", amount = 2, weight = 1 }
+		expect(DailySpin.apply(data, segment, 5, 9)).toBe(true)
+		expect(data.meterBoostRuns).toBe(3)
+		expect(DailySpin.percent(SEGMENTS, 1)).toBe(75)
+		expect(DailySpin.percent(SEGMENTS, 2)).toBe(25)
+		expect(DailySpin.percent(SEGMENTS, 3)).toBe(0)
 	end)
 
 	it("pro Lauf eins verbrauchen", function()

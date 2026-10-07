@@ -9,7 +9,7 @@ local DailySpin = {}
 export type Segment = {
 	id: string,
 	text: string, -- Beschriftung auf dem Rad
-	kind: string, -- "Coins" oder "Item"
+	kind: string, -- "Coins", "Item", "MeterBoost" oder "Color" (Farbe waehlt der Server)
 	amount: number, -- Muenzen bzw. Anzahl Items
 	item: string?, -- bei "Item": Id aus Config.DailySpin.Items
 	weight: number, -- Wahrscheinlichkeit (relativ)
@@ -19,6 +19,7 @@ export type Data = {
 	coins: number,
 	spinDay: number,
 	items: { [string]: number },
+	meterBoostRuns: number,
 }
 
 function DailySpin.canSpin(spinDay: number, today: number): boolean
@@ -55,8 +56,24 @@ function DailySpin.apply(data: Data, segment: Segment, today: number, maxItems: 
 	elseif segment.kind == "Item" and segment.item then
 		local current = data.items[segment.item] or 0
 		data.items[segment.item] = math.min(current + math.max(1, math.floor(segment.amount)), maxItems)
+	elseif segment.kind == "MeterBoost" then
+		data.meterBoostRuns = math.min(data.meterBoostRuns + math.max(1, math.floor(segment.amount)), 99)
 	end
+	-- "Color": die Farbe sucht der Server aus (Progression/Cosmetics.pickUnowned)
 	return true
+end
+
+-- Gewinnchance eines Felds in Prozent (gerundet auf eine Nachkommastelle)
+function DailySpin.percent(segments: { Segment }, index: number): number
+	local total = 0
+	for _, segment in segments do
+		total += math.max(segment.weight, 0)
+	end
+	local segment = segments[index]
+	if total <= 0 or not segment then
+		return 0
+	end
+	return math.floor(math.max(segment.weight, 0) / total * 1000 + 0.5) / 10
 end
 
 -- Beim Start eines Laufs: von jedem Item eins verbrauchen. Gibt die Ids zurueck.

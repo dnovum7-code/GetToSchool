@@ -54,6 +54,8 @@ local coinLabel: TextLabel
 local tabButtons: { [string]: TextButton } = {}
 local tabDefs: { TabDef } = {}
 local currentTab = "Upgrades"
+local openButtonRef: TextButton? = nil
+local badges: { [string]: boolean } = {} -- Reiter mit Hinweis "!" (z. B. Gluecksrad bereit)
 local shownTab: string? = nil -- zuletzt sichtbarer Reiter (fuer onShow)
 local PANEL_SIZE = Vector2.new(700, 480)
 local canOpen: () -> boolean = function()
@@ -335,6 +337,10 @@ local function makeTabButton(def: TabDef, order: number)
 		Text = def.text,
 	})
 	tabButtons[def.id] = tabButton
+	tabButton:SetAttribute("BaseText", def.text)
+	if badges[def.id] then
+		tabButton.Text = def.text .. " (!)"
+	end
 	tabButton.Activated:Connect(function()
 		currentTab = def.id
 		render()
@@ -353,6 +359,26 @@ function ShopUI.addTab(
 	table.insert(tabDefs, def)
 	if tabBar then
 		makeTabButton(def, #tabDefs)
+	end
+end
+
+-- Hinweis "!" an einem Reiter und am Menue-Knopf (z. B. Gluecksrad kann gedreht werden)
+function ShopUI.setBadge(tabId: string, on: boolean)
+	badges[tabId] = on
+	local tabButton = tabButtons[tabId]
+	if tabButton then
+		local base = tabButton:GetAttribute("BaseText")
+		local text = if type(base) == "string" then base else tabButton.Text
+		tabButton.Text = if on then text .. " (!)" else text
+	end
+	local any = false
+	for _, value in badges do
+		any = any or value
+	end
+	local open = openButtonRef
+	if open then
+		open.Text = if any then "Shop  [B]  !" else "Shop  [B]"
+		open.BackgroundColor3 = if any then Color3.fromRGB(230, 140, 30) else Color3.fromRGB(60, 120, 200)
 	end
 end
 
@@ -484,6 +510,7 @@ function ShopUI.init(check: () -> boolean)
 		Text = "Shop  [B]",
 	})
 	openButton.Activated:Connect(ShopUI.toggle)
+	openButtonRef = openButton
 
 	panel = Instance.new("Frame")
 	panel.Name = "Panel"

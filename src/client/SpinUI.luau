@@ -10,10 +10,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local DailySpinLogic =
+	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression"):WaitForChild("DailySpin"))
 local ProgressClient = require(script.Parent:WaitForChild("ProgressClient"))
 local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
 local ShopUI = require(script.Parent:WaitForChild("ShopUI"))
 local SoundSystem = require(script.Parent:WaitForChild("SoundSystem"))
+local VisualFX = require(script.Parent:WaitForChild("VisualFX"))
 
 local shopRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ShopRequest") :: RemoteEvent
 local progressRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Progress") :: RemoteEvent
@@ -67,7 +70,7 @@ local function buildWheel(parent: Instance): Frame
 		local tag = Instance.new("TextLabel")
 		tag.AnchorPoint = Vector2.new(0.5, 0)
 		tag.Position = UDim2.new(0.5, 0, 0, 8)
-		tag.Size = UDim2.fromOffset(76, 44)
+		tag.Size = UDim2.fromOffset(66, 40)
 		tag.BackgroundColor3 = segment.color
 		tag.TextColor3 = Color3.fromRGB(30, 20, 10)
 		tag.Font = Enum.Font.GothamBold
@@ -168,10 +171,42 @@ local function render(snapshot: ProgressClient.Snapshot)
 			then "Deine Powerups (wirken automatisch beim naechsten Lauf):\n" .. table.concat(lines, "\n")
 			else "Noch keine Powerups. Dreh am Rad!",
 	})
+	-- x2-Meter-Boost (Login-Tag 3, Gluecksrad)
+	local boostRuns = snapshot.meterBoostRuns
+	if type(boostRuns) == "number" and boostRuns > 0 then
+		ShopUI.label(ShopUI.card(30, 3), {
+			Position = UDim2.fromOffset(14, 0),
+			Size = UDim2.new(1, -28, 1, 0),
+			TextColor3 = Color3.fromRGB(255, 160, 60),
+			Font = Enum.Font.GothamBold,
+			Text = `⚡ x2 Meter noch fuer {boostRuns} {if boostRuns == 1 then "Lauf" else "Laeufe"}`,
+		})
+	end
+	-- Gewinnchancen in Prozent
+	local segments = Config.DailySpin.Segments
+	local chances = {}
+	for index, segment in segments do
+		table.insert(chances, `{segment.text}: {DailySpinLogic.percent(segments :: any, index)} %`)
+	end
+	local chanceCard = ShopUI.card(28 + math.ceil(#chances / 3) * 20, 4)
+	ShopUI.label(chanceCard, {
+		Position = UDim2.fromOffset(14, 4),
+		Size = UDim2.new(1, -28, 1, -8),
+		TextYAlignment = Enum.TextYAlignment.Top,
+		TextWrapped = true,
+		TextSize = 14,
+		TextColor3 = Color3.fromRGB(200, 200, 215),
+		Text = "Gewinnchancen:  " .. table.concat(chances, "   ·   "),
+	})
 end
 
 function SpinUI.init()
 	ShopUI.addTab("Spin", "Gluecksrad", render)
+	-- Hinweis am Menue-Knopf, wenn heute noch gedreht werden kann
+	ProgressClient.onChanged(function(snapshot)
+		local info = snapshot.spin :: Info?
+		ShopUI.setBadge("Spin", info ~= nil and info.canSpin)
+	end)
 	progressRemote.OnClientEvent:Connect(function(kind: string, index: unknown, text: unknown)
 		if kind ~= "SpinResult" or type(index) ~= "number" then
 			return
@@ -218,6 +253,7 @@ function SpinUI.init()
 			animation = nil
 			rotation = rotation % 360
 			SoundSystem.play("SpinWin")
+			VisualFX.confetti(string.find(current.text, "500") ~= nil) -- Jackpot: mehr Konfetti
 			RaceUI.showToast(`Gewonnen: {current.text}!`, 3, Color3.fromRGB(255, 215, 80))
 			ShopUI.refresh()
 		end
