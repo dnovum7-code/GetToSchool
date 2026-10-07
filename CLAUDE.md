@@ -43,6 +43,24 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
   Config.TuningPanel. Fehlersuche bei Bodenbausteinen: Config.Debug.TrackPieces.
 
 ## Aktueller Meilenstein
+Terrain aus swissALTI3D, Streaming (gebaut, noch nicht in Studio getestet; Testtabelle im
+README „Terrain-Import und Streaming testen“):
+- Höhendaten: tools/swissalti_to_heightmap.py (16-Bit-PNG für den Roblox-Import, 1 Pixel = 1
+  Voxel) und tools/swissalti_to_terrain.py (Höhen als float32 in .bin, Format im Skriptkopf;
+  nutzt Laden/Glätten aus dem Heightmap-Skript, beide im selben Ordner). Python: rasterio,
+  numpy, pillow.
+- Plugin „Terrain-Import“ (plugin_terrain/, terrainimport.project.json, Rechenlogik
+  TerrainMath mit Lune-Test): schreibt Terrain mit WriteVoxels und Bruchteil-Occupancy (keine
+  Stufen), in Abschnitten mit Fortschritt, Undo. Vergleichsmodus: Varianten nebeneinander mit
+  Schild und SpawnLocation (Ordner workspace.TerrainVergleich, Attribut TerrainTest); im Spiel
+  startet der Wagen an der aktiven Variante (Track.getTerrainTestSpawn, Debug.TerrainTestSpawn).
+  Werte: Config.TerrainImport. Quellenangabe „Höhendaten: © swisstopo“ ist Pflicht.
+- Streaming: bleibt an. server/StreamAhead lädt Gelände in Fahrtrichtung voraus
+  (RequestStreamAroundAsync, Config.Streaming) und warnt in Studio bei zu kleinen Radien
+  (Workspace-Einstellungen kann nur der Nutzer setzen: MinRadius 256, TargetRadius 1024,
+  IntegrityMode MinimumRadiusPause). Räder sind echte Kugeln, Raycast nur für „am Boden?“.
+- Sicherheitsnetz client/TerrainRescue: Wagen unter der Terrain-Oberfläche → zurück obendrauf
+  statt Crash (Tunnel/Höhlen ausgenommen), Config.TerrainSafety.
 Meter, Login-Belohnung, Glücksrad (gebaut, noch nicht in Studio getestet; Testtabelle im
 README „Meter, Login-Belohnung, Glücksrad testen“):
 - Gefahrene Meter: Server zählt pro Lauf (RaceManager countMeters, Logik Progression/
@@ -155,7 +173,7 @@ Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 
 ## Später
 - Noch offen: nichts geplant. Nächster Schritt ist das Testen in Studio (Testlisten im
-  README: M2.5/M3, M4, M5) und Feedback einarbeiten.
+  README: M2.5/M3, M4, M5, Meter/Login, Terrain/Streaming) und Feedback einarbeiten.
 
 ## Steuerung
 | Aktion | Tastatur | Gamepad | Touch |

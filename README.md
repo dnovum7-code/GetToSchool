@@ -167,6 +167,10 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `plugin/` | Studio | Bau-Hilfe-Plugin (Pfeile, Bereiche, Wege beim Bauen) |
 | `tools/build_testplace.luau`, `test/`, `test.project.json` | – | Test-Place: Generator (Lune), erzeugte Strecke/Vorlagen, Projektdatei |
 | `tools/swissalti_to_heightmap.py` | – | Hilfswerkzeug (Python): swissALTI3D-Höhendaten → 16-Bit-Heightmap für den Terrain-Import (siehe „Gelände aus swissALTI3D“) |
+| `tools/swissalti_to_terrain.py` | – | Hilfswerkzeug (Python): swissALTI3D → Höhendatei `.bin` (volle Genauigkeit) für das Plugin „Terrain-Import“ |
+| `plugin_terrain/`, `terrainimport.project.json` | Studio | Plugin „Terrain-Import“: schreibt glattes Terrain mit `WriteVoxels`, Vergleichsmodus; Rechenlogik in `TerrainMath.luau` (getestet) |
+| `src/server/StreamAhead.luau` | Server | StreamingEnabled: lädt Gelände in Fahrtrichtung voraus, warnt in Studio bei zu kleinen Streaming-Radien |
+| `src/client/TerrainRescue.luau` | Client | Sicherheitsnetz: Wagen unter der Terrain-Oberfläche → zurück obendrauf statt Crash |
 | `src/shared/Progression/GhostCodec.luau` | beiden | Reine Logik (getestet): Geist-Aufnahme platzsparend speichern und abspielen |
 | `src/server/Ghosts.luau` | Server | Zeichnet Läufe auf, speichert den Geist der Bestzeit (eigener DataStore) |
 | `src/client/GhostClient.luau` | Client | Spielt den Geist als halbdurchsichtigen Wagen ab |
@@ -500,6 +504,10 @@ GeoTIFF-Kacheln) eine 16-Bit-Graustufen-PNG für den Heightmap-Import in Roblox 
 (tiefster Punkt = schwarz, höchster = weiss) und sagt dir, welche Grösse du im Importdialog
 einstellen musst, damit die Proportionen echt bleiben (1 m ≈ 3.57 Studs).
 
+**Bleiben trotzdem Stufen oder Linien?** Dann den Roblox-Import ganz umgehen: Abschnitt
+„Terrain-Import ohne Stufen (Plugin)“ weiter unten. Python und Pakete (Schritte 1 und 2) sind
+für beide Werkzeuge dieselben.
+
 ### 1. Python installieren (einmalig)
 
 - **Windows:** https://www.python.org/downloads/ → Installer starten, unten
@@ -586,6 +594,140 @@ benachbarte Voxel bekommen dieselbe Höhe → Treppen und Wellen. Bleiben auf se
 Hängen leichte Wellen, mit `--blur 1` bis `--blur 2` neu erzeugen.
 Tipp: Echte Proportionen werden schnell riesig (2 km = über 7000 Studs). Für eine Strecke
 reicht meist ein Ausschnitt mit `--bbox` oder die verkleinerte Variante.
+
+## Terrain-Import ohne Stufen (Plugin)
+
+Der Heightmap-Import von Roblox rundet die Höhen auf Stufen – auch mit 16-Bit-PNG, Weichzeichner
+und Smooth-Werkzeug bleiben Linien. Dieser Weg umgeht ihn: `tools/swissalti_to_terrain.py`
+speichert die Höhen in **voller Genauigkeit** (32-Bit-Kommazahlen in Metern) in einer `.bin`-Datei,
+und das Studio-Plugin **„Terrain-Import“** schreibt das Terrain selbst mit `Terrain:WriteVoxels`.
+An der Oberfläche ist jedes Voxel nur so weit gefüllt, wie das Gelände hineinreicht (z. B. 37 %)
+– dadurch liegt die Oberfläche stufenlos zwischen den 4-Stud-Voxeln.
+
+### 1. Python und Pakete (einmalig)
+
+Genau wie beim Heightmap-Werkzeug (Abschnitt „Gelände aus swissALTI3D“, Schritte 1 und 2):
+
+- **Windows:** Python von https://www.python.org/downloads/ installieren, dabei
+  **„Add python.exe to PATH“** ankreuzen. Neue PowerShell öffnen:
+  ```powershell
+  python --version
+  python -m pip install rasterio numpy pillow
+  ```
+- **Mac:** Python von https://www.python.org/downloads/ (.pkg) installieren. Terminal öffnen
+  (`Cmd` + `Leertaste`, „Terminal“):
+  ```bash
+  python3 --version
+  python3 -m pip install rasterio numpy pillow
+  ```
+  Meldet das Skript trotzdem „Fehlendes Paket“, läuft es mit einem anderen Python (z. B.
+  Homebrew). Die Fehlermeldung zeigt den passenden pip-Befehl für genau dieses Python.
+
+Beide Skripte (`swissalti_to_heightmap.py` und `swissalti_to_terrain.py`) müssen im selben
+Ordner liegen – am einfachsten im Projektordner unter `tools/` lassen.
+
+### 2. Höhendatei erzeugen
+
+Kacheln wie beim Heightmap-Werkzeug herunterladen (swisstopo, Cloud Optimized GeoTIFF, 2 m) und
+in einen Ordner legen. Dann im Projektordner (Windows `python`, Mac `python3`):
+
+```bash
+python tools/swissalti_to_terrain.py kacheln -o huegel.bin
+```
+
+| Option | Wirkung |
+|---|---|
+| `-o datei.bin` | Name der Ausgabe (Standard `terrain.bin`) |
+| `--bbox O_MIN N_MIN O_MAX N_MAX` | Nur einen Ausschnitt, LV95-Koordinaten in Metern (map.geo.admin.ch) |
+| `--blur 1` | Leicht glätten (Gauss, Sigma in 2-m-Pixeln: 0.5–1 leicht, 2 deutlich, 0 = aus) |
+| `--target-width 2000` | Optional: auf 1 Wert pro Voxel bei dieser Breite herunterrechnen (kleinere Datei, schneller). Im Plugin dann dieselbe Breite eintragen |
+
+Die Ausgabe zeigt Grösse, tiefsten und höchsten Punkt und welche Breite echte Proportionen ergibt.
+
+### 3. Plugin installieren (einmalig, wie die Bau-Hilfe)
+
+Im Projektordner:
+
+```bash
+rojo build terrainimport.project.json --plugin GetToSchoolTerrainImport.rbxm
+```
+
+Rojo legt die Datei in deinen Studio-Plugin-Ordner. Studio (neu) starten → Reiter **Plugins** →
+Gruppe **Get to School** → Knopf **Terrain-Import** öffnet das Fenster.
+**Aktualisieren:** `git pull`, denselben Befehl nochmal. **Entfernen:** Plugins → *Plugins
+Folder* → `GetToSchoolTerrainImport.rbxm` löschen.
+
+### 4. Bedienung
+
+1. **Datei wählen (.bin)** – zeigt Grösse, Höhen und das Ergebnis in Studs.
+2. **Position X / Z** = Mitte der Map, **Position Y** = Höhe des tiefsten Punkts.
+   „X/Z = Kamera-Mitte“ übernimmt die Stelle, auf die die Kamera schaut. Norden = −Z, Osten = +X.
+3. **Zielbreite (Studs)** (Ost-West; die Tiefe ergibt sich), **Steigungsfaktor** (Höhen mal
+   Faktor, Breite bleibt: 1.5 = 50 % steiler), **Material** (Knopf schaltet weiter).
+4. **Terrain bauen** – schreibt in Abschnitten mit Fortschrittsbalken; Studio bleibt bedienbar.
+   **Abbrechen** stoppt, **Strg+Z** macht den ganzen Import rückgängig. Darüber liegendes altes
+   Terrain im Bereich wird weggeräumt, Terrain ausserhalb bleibt.
+5. **Vergleich bauen** – baut die Datei fünfmal nebeneinander (in +X-Richtung, Abstand
+   `Config.TerrainImport.CompareGap`) mit Steigung 1.0, 1.25, 1.5, 1.75 und 2.0. Jede Variante hat
+   ein Schild („Variante 3 – Steigung ×1.5“) und eine eigene SpawnLocation am höchsten Punkt.
+   Unter „Aktive Variante“ wählst du, wo du startest (●). Im Spiel startet der Wagen dann dort,
+   bergab ausgerichtet – auch nach R/T (`Config.Debug.TerrainTestSpawn`, nur Studio).
+   Varianten nacheinander testen: Variante wählen → Play → fahren → Stop → nächste Variante.
+6. **Varianten löschen** – entfernt Terrain, Schilder und SpawnLocations aller Varianten.
+
+Vorgaben (Breite, Faktor, Material-Liste, Unterbau, Abschnittsgrösse, Vergleichs-Faktoren und
+Abstand) stehen in `Config.TerrainImport`. Grosse Maps dauern: 2000 × 1000 Studs etwa eine halbe
+bis eine Minute. Fühlt sich Studio dabei zäh an: `ChunkVoxels` kleiner.
+
+**Quellenangabe (Pflicht):** Die Höhendaten sind von swisstopo (freie Geodaten, Nennung der
+Quelle verlangt). Im Spiel sichtbar angeben, z. B. in der Spielbeschreibung oder auf einem
+Schild/Credits-Bildschirm: **„Höhendaten: © swisstopo“** (`Config.TerrainImport.Attribution`).
+
+## Streaming und Terrain
+
+**Problem:** Auf einer grossen Terrain-Map fällt der Wagen manchmal durch den Hügel oder scheint
+darüber zu schweben.
+
+**Ursache (wahrscheinlich):** Mit *StreamingEnabled* hat dein Client nur die Welt in seiner Nähe.
+Die Physik deines Wagens rechnet dein Client. Fährst du schnell bergab, kommst du in Gelände, das
+bei dir noch nicht geladen ist – ohne Kollision fällt der Wagen hindurch. Die Räder sind echte
+Kugeln, die auf dem Boden rollen; der Raycast prüft nur „am Boden?“ (für Antrieb und Lenkung) und
+hebt den Wagen nicht an. Das Schweben kommt also nicht von einer Raycast-Federung. Ich konnte es
+ohne Studio nicht nachstellen – bleibt das Schweben nach diesen Änderungen, bitte Screenshot und
+ob es im Client- oder Server-Fenster passiert.
+
+**Die Möglichkeiten:**
+
+| | Streaming aus | Streaming an (gewählt) |
+|---|---|---|
+| Löcher beim schnellen Fahren | nie | selten; mit Vorausladen und Pause-Schutz praktisch nie |
+| Ladezeit beim Beitreten | länger (alles auf einmal) | kurz |
+| Speicher | ganze Map auf jedem Gerät – auf Handys/Tablets riskant | nur die Umgebung |
+| Grosse Map, viele Teile | wird schwer | dafür gemacht |
+| Aufwand | ein Häkchen | Einstellungen unten + Vorausladen (schon eingebaut) |
+
+**Gewählt: Streaming an**, weil viele Spieler auf Handys spielen und die Map wachsen soll. Damit es
+nicht mehr durchfällt, drei Schutzschichten:
+
+1. **Vorausladen** (`src/server/StreamAhead`): Der Server lädt für jeden Fahrer alle 0.25 s die
+   Gegend dort, wo der Wagen in 1.5 s sein wird (`Player:RequestStreamAroundAsync`). Werte:
+   `Config.Streaming`.
+2. **Workspace-Einstellungen** (einmal in Studio setzen – Skripte dürfen das nicht): Explorer →
+   **Workspace** anklicken → Eigenschaften, Bereich **Streaming**:
+   - `StreamingEnabled` ✓
+   - `StreamingMinRadius` = **256** (so viel ist immer sicher geladen)
+   - `StreamingTargetRadius` = **1024** (so viel wird geladen, wenn möglich)
+   - `StreamingIntegrityMode` = **MinimumRadiusPause** (fehlt Gelände in der Nähe, hält das Spiel
+     kurz an und zeigt „Lädt …“, statt dass der Wagen durchfällt)
+
+   In Studio meldet der Output beim Play `[StreamAhead] Empfehlung …`, solange die Werte kleiner sind.
+3. **Sicherheitsnetz** (`src/client/TerrainRescue`): Gerät der Wagen trotzdem unter die
+   Terrain-Oberfläche, wird er nach 0.15 s wieder obendrauf gesetzt und fährt weiter – kein Crash,
+   kein Leben weg. Tunnel und Höhlen aus Terrain (Decke darüber, Boden direkt darunter) sind
+   ausgenommen. Werte: `Config.TerrainSafety` (`Enabled = false` schaltet es ab).
+
+Kleine Map (etwa unter 1000 × 1000 Studs, wenig Teile)? Dann ist *StreamingEnabled aus* die
+einfachste Lösung; Vorausladen und Warnung schalten sich dann von selbst ab.
 
 ## Speichern (Spielstand)
 
@@ -944,6 +1086,33 @@ entsprechend mehr. Wenn es zu viel ist: `Meters.MetersPerCoin` auf 40.
    Powerups wirken beim nächsten Start (6 Ranzen, Helm, Start-Turbo).
 6. **Visuelle Extras**: Speed-Linien, Staub, Boost-Flammen, Konfetti – und abschaltbar.
 7. **Gamepad/Touch**: LB bzw. „Trick“-Knopf in der Luft; Glücksrad mit Gamepad bedienbar.
+
+## Terrain-Import und Streaming testen
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| Export | `python tools/swissalti_to_terrain.py kacheln -o huegel.bin` | Ausgabe mit Grösse, Höhen und Breite für echte Proportionen; Datei `huegel.bin` |
+| Plugin | `rojo build terrainimport.project.json --plugin GetToSchoolTerrainImport.rbxm`, Studio starten | Plugins → Get to School → Knopf „Terrain-Import“ öffnet das Fenster |
+| Datei laden | „Datei wählen (.bin)“ | Dateiname, Werte, Grösse in m, Höhen; Zeile „Ergebnis: … Studs“ |
+| Falsche Datei | Eine PNG wählen | „Fehler: Falsches Format …“, nichts passiert |
+| Terrain bauen | Breite 2000, Faktor 1, Material Grass, „Terrain bauen“ | Balken läuft, Studio bleibt bedienbar; Hang **ohne Stufen und Linien**, auch aus flachem Winkel |
+| Abbrechen / Undo | Während des Bauens „Abbrechen“, dann Strg+Z | Stoppt; Strg+Z entfernt das Geschriebene |
+| Steigung | Faktor 1.5, nochmal bauen | Gleiche Breite, Hänge sichtbar steiler, kein altes Terrain darüber |
+| Vergleich | „Vergleich bauen“ | 5 Hänge nebeneinander, Schilder „Variante 1 … 5 / Steigung ×1 … ×2“, je eine SpawnLocation oben |
+| Variante wählen | Knopf „1.5“, Play | Wagen steht oben auf Variante ×1.5, Blick bergab; R/T bringen dich dorthin zurück |
+| Varianten löschen | „Varianten löschen“ | Terrain, Schilder und SpawnLocations der Varianten weg; normales Spiel startet wieder an der StartZone |
+| Streaming-Warnung | Workspace mit Standard-Radien, Play | Output: `[StreamAhead] Empfehlung …` mit den drei Werten |
+| Schnell bergab | Grosse Map, Einstellungen wie in „Streaming und Terrain“, Vollgas bergab (auch mit Boost) | Kein Durchfallen; höchstens kurz „Lädt …“ |
+| Sicherheitsnetz | Play, oben in Studio auf **Client** umschalten, in der Befehlszeile: `local c = workspace.Carts:GetChildren()[1] c:PivotTo(c:GetPivot() - Vector3.new(0, 12, 0))` | Wagen steckt kurz im Hang und sitzt nach ~0.15 s wieder obendrauf, fährt weiter, kein „CRASH!“, kein Leben weg |
+| Tunnel | Tunnel aus Terrain bauen und durchfahren | Kein Zurücksetzen im Tunnel |
+
+### Wichtigste Studio-Tests Terrain (nach Wichtigkeit)
+
+1. **Spiel startet ohne Fehler** (auch ohne Varianten, mit und ohne StreamingEnabled).
+2. **Terrain bauen**: glatter Hang ohne Stufen; Studio friert nicht ein; Strg+Z geht.
+3. **Schnell bergab** auf grosser Map mit den Streaming-Einstellungen: kein Durchfallen.
+4. **Sicherheitsnetz**: Test mit der Befehlszeile – zurück obendrauf statt Crash.
+5. **Vergleich**: 5 Varianten mit Schildern, Start an der gewählten Variante, Löschen räumt auf.
 
 ## Tuning-Ablauf
 
