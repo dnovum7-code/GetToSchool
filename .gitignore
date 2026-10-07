@@ -19,3 +19,7 @@ sourcemap.json
 .idea/
 .DS_Store
 Thumbs.db
+
+# Python (tools/)
+__pycache__/
+*.pyc

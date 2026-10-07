@@ -166,6 +166,7 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/client/LocalClone.luau` | Client | Lokale Kopien (fliegende Kühe, Steine, Props …) |
 | `plugin/` | Studio | Bau-Hilfe-Plugin (Pfeile, Bereiche, Wege beim Bauen) |
 | `tools/build_testplace.luau`, `test/`, `test.project.json` | – | Test-Place: Generator (Lune), erzeugte Strecke/Vorlagen, Projektdatei |
+| `tools/swissalti_to_heightmap.py` | – | Hilfswerkzeug (Python): swissALTI3D-Höhendaten → 16-Bit-Heightmap für den Terrain-Import (siehe „Gelände aus swissALTI3D“) |
 | `src/shared/Progression/GhostCodec.luau` | beiden | Reine Logik (getestet): Geist-Aufnahme platzsparend speichern und abspielen |
 | `src/server/Ghosts.luau` | Server | Zeichnet Läufe auf, speichert den Geist der Bestzeit (eigener DataStore) |
 | `src/client/GhostClient.luau` | Client | Spielt den Geist als halbdurchsichtigen Wagen ab |
@@ -485,6 +486,100 @@ Mehrere Strecken liegen im selben Place. Jede Strecke ist ein **Model** mit dem 
 Tipp: Die Strecken dürfen weit auseinander liegen (bei StreamingEnabled lädt der Server die
 neue Startgegend vor dem Wechsel). Neue Spieler starten auf der ersten freien Strecke aus
 `Config.Tracks`.
+
+## Gelände aus swissALTI3D (Heightmap)
+
+`tools/swissalti_to_heightmap.py` macht aus echten Schweizer Höhendaten (swissALTI3D,
+GeoTIFF-Kacheln) eine 16-Bit-Graustufen-PNG für den Heightmap-Import in Roblox Studio
+(tiefster Punkt = schwarz, höchster = weiss) und sagt dir, welche Grösse du im Importdialog
+einstellen musst, damit die Proportionen echt bleiben (1 m ≈ 3.57 Studs).
+
+### 1. Python installieren (einmalig)
+
+- **Windows:** https://www.python.org/downloads/ → Installer starten, unten
+  **„Add python.exe to PATH“** ankreuzen → *Install Now*. Danach eine **neue** PowerShell
+  öffnen und prüfen: `python --version` (3.9 oder neuer).
+- **Mac:** https://www.python.org/downloads/ → macOS-Installer (.pkg) installieren. Im
+  Terminal prüfen: `python3 --version`. (Alternativ mit Homebrew: `brew install python`.)
+
+### 2. Pakete installieren (einmalig)
+
+```powershell
+# Windows (PowerShell)
+python -m pip install rasterio numpy pillow
+```
+```bash
+# Mac (Terminal)
+python3 -m pip install rasterio numpy pillow
+```
+Meldet der Mac „externally-managed-environment“ (Homebrew-Python), ein eigenes Umfeld anlegen:
+`python3 -m venv ~/heightmap-venv && source ~/heightmap-venv/bin/activate` und den
+pip-Befehl nochmals ausführen (in jedem neuen Terminal wieder `source ...activate`).
+
+**Fehler „Fehlendes Paket“, obwohl pip „already satisfied“ meldet?** Dann gibt es zwei
+Pythons (z. B. python.org und Homebrew), und das Skript läuft mit dem anderen. Die
+Fehlermeldung zeigt den passenden pip-Befehl für genau dieses Python, den einfach kopieren.
+In VS Code: `Cmd/Ctrl + Shift + P` → „Python: Select Interpreter“ → das Python wählen, in
+dem die Pakete installiert sind.
+
+### 3. Kacheln herunterladen
+
+1. https://www.swisstopo.admin.ch/de/hoehenmodell-swissalti3d → *Auswahl per Rechteck*
+   (oder Gemeinde), Format **Cloud Optimized GeoTIFF**, Auflösung **2 m**.
+2. „Link zu allen Dateien exportieren“ bzw. die Kacheln einzeln herunterladen.
+3. Alle `.tif`-Dateien in **einen** Ordner legen, z. B. `kacheln` (andere Dateien stören nicht).
+
+### 4. Umrechnen
+
+Im Projektordner (Windows `python`, Mac `python3`):
+
+```bash
+python tools/swissalti_to_heightmap.py kacheln -o huegel.png
+```
+
+Es entstehen zwei PNGs: `huegel.png` (echte Proportionen) und `huegel_2000studs.png`
+(verkleinert auf 2000 Studs Breite). Jede ist genau so gross, dass **1 Pixel = 1 Voxel
+(4 Studs)** ergibt, und hat ihre eigene passende Size.
+
+Optionen:
+
+| Option | Wirkung |
+|---|---|
+| `-o datei.png` | Name der Ausgabe (Standard `heightmap.png`) |
+| `--bbox O_MIN N_MIN O_MAX N_MAX` | Nur einen Ausschnitt nehmen, LV95-Koordinaten in Metern. Ablesen auf https://map.geo.admin.ch (Rechtsklick → Koordinaten „CH1903+ / LV95“), z. B. `--bbox 2600000 1199000 2601500 1200000` |
+| `--blur 1.5` | Leichter Weichzeichner (Sigma in 2-m-Pixeln; 1–2 = kleine Unebenheiten weg, 0 = aus) |
+| `--target-width 2000` | Breite in Studs für die verkleinerte Variante (Standard 2000, `0` = keine) |
+
+Beispielausgabe:
+
+```
+Variante 1: echte Proportionen (1 m = 3.57 Studs)
+  Datei: .../huegel.png
+         1786 x 893 Pixel (= Voxel), 16 Bit
+  Roblox Size   X: 7144   Y: 893.2   Z: 3572
+
+Variante 2: verkleinert auf 2000 Studs Breite
+  Datei: .../huegel_2000studs.png
+         500 x 250 Pixel (= Voxel), 16 Bit
+  Roblox Size   X: 2000   Y: 251.8   Z: 1000
+```
+
+Grenzen des Roblox-Importers: höchstens 4096 Pixel pro Seite (sonst wird die Variante
+übersprungen) und Y höchstens 1024 Studs (sonst kommt eine Warnung). Dann einen kleineren
+Ausschnitt oder eine kleinere Zielbreite nehmen.
+
+### 5. In Studio importieren
+
+*Terrain Editor → Import* → bei *Heightmap* die PNG wählen → bei *Size* **genau** die Werte
+X, Y, Z eintragen, die zu **dieser** Datei gehören → *Generate*. Die Bildbreite ist
+Ost-West (X), die Bildhöhe Nord-Süd (Z); Norden ist oben im Bild.
+
+**Stufen oder Wellenlinien im Gelände?** Fast immer passt die Size nicht zur Datei (z. B. die
+Werte der verkleinerten Variante mit der grossen PNG). Dann streckt Roblox das Bild, und
+benachbarte Voxel bekommen dieselbe Höhe → Treppen und Wellen. Bleiben auf sehr flachen
+Hängen leichte Wellen, mit `--blur 1` bis `--blur 2` neu erzeugen.
+Tipp: Echte Proportionen werden schnell riesig (2 km = über 7000 Studs). Für eine Strecke
+reicht meist ein Ausschnitt mit `--bbox` oder die verkleinerte Variante.
 
 ## Speichern (Spielstand)
 
