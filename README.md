@@ -522,6 +522,12 @@ Meldet der Mac „externally-managed-environment“ (Homebrew-Python), ein eigen
 `python3 -m venv ~/heightmap-venv && source ~/heightmap-venv/bin/activate` und den
 pip-Befehl nochmals ausführen (in jedem neuen Terminal wieder `source ...activate`).
 
+**Fehler „Fehlendes Paket“, obwohl pip „already satisfied“ meldet?** Dann gibt es zwei
+Pythons (z. B. python.org und Homebrew), und das Skript läuft mit dem anderen. Die
+Fehlermeldung zeigt den passenden pip-Befehl für genau dieses Python, den einfach kopieren.
+In VS Code: `Cmd/Ctrl + Shift + P` → „Python: Select Interpreter“ → das Python wählen, in
+dem die Pakete installiert sind.
+
 ### 3. Kacheln herunterladen
 
 1. https://www.swisstopo.admin.ch/de/hoehenmodell-swissalti3d → *Auswahl per Rechteck*

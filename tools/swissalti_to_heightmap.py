@@ -28,9 +28,11 @@ try:
     from rasterio.merge import merge
     from PIL import Image
 except ImportError as err:
+    # Pakete für genau dieses Python installieren (auf dem Mac gibt es oft mehrere)
     sys.exit(
         f"Fehlendes Paket: {err.name}\n"
-        "Installieren mit:  python -m pip install rasterio numpy pillow"
+        f"Dieses Skript läuft mit: {sys.executable}\n"
+        f'Installieren mit:  "{sys.executable}" -m pip install rasterio numpy pillow'
     )
 
 # Roblox: 1 Stud = 0.28 m  ->  1 m = 3.571... Studs
