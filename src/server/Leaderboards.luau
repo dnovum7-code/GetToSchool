@@ -79,12 +79,16 @@ function Leaderboards.boards(): { Board }
 		add(id)
 	end
 	table.insert(result, { id = L().FlightBoardId, kind = "Distance", name = L().FlightBoardName })
+	table.insert(result, { id = L().MetersBoardId, kind = "Meters", name = L().MetersBoardName })
 	return result
 end
 
 local function findBoard(boardId: string): Board?
 	if boardId == L().FlightBoardId then
 		return { id = boardId, kind = "Distance", name = L().FlightBoardName }
+	end
+	if boardId == L().MetersBoardId then
+		return { id = boardId, kind = "Meters", name = L().MetersBoardName }
 	end
 	if Track.exists(boardId) then
 		return { id = boardId, kind = "Time", name = Track.displayName(boardId) }
@@ -386,7 +390,26 @@ local function refreshGlobal(board: Board)
 end
 
 -- Alle globalen Listen neu laden und an alle schicken (fuer die Bretter in der Welt)
+-- Gesamtmeter eintragen (nur wenn genug dazugekommen ist, spart DataStore-Anfragen)
+local submittedMeters: { [Player]: number } = {}
+local function submitMeters(player: Player, force: boolean)
+	if Profiles.getState(player) ~= "Ready" then
+		return
+	end
+	local board = findBoard(L().MetersBoardId)
+	local total = Profiles.get(player).stats.totalMeters
+	local last = submittedMeters[player] or 0
+	if not board or total < 1 or (not force and total - last < L().MetersSubmitStep) then
+		return
+	end
+	submittedMeters[player] = total
+	writeBest(board, player.UserId, LeaderboardMath.encode("Meters", total))
+end
+
 local function refreshAll()
+	for _, player in Players:GetPlayers() do
+		task.spawn(submitMeters, player, false)
+	end
 	for _, board in Leaderboards.boards() do
 		refreshGlobal(board)
 		for _, player in Players:GetPlayers() do
@@ -446,6 +469,10 @@ function Leaderboards.init()
 		end)
 	end)
 	Players.PlayerRemoving:Connect(function(player)
+		task.spawn(function()
+			submitMeters(player, true)
+			submittedMeters[player] = nil
+		end)
 		friendIds[player] = nil
 		lastRequest[player] = nil
 	end)

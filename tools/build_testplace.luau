@@ -802,6 +802,17 @@ do
 			Parent = track,
 		})
 	end
+	-- Gesamtmeter aller Spieler (oben in der Mitte)
+	part({
+		Name = "Bestenliste_Meters",
+		Size = Vector3.new(22, 16, 0.5),
+		CFrame = frame(s + 99.5, 0, 31),
+		Color = Color3.fromRGB(28, 60, 40),
+		CanCollide = false,
+		Tags = { "Leaderboard" },
+		Attributes = { Board = "Meters", Face = "Back" },
+		Parent = track,
+	})
 end
 
 ------------------------------------------------------------------------------------------

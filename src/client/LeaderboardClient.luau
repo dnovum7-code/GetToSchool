@@ -49,6 +49,8 @@ local worldBoards: { [Instance]: { gui: SurfaceGui, boardId: string } } = {}
 local function formatValue(kind: string, value: number): string
 	if kind == "Time" then
 		return RaceTime.format(value)
+	elseif kind == "Meters" then
+		return `{math.floor(value)} m`
 	end
 	return `{math.floor(value * 10 + 0.5) / 10} m`
 end
@@ -62,8 +64,15 @@ local function knowBoard(boardId: string, name: string)
 			rank[def.id] = index
 		end
 		table.sort(boardOrder, function(a, b)
-			local ra = if a == Config.Leaderboard.FlightBoardId then math.huge else rank[a] or 1000
-			local rb = if b == Config.Leaderboard.FlightBoardId then math.huge else rank[b] or 1000
+			local function order(id: string): number
+				if id == Config.Leaderboard.MetersBoardId then
+					return math.huge
+				elseif id == Config.Leaderboard.FlightBoardId then
+					return 1e9
+				end
+				return rank[id] or 1000
+			end
+			local ra, rb = order(a), order(b)
 			if ra ~= rb then
 				return ra < rb
 			end

@@ -128,6 +128,13 @@ describe("LeaderboardMath (Bestenlisten)", function()
 		expect(LeaderboardMath.decode("Distance", 873)).toBe(87.3)
 	end)
 
+	it("Gesamtmeter: ganze Meter, groesser ist besser", function()
+		expect(LeaderboardMath.encode("Meters", 1234.9)).toBe(1234)
+		expect(LeaderboardMath.decode("Meters", 1234)).toBe(1234)
+		expect(LeaderboardMath.isBetter("Meters", 2000, 1000)).toBe(true)
+		expect(LeaderboardMath.ascending("Meters")).toBe(false)
+	end)
+
 	it("besser: Zeit kleiner, Weite groesser", function()
 		expect(LeaderboardMath.isBetter("Time", 100, 200)).toBe(true)
 		expect(LeaderboardMath.isBetter("Time", 200, 100)).toBe(false)

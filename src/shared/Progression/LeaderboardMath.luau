@@ -5,11 +5,12 @@
 -- Zwei Arten von Listen:
 --   "Time"     Fahrzeit einer Strecke, kleiner ist besser (gespeichert in Millisekunden)
 --   "Distance" weitester Wurf, groesser ist besser (gespeichert in Zehntel-Metern)
+--   "Meters"   insgesamt gefahrene Meter, groesser ist besser (gespeichert in ganzen Metern)
 -- OrderedDataStores speichern nur ganze Zahlen, daher encode/decode.
 
 local LeaderboardMath = {}
 
-export type Kind = "Time" | "Distance"
+export type Kind = "Time" | "Distance" | "Meters"
 
 export type Entry = {
 	userId: number,
@@ -21,6 +22,8 @@ export type Entry = {
 function LeaderboardMath.encode(kind: Kind, value: number): number
 	if kind == "Time" then
 		return math.floor(value * 1000 + 0.5)
+	elseif kind == "Meters" then
+		return math.floor(value)
 	end
 	return math.floor(value * 10 + 0.5)
 end
@@ -28,6 +31,8 @@ end
 function LeaderboardMath.decode(kind: Kind, stored: number): number
 	if kind == "Time" then
 		return stored / 1000
+	elseif kind == "Meters" then
+		return stored
 	end
 	return stored / 10
 end

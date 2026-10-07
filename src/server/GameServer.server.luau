@@ -15,6 +15,7 @@ local Garage = require(script.Parent:WaitForChild("Garage"))
 local Homework = require(script.Parent:WaitForChild("Homework"))
 local Launchables = require(script.Parent:WaitForChild("Launchables"))
 local Leaderboards = require(script.Parent:WaitForChild("Leaderboards"))
+local Leaderstats = require(script.Parent:WaitForChild("Leaderstats"))
 local PlayerEvents = require(script.Parent:WaitForChild("PlayerEvents"))
 local PlayerSettings = require(script.Parent:WaitForChild("PlayerSettings"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
@@ -61,6 +62,7 @@ PlayerSettings.init() -- Einstellungen und Einstiegs-Hinweise speichern
 Tricks.init() -- Lufttricks: Muenzen fuer saubere Landungen
 DailySpin.init() -- taegliches Gluecksrad und Powerups
 Leaderboards.init() -- Bestenlisten (Global, Server, Freunde)
+Leaderstats.init() -- Spielerliste oben rechts: Meter und Muenzen
 PlayerEvents.init() -- Ereignisse (Ziel, Wurf, Drift ...) fuer Hausaufgaben und Erfolge
 Homework.init() -- Hausaufgaben (taegliche Aufgaben)
 DevTuning.init(cartsFolder) -- Tuning-Panel (nur in Studio aktiv)
