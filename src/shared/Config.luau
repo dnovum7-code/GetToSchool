@@ -461,9 +461,23 @@ Config.Coins = {
 	SpinSpeed = 180, -- Drehung (Grad pro Sekunde, nur Anzeige)
 	BobHeight = 0.3, -- Auf und Ab (Studs)
 	BobSpeed = 2.5,
-	-- Belohnung im Ziel: Grundbetrag plus Bonus je nach Note (6 = beste)
-	FinishBase = 10,
-	GradeBonus = { [6] = 20, [5] = 12, [4] = 7, [3] = 4, [2] = 2, [1] = 0 },
+	-- Belohnung im Ziel: Grundbetrag plus Bonus je nach Note (6 = beste).
+	-- Seit es Muenzen fuer gefahrene Meter gibt (Config.Meters) kleiner als vorher
+	-- (vorher 10 und 20/12/7/4/2/0), damit ein Lauf ungefaehr gleich viel bringt.
+	FinishBase = 3,
+	GradeBonus = { [6] = 12, [5] = 7, [4] = 4, [3] = 2, [2] = 1, [1] = 0 },
+}
+
+-- Gefahrene Meter: Der Server zaehlt pro Lauf, wie weit der Wagen gefahren ist (nur im Wagen,
+-- ohne Teleports/Neustarts, hoechstens MaxSpeed). Meter werden zu Muenzen; Muenz-Parts,
+-- Zielbonus und Kuh-Bonus gibt es weiter als Extras. Logik: Progression/MeterMath.
+Config.Meters = {
+	StudsPerMeter = 3.57, -- 1 m = 3.57 Studs
+	MetersPerCoin = 30, -- 1 Muenze pro 30 m (Teststrecke ~500 m = ~16 Muenzen)
+	MaxSpeed = 320, -- hoechstens so schnell (Studs/s) zaehlt ein Stueck, sonst gar nicht
+	Slack = 4, -- Puffer (Studs) pro Messung fuer Ruckler
+	SendInterval = 0.25, -- so oft (s) bekommt der Client den Meterzaehler
+	BoostMultiplier = 2, -- x2-Boost (Login-Tag 3, Gluecksrad): Meter zaehlen so viel mehr
 }
 
 -- Launchables (Baustein "Launchable": Kuh, Muelltonne, Gartenzwerg, Briefkasten ...).
@@ -704,6 +718,8 @@ Config.TuningPanel = {
 	{ label = "JumpPad-Staerke", path = "Track.JumpPadStrength" },
 	{ label = "Leben pro Lauf", path = "Lives.PerRun", server = true }, -- gilt ab dem naechsten T
 	{ label = "Geist-Durchsicht", path = "Ghost.Transparency", span = 0.4 }, -- 0.2 .. 1, ab dem naechsten Start
+	{ label = "Meter pro Muenze", path = "Meters.MetersPerCoin", server = true },
+	{ label = "Muenzen im Ziel (Grund)", path = "Coins.FinishBase", server = true },
 	{ label = "Kombo-Zeitfenster (s)", path = "Combo.Window", server = true },
 	{ label = "Kombo-Extra pro Stufe", path = "Combo.StepBonus", server = true },
 	{ label = "Trick-Drehtempo", path = "Tricks.SpinSpeed" },

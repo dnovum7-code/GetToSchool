@@ -22,6 +22,8 @@ local Economy =
 	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression"):WaitForChild("Economy"))
 local RunRules =
 	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression"):WaitForChild("RunRules"))
+local MeterMath =
+	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression"):WaitForChild("MeterMath"))
 local RunValidation = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression"):WaitForChild("RunValidation")
 )
@@ -65,6 +67,12 @@ type RaceState = {
 	bestFlight: { name: string, meters: number }?, -- weitester Flug in diesem Lauf
 	visits: { RunValidation.Visit }, -- Checkpoints in diesem Lauf (fuer die Plausibilitaet)
 	startPosition: Vector3, -- wo der Wagen die Startzone verlassen hat
+	meters: number, -- gefahrene Meter in diesem Lauf (mit x2-Boost)
+	meterCoins: number, -- dafuer schon ausgezahlte Muenzen
+	meterBoost: boolean, -- x2-Boost aktiv in diesem Lauf
+	lastMeterPos: Vector3?, -- letzte gemessene Position (nil = nach Teleport neu anfangen)
+	lastMeterAt: number,
+	lastMeterSend: number,
 }
 
 -- Ergebnis eines Laufs, so wie es an den Client geht
@@ -85,6 +93,9 @@ export type RunResult = {
 	bestFlightName: string?, -- weitester Flug in diesem Lauf (z. B. "Kuh") ...
 	bestFlightMeters: number?, -- ... und wie weit
 	leaderboardNote: string?, -- Lauf zaehlt nicht fuer die globale Bestenliste: warum
+	meters: number, -- gefahrene Meter
+	meterCoins: number, -- Muenzen dafuer
+	meterBoost: boolean, -- mit x2-Boost
 }
 
 local races: { [Player]: RaceState } = {}
@@ -108,6 +119,12 @@ local function getRace(player: Player): RaceState
 			bestFlight = nil,
 			visits = {},
 			startPosition = Vector3.zero,
+			meters = 0,
+			meterCoins = 0,
+			meterBoost = false,
+			lastMeterPos = nil,
+			lastMeterAt = 0,
+			lastMeterSend = 0,
 		}
 		races[player] = race
 	end
@@ -167,6 +184,11 @@ function RaceManager.restart(player: Player)
 	race.life = RunRules.newRun(Config.Lives.PerRun, maxShieldFor(player)) -- Leben wieder voll
 	race.hits = 0
 	race.bestFlight = nil
+	race.meters = 0
+	race.meterCoins = 0
+	race.meterBoost = false
+	race.lastMeterPos = nil
+	runState:FireClient(player, "Meters", 0, false)
 	Launchables.resetRun(player) -- umgeschleuderte Objekte stehen wieder
 	-- Neuer Lauf: Zufallsereignisse neu wuerfeln (vor "Reset", damit die Strecke steht)
 	runState:FireClient(player, "Events", RandomEvents.roll())
@@ -198,6 +220,7 @@ function RaceManager.restartAtCheckpoint(player: Player)
 		race.usedCheckpointRestart = true
 	end
 	race.lastRestart = os.clock()
+	race.lastMeterPos = nil -- Teleport zaehlt nicht als Strecke
 	runState:FireClient(player, "Reset", cframe, true)
 end
 
@@ -471,6 +494,9 @@ local function finish(player: Player, race: RaceState, finishZone: BasePart, pos
 		bestFlightName = if race.bestFlight then race.bestFlight.name else nil,
 		bestFlightMeters = if race.bestFlight then race.bestFlight.meters else nil,
 		leaderboardNote = submitToLeaderboard(player, race, time, position),
+		meters = math.floor(race.meters),
+		meterCoins = race.meterCoins,
+		meterBoost = race.meterBoost,
 	}
 	runState:FireClient(player, "Finished", result)
 	-- Alle Muenzen der Strecke (seit dem letzten Ziel)? Vor dem Wiederherstellen zaehlen.
@@ -543,6 +569,49 @@ function RaceManager.reportCrash(player: Player, reason: unknown)
 	end
 end
 
+-- Lauf beginnt: Meter ab hier zaehlen, x2-Boost verbrauchen (falls vorhanden)
+local function startMeters(player: Player, race: RaceState, position: Vector3)
+	race.lastMeterPos = position
+	race.lastMeterAt = os.clock()
+	local data = Profiles.get(player)
+	if data.meterBoostRuns > 0 then
+		data.meterBoostRuns -= 1
+		race.meterBoost = true
+		Profiles.markChanged(player)
+	end
+	runState:FireClient(player, "Meters", 0, race.meterBoost)
+end
+
+-- Jeden Frame im Lauf: plausible Strecke zaehlen, Muenzen auszahlen, Client informieren
+local function countMeters(player: Player, race: RaceState, position: Vector3)
+	local M = Config.Meters
+	local now = os.clock()
+	local last = race.lastMeterPos
+	race.lastMeterPos = position
+	local dt = now - race.lastMeterAt
+	race.lastMeterAt = now
+	if not last then
+		return
+	end
+	local studs = MeterMath.segment({ last.X, last.Y, last.Z }, { position.X, position.Y, position.Z }, dt, M)
+	if studs <= 0 then
+		return
+	end
+	local meters = MeterMath.toMeters(studs, M) * (if race.meterBoost then M.BoostMultiplier else 1)
+	race.meters += meters
+	local data = Profiles.get(player)
+	data.stats.totalMeters += meters
+	local due = MeterMath.coinsDue(race.meters, race.meterCoins, M)
+	if due > 0 then
+		race.meterCoins += due
+		Profiles.addCoins(player, due) -- meldet die Aenderung (und damit die Gesamtmeter)
+	end
+	if now - race.lastMeterSend >= M.SendInterval then
+		race.lastMeterSend = now
+		runState:FireClient(player, "Meters", race.meters, race.meterBoost)
+	end
+end
+
 local function updatePlayer(player: Player, race: RaceState)
 	if race.phase == "GameOver" then
 		return -- nach dem Game-Over-Screen startet der Server selbst neu
@@ -567,6 +636,7 @@ local function updatePlayer(player: Player, race: RaceState)
 	-- Zonen zaehlen nur, wenn der Spieler wirklich im Wagen sitzt
 	-- (ein leerer Wagen, der ins Ziel rollt, gewinnt nichts).
 	if not CartManager.isSeated(player) then
+		race.lastMeterPos = nil -- zu Fuss oder Ragdoll: zaehlt nicht
 		return
 	end
 	local position = base.Position
@@ -585,6 +655,7 @@ local function updatePlayer(player: Player, race: RaceState)
 			race.phase = "Running"
 			race.startTime = os.clock()
 			race.startPosition = position
+			startMeters(player, race, position)
 			PlayerEvents.fire(player, { type = "RunStarted", trackId = race.trackId }) -- z. B. Powerups
 			local vehicle = if cart then cart:GetAttribute("VehicleId") else nil
 			Ghosts.start(player, race.trackId, if type(vehicle) == "string" then vehicle else "")
@@ -592,6 +663,7 @@ local function updatePlayer(player: Player, race: RaceState)
 		end
 	elseif race.phase == "Running" then
 		Ghosts.record(player, base.CFrame, os.clock() - race.startTime)
+		countMeters(player, race, position)
 		checkCheckpoints(player, race, base)
 		local finishZone = Track.findZone(race.trackId, Config.Race.FinishZoneTag)
 		if finishZone and Track.isInZone(finishZone, position) then

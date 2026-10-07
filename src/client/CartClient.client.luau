@@ -19,6 +19,7 @@ local DriftEffects = require(script.Parent:WaitForChild("DriftEffects"))
 local EnterPrompt = require(script.Parent:WaitForChild("EnterPrompt"))
 local AchievementUI = require(script.Parent:WaitForChild("AchievementUI"))
 local ComboUI = require(script.Parent:WaitForChild("ComboUI"))
+local MeterUI = require(script.Parent:WaitForChild("MeterUI"))
 local ControlsInfo = require(script.Parent:WaitForChild("ControlsInfo"))
 local GarageUI = require(script.Parent:WaitForChild("GarageUI"))
 local GhostClient = require(script.Parent:WaitForChild("GhostClient"))
@@ -107,6 +108,9 @@ type RunResult = {
 	bestFlightName: string?,
 	bestFlightMeters: number?,
 	leaderboardNote: string?,
+	meters: number?,
+	meterCoins: number?,
+	meterBoost: boolean?,
 }
 local GOLD = Color3.fromRGB(255, 215, 80)
 local function showResult(result: RunResult)
@@ -151,6 +155,14 @@ local function showResult(result: RunResult)
 		`Muenzen: +{result.coinsReward} im Ziel ({result.coinsBase} + {result.coinsGradeBonus} Notenbonus), `
 			.. `{result.coinsCollected} eingesammelt`
 	)
+	if result.meters then
+		table.insert(
+			lines,
+			`Gefahren: {result.meters} m  (+{result.meterCoins or 0} Muenzen{if result.meterBoost
+				then ", x" .. Config.Meters.BoostMultiplier .. "-Boost"
+				else ""})`
+		)
+	end
 	if result.leaderboardNote then
 		table.insert(lines, result.leaderboardNote) -- Zeit zaehlt nur persoenlich
 	end
@@ -218,6 +230,7 @@ Onboarding.init() -- einmalige Hinweise beim ersten Lauf
 Tricks.init() -- Lufttricks (Anzeige)
 VisualFX.init() -- Speed-Linien, Konfetti ...
 ComboUI.init() -- Kuh-Kombo-Anzeige
+MeterUI.init() -- Meterzaehler und x2-Anzeige
 ProgressClient.onChanged(function(snapshot)
 	Abilities.setLevels(snapshot.upgrades) -- gekaufte Upgrade-Stufen
 	Settings.load(snapshot) -- gespeicherte Einstellungen (einmal nach dem Laden)
