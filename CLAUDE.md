@@ -43,6 +43,22 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
   Config.TuningPanel. Fehlersuche bei Bodenbausteinen: Config.Debug.TrackPieces.
 
 ## Aktueller Meilenstein
+Meter, Login-Belohnung, Glücksrad (gebaut, noch nicht in Studio getestet; Testtabelle im
+README „Meter, Login-Belohnung, Glücksrad testen“):
+- Gefahrene Meter: Server zählt pro Lauf (RaceManager countMeters, Logik Progression/
+  MeterMath; nur im Wagen, Teleport/Neustart setzt den Messpunkt zurück, Stücke schneller als
+  Config.Meters.MaxSpeed zählen nicht). 1 Münze pro Config.Meters.MetersPerCoin, Zielbonus
+  dafür gesenkt. Gesamtmeter in stats.totalMeters, Bestenliste „Gesamtmeter“ (Kind Meters),
+  leaderstats (server/Leaderstats), HUD src/client/MeterUI.
+- Tagesuhr: server/DayClock (UTC, ResetHourUtc) für Hausaufgaben, Glücksrad, Login.
+  Debug.DayTravel: F3 = nächster Tag (nur Studio, Settings-Remote "DebugNextDay").
+- Login-Belohnung: 7-Tage-Serie (Progression/LoginStreak, server/LoginRewards, Popup
+  src/client/LoginRewardUI, Settings-Remote "ClaimLogin"), Config.LoginRewards. Tag 3 =
+  x2-Meter-Boost (meterBoostRuns, verbraucht beim Start eines Laufs), Tag 7 = exklusiver Skin
+  „GoldenSkin“ (Config.Cosmetics, exclusive + sparkle; schon da = Münzen).
+- Glücksrad erweitert: Felder x2 Meter und Wagenfarbe, Prozente im Fenster, Hinweis am
+  Menü-Knopf (ShopUI.setBadge), Konfetti beim Gewinn.
+- Spielstand Version 3 (Migration 2 -> 3).
 M5 – Spaß-Extras (gebaut, noch nicht in Studio getestet; Testliste im README
 „Wichtigste Studio-Tests M5“):
 - Lufttricks: Q/E in der Luft (Gamepad LB, Touch „Trick“) drehen um die Hochachse;

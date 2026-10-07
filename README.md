@@ -190,6 +190,12 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/shared/Progression/Combo.luau` | beiden | Reine Logik (getestet): Kuh-Kombo zählen, Multiplikator, Bonus |
 | `src/shared/Progression/DailySpin.luau` | beiden | Reine Logik (getestet): Glücksrad würfeln, Gewinne, Powerups pro Lauf verbrauchen |
 | `src/server/DailySpin.luau`, `src/client/SpinUI.luau` | beide | Glücksrad: Server würfelt und schreibt gut / Reiter mit drehendem Rad |
+| `src/shared/Progression/MeterMath.luau` | beiden | Reine Logik (getestet): gefahrene Meter plausibel zählen, Münzen pro Meter |
+| `src/client/MeterUI.luau` | Client | Meterzähler oben links, Anzeige „x2 METER!“ |
+| `src/server/Leaderstats.luau` | Server | Spielerliste oben rechts: Meter und Münzen |
+| `src/server/DayClock.luau` | Server | Gemeinsamer UTC-Tag für alles Tägliche; Debug-Tageswechsel (F3) |
+| `src/shared/Progression/LoginStreak.luau` | beiden | Reine Logik (getestet): 7-Tage-Login-Serie |
+| `src/server/LoginRewards.luau`, `src/client/LoginRewardUI.luau` | beide | Login-Belohnung: prüfen und gutschreiben / Kalender-Popup |
 | `src/client/VisualFX.luau` | Client | Visuelle Extras: Speed-Linien, Landestaub, Boost-Flammen, Konfetti |
 | `src/client/ComboUI.luau` | Client | Große Anzeige „3x KOMBO!“ mit ablaufendem Zeitbalken |
 | `src/client/Tricks.luau`, `src/server/Tricks.luau` | beide | Lufttricks: drehen, Anzeige, Crash bei schiefer Landung / Münzen prüfen und gutschreiben |
@@ -800,6 +806,37 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Boost-Flammen | Drift-Boost, Turbo-Pausenbrot oder Start-Turbo | Orange Flammen hinten am Wagen, solange der Schub läuft |
 | Konfetti | Ins Ziel fahren | Konfetti fällt von oben; bei neuer Bestzeit doppelt so viel |
 | Effekte aus | Einstellungen → „Extra-Effekte“ aus | Nichts davon mehr zu sehen |
+
+## Meter, Login-Belohnung, Glücksrad testen
+
+Zum schnellen Testen in `Config.Debug`: `DayTravel = true` (F3 = nächster Tag),
+`FreeSpins = true` (Rad beliebig oft).
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| Meterzähler | Losfahren | Oben links zählt „123 m“ hoch (nur im Lauf, im Wagen) |
+| Meter-Münzen | 30 m fahren | Münzzähler +1 alle 30 m (`Config.Meters.MetersPerCoin`) |
+| Kein Teleport | R (Checkpoint) oder Crash | Meter springen nicht hoch, zählen danach normal weiter |
+| Zu Fuß | E (aussteigen), herumlaufen | Meter bleiben stehen |
+| Ergebnis | Ins Ziel | Zeile „Gefahren: 504 m (+16 Münzen)“ |
+| Gesamtmeter | Spielerliste oben rechts (Tab) | Spalten „Meter“ und „Münzen“, Meter steigen beim Fahren |
+| Bestenliste Gesamtmeter | B → Bestenliste → „Gesamtmeter“; Teststrecke: Tafel über der Schule | Top 10 + dein Platz (Eintrag spätestens nach 60 s bzw. beim Verlassen) |
+| Login Tag 1 | Neuer Spielstand, Play | Kalender-Popup, Tag 1 golden umrandet, „Abholen!“ → 25 Münzen, Konfetti, Popup geht zu |
+| Nur einmal am Tag | Stop, Play | Kein Popup mehr |
+| Serie | `DayTravel` an, F3, Popup | Tag 2 (40 Münzen); F3, F3: Tag 3 = x2 Meter |
+| x2-Boost | Nach Tag 3 losfahren | „x2 METER!“ unter dem Zähler, Meter zählen doppelt; gilt für 3 Läufe (Rest steht im Glücksrad-Reiter) |
+| Tag 7 | Bis Tag 7 weiter | „Goldener Glanz – exklusiv!“: Wagen golden mit Funkeln, Lackiererei zeigt ihn; in der Lackiererei sonst „Login-Tag 7“ (nicht kaufbar) |
+| Tag 7 nochmal | Weiter bis zum nächsten Tag 7 | 250 Münzen statt Skin |
+| Verpasster Tag | F3 zweimal hintereinander ohne Abholen dazwischen, dann Play/Popup | Wieder Tag 1 |
+| Glücksrad-Hinweis | Rad noch nicht gedreht | Menü-Knopf orange „Shop [B] !“, Reiter „Gluecksrad (!)“ |
+| Glücksrad | Drehen | Rad hält am vom Server gewürfelten Feld, Tick-Sound (Id eintragen), Konfetti + „Gewonnen: …“; darunter Gewinnchancen in % |
+| Wagenfarbe gewonnen | Feld „Wagenfarbe“ | Eine Farbe, die du noch nicht hattest, ist gekauft und am aktuellen Fahrzeug |
+| Alter Spielstand | Mit Spielstand von vorher (Version 2) | Lädt ohne Fehler, Gesamtmeter 0, Serie beginnt bei Tag 1 |
+
+**Balance-Vorschlag (eingetragen, im Tuning-Panel änderbar):** 1 Münze pro 30 m; Zielbonus
+von 10 + 20/12/7/4/2/0 auf 3 + 12/7/4/2/1/0 gesenkt. Teststrecke (~500 m, Note 4, ~15
+Münz-Parts): vorher ca. 32 Münzen, jetzt ca. 17 + 3 + 4 + 15 = 39. Längere Strecken bringen
+entsprechend mehr. Wenn es zu viel ist: `Meters.MetersPerCoin` auf 40.
 
 ### Wichtigste Studio-Tests M5 (nach Wichtigkeit)
 
