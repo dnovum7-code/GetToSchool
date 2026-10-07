@@ -3,15 +3,19 @@
 
 Liest alle GeoTIFF-Kacheln (*.tif / *.tiff) aus einem Ordner, fügt sie zusammen,
 schneidet optional einen Ausschnitt aus (LV95-Koordinaten), glättet optional und
-speichert eine 16-Bit-Graustufen-PNG (tiefster Punkt = schwarz, höchster = weiss).
-Im Terminal steht danach, welche Grösse (X, Y, Z in Studs) im Roblox-Importdialog
-eingestellt werden muss, damit die Proportionen echt bleiben.
+speichert 16-Bit-Graustufen-PNGs (tiefster Punkt = schwarz, höchster = weiss):
+eine in echten Proportionen und eine verkleinert auf eine Zielbreite.
+
+Roblox rechnet beim Import 1 Pixel = 1 Voxel = 4 Studs. Passt die Bildgrösse nicht zur
+eingestellten Size, streckt Roblox das Bild, und es entstehen Stufen und Wellenlinien.
+Deshalb wird jede PNG genau auf das Voxel-Raster umgerechnet (weich, bikubisch), und im
+Terminal steht die passende Size (X, Y, Z in Studs) für den Importdialog.
 
 Beispiele:
     python swissalti_to_heightmap.py kacheln
     python swissalti_to_heightmap.py kacheln -o huegel.png --blur 1.5
     python swissalti_to_heightmap.py kacheln --bbox 2600000 1199000 2601500 1200000
-    python swissalti_to_heightmap.py kacheln --target-width 2000 --max-pixels 1024
+    python swissalti_to_heightmap.py kacheln --target-width 1500
 
 Benötigt: pip install rasterio numpy pillow
 """
@@ -37,6 +41,10 @@ except ImportError as err:
 
 # Roblox: 1 Stud = 0.28 m  ->  1 m = 3.571... Studs
 STUDS_PER_METER = 1 / 0.28
+# Roblox-Terrain: 1 Heightmap-Pixel = 1 Voxel = 4 Studs; Grenzen des Importers
+VOXEL_STUDS = 4
+MAX_IMAGE_PIXELS = 4096
+MAX_HEIGHT_STUDS = 1024
 
 
 def parse_args() -> argparse.Namespace:
@@ -46,7 +54,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("ordner", type=Path, help="Ordner mit den swissALTI3D-Kacheln (.tif)")
     p.add_argument(
         "-o", "--output", type=Path, default=Path("heightmap.png"),
-        help="Ausgabedatei (Standard: heightmap.png)",
+        help="Ausgabedatei für echte Proportionen (Standard: heightmap.png); "
+             "die verkleinerte Variante bekommt _<Breite>studs angehängt",
     )
     p.add_argument(
         "--bbox", type=float, nargs=4, metavar=("O_MIN", "N_MIN", "O_MAX", "N_MAX"),
@@ -59,12 +68,7 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--target-width", type=float, default=2000.0, metavar="STUDS",
-        help="Zielbreite in Studs für die verkleinerte Variante (Standard: 2000)",
-    )
-    p.add_argument(
-        "--max-pixels", type=int, default=0, metavar="N",
-        help="Bild verkleinern, falls die längere Seite mehr als N Pixel hat (0 = nie). "
-             "Die Grösse in Metern/Studs bleibt gleich.",
+        help="Zielbreite in Studs für die verkleinerte Variante (Standard: 2000, 0 = keine)",
     )
     return p.parse_args()
 
@@ -142,16 +146,10 @@ def gaussian_blur(heights: np.ndarray, sigma: float) -> np.ndarray:
     return out.astype(np.float32)
 
 
-def downscale(heights: np.ndarray, max_pixels: int) -> np.ndarray:
-    rows, cols = heights.shape
-    longest = max(rows, cols)
-    if max_pixels <= 0 or longest <= max_pixels:
-        return heights
-    factor = max_pixels / longest
-    new_size = (max(1, round(cols * factor)), max(1, round(rows * factor)))
+def resample_to_voxels(heights: np.ndarray, cols: int, rows: int) -> np.ndarray:
+    """Höhen weich (bikubisch) auf genau cols x rows Pixel umrechnen, 1 Pixel = 1 Voxel."""
     img = Image.fromarray(heights.astype(np.float32))
-    print(f"Bild verkleinert: {cols} x {rows} -> {new_size[0]} x {new_size[1]} Pixel")
-    return np.asarray(img.resize(new_size, Image.Resampling.BOX), dtype=np.float32)
+    return np.asarray(img.resize((cols, rows), Image.Resampling.BICUBIC), dtype=np.float32)
 
 
 def save_png(heights: np.ndarray, path: Path, h_min: float, h_max: float) -> None:
@@ -165,29 +163,34 @@ def save_png(heights: np.ndarray, path: Path, h_min: float, h_max: float) -> Non
     Image.fromarray(gray).save(path)  # uint16 -> 16-Bit-Graustufen-PNG
 
 
-def print_sizes(width_m: float, depth_m: float, h_min: float, h_max: float, target_width: float) -> None:
-    height_m = h_max - h_min
-    x = width_m * STUDS_PER_METER
-    y = height_m * STUDS_PER_METER
-    z = depth_m * STUDS_PER_METER
+def write_variant(heights: np.ndarray, width_m: float, depth_m: float,
+                  studs_per_m: float, path: Path, title: str) -> None:
+    """Eine PNG passend zum Voxel-Raster schreiben und die Roblox-Size dazu ausgeben."""
+    cols = max(2, round(width_m * studs_per_m / VOXEL_STUDS))
+    rows = max(2, round(depth_m * studs_per_m / VOXEL_STUDS))
 
     print()
-    print("Gelände")
-    print(f"  Grösse:        {width_m:.0f} m (Ost-West) x {depth_m:.0f} m (Nord-Süd)")
-    print(f"  Tiefster Punkt: {h_min:.1f} m ü. M.")
-    print(f"  Höchster Punkt: {h_max:.1f} m ü. M.  (Unterschied {height_m:.1f} m)")
-    print()
-    print(f"Roblox-Import, echte Proportionen (1 m = {STUDS_PER_METER:.2f} Studs)")
-    print(f"  Size X: {x:.0f}   Y: {y:.0f}   Z: {z:.0f}")
+    print(title)
+    if max(cols, rows) > MAX_IMAGE_PIXELS:
+        print(f"  Übersprungen: bräuchte {cols} x {rows} Pixel, Roblox erlaubt höchstens "
+              f"{MAX_IMAGE_PIXELS}. Kleineren Ausschnitt (--bbox) oder --target-width nehmen.")
+        return
 
-    if target_width > 0 and x > 0:
-        f = target_width / x
-        print()
-        print(f"Roblox-Import, verkleinert auf {target_width:.0f} Studs Breite (Faktor {f:.3f})")
-        print(f"  Size X: {x * f:.0f}   Y: {y * f:.0f}   Z: {z * f:.0f}")
-        print(f"  (1 Stud entspricht dann {1 / (STUDS_PER_METER * f):.2f} m)")
-    print()
-    print("Y = Höhe von Schwarz bis Weiss. X = Bildbreite (Ost-West), Z = Bildhöhe (Nord-Süd).")
+    grid = resample_to_voxels(heights, cols, rows)
+    h_min = float(grid.min())
+    h_max = float(grid.max())
+    save_png(grid, path, h_min, h_max)
+
+    size_x = cols * VOXEL_STUDS
+    size_z = rows * VOXEL_STUDS
+    size_y = (h_max - h_min) * studs_per_m
+    print(f"  Datei: {path.resolve()}")
+    print(f"         {cols} x {rows} Pixel (= Voxel), 16 Bit")
+    print(f"  Roblox Size   X: {size_x}   Y: {size_y:.1f}   Z: {size_z}")
+    print(f"  (1 Stud = {1 / studs_per_m:.2f} m)")
+    if size_y > MAX_HEIGHT_STUDS:
+        print(f"  Achtung: Y ist grösser als {MAX_HEIGHT_STUDS} Studs (Grenze des Importers). "
+              "Kleineren Ausschnitt oder kleinere Zielbreite nehmen.")
 
 
 def main() -> None:
@@ -204,14 +207,33 @@ def main() -> None:
     if args.blur > 0:
         print(f"Weichzeichner: Sigma {args.blur:g} Pixel")
         heights = gaussian_blur(heights, args.blur)
-    heights = downscale(heights, args.max_pixels)
 
     h_min = float(heights.min())
     h_max = float(heights.max())
-    save_png(heights, args.output, h_min, h_max)
-    print(f"Gespeichert: {args.output.resolve()} ({heights.shape[1]} x {heights.shape[0]} Pixel, 16 Bit)")
+    print()
+    print("Gelände")
+    print(f"  Grösse:         {width_m:.0f} m (Ost-West) x {depth_m:.0f} m (Nord-Süd)")
+    print(f"  Tiefster Punkt: {h_min:.1f} m ü. M.")
+    print(f"  Höchster Punkt: {h_max:.1f} m ü. M.  (Unterschied {h_max - h_min:.1f} m)")
 
-    print_sizes(width_m, depth_m, h_min, h_max, args.target_width)
+    write_variant(
+        heights, width_m, depth_m, STUDS_PER_METER, args.output,
+        f"Variante 1: echte Proportionen (1 m = {STUDS_PER_METER:.2f} Studs)",
+    )
+    if args.target_width > 0:
+        studs_per_m = args.target_width / width_m
+        small = args.output.with_name(
+            f"{args.output.stem}_{args.target_width:g}studs{args.output.suffix}"
+        )
+        write_variant(
+            heights, width_m, depth_m, studs_per_m, small,
+            f"Variante 2: verkleinert auf {args.target_width:g} Studs Breite",
+        )
+
+    print()
+    print("Im Importdialog genau diese Size zur passenden Datei eintragen, sonst streckt Roblox")
+    print("das Bild und es gibt Stufen/Wellen. X = Ost-West, Z = Nord-Süd (Norden oben),")
+    print("Y = Höhe von Schwarz bis Weiss.")
 
 
 if __name__ == "__main__":
