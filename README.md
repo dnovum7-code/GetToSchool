@@ -537,31 +537,47 @@ Im Projektordner (Windows `python`, Mac `python3`):
 python tools/swissalti_to_heightmap.py kacheln -o huegel.png
 ```
 
+Es entstehen zwei PNGs: `huegel.png` (echte Proportionen) und `huegel_2000studs.png`
+(verkleinert auf 2000 Studs Breite). Jede ist genau so gross, dass **1 Pixel = 1 Voxel
+(4 Studs)** ergibt, und hat ihre eigene passende Size.
+
 Optionen:
 
 | Option | Wirkung |
 |---|---|
 | `-o datei.png` | Name der Ausgabe (Standard `heightmap.png`) |
 | `--bbox O_MIN N_MIN O_MAX N_MAX` | Nur einen Ausschnitt nehmen, LV95-Koordinaten in Metern. Ablesen auf https://map.geo.admin.ch (Rechtsklick → Koordinaten „CH1903+ / LV95“), z. B. `--bbox 2600000 1199000 2601500 1200000` |
-| `--blur 1.5` | Leichter Weichzeichner (Sigma in Pixeln; 1–2 = kleine Unebenheiten weg, 0 = aus) |
-| `--target-width 2000` | Breite in Studs für die verkleinerte Variante in der Ausgabe (Standard 2000) |
-| `--max-pixels 1024` | Bild verkleinern, wenn die längere Seite grösser ist (Fläche in Metern bleibt gleich). Nützlich, falls Studio das Bild zu gross findet. |
+| `--blur 1.5` | Leichter Weichzeichner (Sigma in 2-m-Pixeln; 1–2 = kleine Unebenheiten weg, 0 = aus) |
+| `--target-width 2000` | Breite in Studs für die verkleinerte Variante (Standard 2000, `0` = keine) |
 
-Die Ausgabe zeigt Grösse in Metern, tiefste und höchste Höhe und zwei Vorschläge:
+Beispielausgabe:
 
 ```
-Roblox-Import, echte Proportionen (1 m = 3.57 Studs)
-  Size X: 7143   Y: 892   Z: 3571
+Variante 1: echte Proportionen (1 m = 3.57 Studs)
+  Datei: .../huegel.png
+         1786 x 893 Pixel (= Voxel), 16 Bit
+  Roblox Size   X: 7144   Y: 893.2   Z: 3572
 
-Roblox-Import, verkleinert auf 2000 Studs Breite (Faktor 0.280)
-  Size X: 2000   Y: 250   Z: 1000
+Variante 2: verkleinert auf 2000 Studs Breite
+  Datei: .../huegel_2000studs.png
+         500 x 250 Pixel (= Voxel), 16 Bit
+  Roblox Size   X: 2000   Y: 251.8   Z: 1000
 ```
+
+Grenzen des Roblox-Importers: höchstens 4096 Pixel pro Seite (sonst wird die Variante
+übersprungen) und Y höchstens 1024 Studs (sonst kommt eine Warnung). Dann einen kleineren
+Ausschnitt oder eine kleinere Zielbreite nehmen.
 
 ### 5. In Studio importieren
 
-*Terrain Editor → Import* → bei *Heightmap* die PNG wählen → bei *Size* die Werte X, Y, Z
-aus der Ausgabe eintragen (Y = Höhe von Schwarz bis Weiss) → *Generate*. Die Bildbreite ist
+*Terrain Editor → Import* → bei *Heightmap* die PNG wählen → bei *Size* **genau** die Werte
+X, Y, Z eintragen, die zu **dieser** Datei gehören → *Generate*. Die Bildbreite ist
 Ost-West (X), die Bildhöhe Nord-Süd (Z); Norden ist oben im Bild.
+
+**Stufen oder Wellenlinien im Gelände?** Fast immer passt die Size nicht zur Datei (z. B. die
+Werte der verkleinerten Variante mit der grossen PNG). Dann streckt Roblox das Bild, und
+benachbarte Voxel bekommen dieselbe Höhe → Treppen und Wellen. Bleiben auf sehr flachen
+Hängen leichte Wellen, mit `--blur 1` bis `--blur 2` neu erzeugen.
 Tipp: Echte Proportionen werden schnell riesig (2 km = über 7000 Studs). Für eine Strecke
 reicht meist ein Ausschnitt mit `--bbox` oder die verkleinerte Variante.
 
