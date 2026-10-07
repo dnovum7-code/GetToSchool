@@ -85,8 +85,9 @@ def find_tiles(folder: Path) -> list[Path]:
     return tiles
 
 
-def load_mosaic(tiles: list[Path], bbox: list[float] | None):
-    """Fügt die Kacheln zusammen; Rückgabe: Höhen (float32, NaN = keine Daten), Pixelgrösse x/y in m."""
+def load_mosaic(tiles: list[Path], bbox: list[float] | None, with_origin: bool = False):
+    """Fügt die Kacheln zusammen; Rückgabe: Höhen (float32, NaN = keine Daten), Pixelgrösse x/y
+    in m und mit `with_origin` zusätzlich die LV95-Koordinaten (Ost, Nord) der Nordwest-Ecke."""
     sources = [rasterio.open(t) for t in tiles]
     try:
         crs = sources[0].crs
@@ -106,7 +107,7 @@ def load_mosaic(tiles: list[Path], bbox: list[float] | None):
         else:
             bounds = None
 
-        mosaic, _transform = merge(
+        mosaic, transform = merge(
             sources, bounds=bounds, res=res, nodata=nodata, dtype="float32"
         )
     finally:
@@ -116,6 +117,8 @@ def load_mosaic(tiles: list[Path], bbox: list[float] | None):
     heights = mosaic[0].astype(np.float32)
     heights[heights == np.float32(nodata)] = np.nan
     heights[heights < -1000] = np.nan  # Sicherheitsnetz für andere Nodata-Werte
+    if with_origin:
+        return heights, abs(res[0]), abs(res[1]), (transform.c, transform.f)
     return heights, abs(res[0]), abs(res[1])
 
 

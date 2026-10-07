@@ -289,6 +289,10 @@ end
 -- Startposition: Mitte der Startzone, auf dem Boden, Blick in Richtung der
 -- Vorderseite (Front) der Zone. Ohne Startzone: vor dem SpawnLocation.
 function Track.getSpawn(trackId: string): CFrame
+	local testSpawn = Track.getTerrainTestSpawn()
+	if testSpawn then
+		return testSpawn
+	end
 	local startZone = Track.findZone(trackId, Config.Race.StartZoneTag)
 	if startZone then
 		-- von der Oberseite der Zone aus nach unten den Boden suchen
@@ -296,6 +300,39 @@ function Track.getSpawn(trackId: string): CFrame
 		return Track.placeOnGround(top, { startZone }, true)
 	end
 	return Track.getFallbackSpawn()
+end
+
+-- Terrain-Vergleich (Plugin "Terrain-Import", nur Studio mit Config.Debug.TerrainTestSpawn):
+-- Start an der aktiven Varianten-SpawnLocation (Ordner "TerrainVergleich"), ein Stueck bergab
+-- davor, damit der Wagen nicht auf der SpawnLocation steht. nil = kein Terrain-Vergleich.
+function Track.getTerrainTestSpawn(): CFrame?
+	if not Config.Debug.TerrainTestSpawn then
+		return nil
+	end
+	local folder = workspace:FindFirstChild("TerrainVergleich")
+	if not folder then
+		return nil
+	end
+	for _, instance in folder:GetDescendants() do
+		if
+			instance:IsA("SpawnLocation")
+			and instance.Enabled
+			and instance:GetAttribute("TerrainTest") == true
+		then
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Exclude
+			params.FilterDescendantsInstances = if cartsFolder then { folder, cartsFolder } else { folder }
+			local position = instance.Position
+			local normal = averageGroundNormal(position + Vector3.new(0, 3, 0), params)
+			local downhill = if normal then Vector3.new(normal.X, 0, normal.Z) else Vector3.zero
+			if downhill.Magnitude < 0.05 then
+				downhill = -Vector3.zAxis
+			end
+			local origin = position + downhill.Unit * 10
+			return Track.placeOnGround(CFrame.lookAt(origin, origin + downhill.Unit), { folder }, true)
+		end
+	end
+	return nil
 end
 
 -- Ersatz-Start, solange es keine Startzone gibt: vor dem ersten SpawnLocation.

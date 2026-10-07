@@ -782,6 +782,51 @@ Config.TuningPanel = {
 	{ label = "Ragdoll schwebt (0..1)", path = "Crash.RagdollFloat", span = 0.45 },
 }
 
+-- Studio-Plugin "Terrain-Import" (plugin_terrain/): baut Gelaende aus einer Hoehendatei von
+-- tools/swissalti_to_terrain.py. Die Werte hier sind die Vorgaben im Plugin-Fenster.
+Config.TerrainImport = {
+	Width = 2000, -- Zielbreite (Ost-West) in Studs; Tiefe ergibt sich aus den Daten
+	SlopeFactor = 1, -- Hoehen mal diesem Faktor (Breite bleibt): > 1 = steiler
+	Material = "Grass", -- Startwert; im Plugin per Knopf durch Materials schalten
+	Materials = { "Grass", "LeafyGrass", "Ground", "Mud", "Rock", "Sand", "Snow", "Asphalt" },
+	BaseDepth = 16, -- so dick (Studs) ist der Unterbau unter dem tiefsten Punkt
+	ChunkVoxels = 32, -- Abschnittsgroesse (Voxel pro Seite) beim Schreiben; kleiner = fluessiger
+	-- Vergleichsmodus: Varianten nebeneinander (in +X-Richtung), je mit Schild und SpawnLocation
+	CompareFactors = { 1.0, 1.25, 1.5, 1.75, 2.0 },
+	CompareGap = 100, -- Abstand zwischen zwei Varianten (Studs)
+	Attribution = "Höhendaten: © swisstopo", -- Quellenangabe (Pflicht, z. B. in den Credits)
+}
+
+-- StreamingEnabled: Der Client laedt nur die Welt in seiner Naehe. Faehrt man schnell bergab,
+-- laedt der Server das Gelaende in Fahrtrichtung voraus (src/server/StreamAhead).
+Config.Streaming = {
+	LookaheadTime = 1.5, -- so viele Sekunden voraus (Position + Tempo * Zeit) wird geladen
+	Interval = 0.25, -- so oft (s) pro Spieler pruefen
+	MinSpeed = 30, -- langsamer: nichts extra laden (Studs/s)
+	MinMove = 48, -- neue Anfrage erst, wenn das Ziel so weit (Studs) gewandert ist
+	Timeout = 2, -- so lange (s) darf eine Anfrage hoechstens dauern
+	-- Empfohlene Workspace-Einstellungen. Skripte duerfen sie nicht setzen: in Studio im
+	-- Explorer Workspace anklicken und unter "Streaming" eintragen. In Studio warnt der
+	-- Server im Output, wenn sie kleiner sind (WarnInStudio).
+	RecommendedMinRadius = 256,
+	RecommendedTargetRadius = 1024,
+	RecommendedIntegrityMode = "MinimumRadiusPause",
+	WarnInStudio = true,
+}
+
+-- Sicherheitsnetz: Ist der Wagen unter die Terrain-Oberflaeche geraten (durchgefallen), wird
+-- er wieder auf die Oberflaeche gesetzt, statt zu crashen (src/client/TerrainRescue).
+Config.TerrainSafety = {
+	Enabled = true,
+	CheckInterval = 0.1, -- so oft (s) pruefen
+	Margin = 2, -- so weit (Studs) muss die Oberflaeche ueber dem Wagenboden liegen
+	BelowTime = 0.15, -- so lange (s) muss der Wagen darunter sein (kurzes Eintauchen zaehlt nicht)
+	ProbeHeight = 400, -- so weit (Studs) nach oben wird die Oberflaeche gesucht
+	FloorProbe = 10, -- Boden so nah darunter + Decke darueber = Hoehle/Tunnel, kein Absturz
+	KeepSpeed = 0.8, -- Anteil des waagerechten Tempos nach dem Zuruecksetzen
+	Lift = 1, -- zusaetzlicher Abstand (Studs) ueber der Oberflaeche beim Zuruecksetzen
+}
+
 -- Fehlersuche (nur in Studio wirksam; im veroeffentlichten Spiel automatisch aus, siehe unten)
 Config.Debug = {
 	-- true = im Output melden, wenn ein Rad einen Bodenbaustein erkennt und welcher
@@ -795,6 +840,9 @@ Config.Debug = {
 	ShowHintsAlways = false,
 	-- true = Gluecksrad beliebig oft drehen (zum Testen)
 	FreeSpins = false,
+	-- true = Terrain-Vergleich: Der Wagen startet an der aktiven Varianten-SpawnLocation des
+	-- Plugins "Terrain-Import" (statt an der StartZone), solange es eine gibt
+	TerrainTestSpawn = true,
 	-- true = Taste F3 schaltet einen Tag weiter (Hausaufgaben, Gluecksrad, Login-Serie testen)
 	DayTravel = false,
 }

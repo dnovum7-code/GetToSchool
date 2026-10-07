@@ -1,0 +1,6 @@
+{
+  "name": "GetToSchoolTerrainImport",
+  "tree": {
+    "$path": "plugin_terrain"
+  }
+}
