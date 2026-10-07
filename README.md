@@ -166,6 +166,7 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/client/LocalClone.luau` | Client | Lokale Kopien (fliegende Kühe, Steine, Props …) |
 | `plugin/` | Studio | Bau-Hilfe-Plugin (Pfeile, Bereiche, Wege beim Bauen) |
 | `tools/build_testplace.luau`, `test/`, `test.project.json` | – | Test-Place: Generator (Lune), erzeugte Strecke/Vorlagen, Projektdatei |
+| `tools/swissalti_to_heightmap.py` | – | Hilfswerkzeug (Python): swissALTI3D-Höhendaten → 16-Bit-Heightmap für den Terrain-Import (siehe „Gelände aus swissALTI3D“) |
 | `src/shared/Progression/GhostCodec.luau` | beiden | Reine Logik (getestet): Geist-Aufnahme platzsparend speichern und abspielen |
 | `src/server/Ghosts.luau` | Server | Zeichnet Läufe auf, speichert den Geist der Bestzeit (eigener DataStore) |
 | `src/client/GhostClient.luau` | Client | Spielt den Geist als halbdurchsichtigen Wagen ab |
@@ -485,6 +486,78 @@ Mehrere Strecken liegen im selben Place. Jede Strecke ist ein **Model** mit dem 
 Tipp: Die Strecken dürfen weit auseinander liegen (bei StreamingEnabled lädt der Server die
 neue Startgegend vor dem Wechsel). Neue Spieler starten auf der ersten freien Strecke aus
 `Config.Tracks`.
+
+## Gelände aus swissALTI3D (Heightmap)
+
+`tools/swissalti_to_heightmap.py` macht aus echten Schweizer Höhendaten (swissALTI3D,
+GeoTIFF-Kacheln) eine 16-Bit-Graustufen-PNG für den Heightmap-Import in Roblox Studio
+(tiefster Punkt = schwarz, höchster = weiss) und sagt dir, welche Grösse du im Importdialog
+einstellen musst, damit die Proportionen echt bleiben (1 m ≈ 3.57 Studs).
+
+### 1. Python installieren (einmalig)
+
+- **Windows:** https://www.python.org/downloads/ → Installer starten, unten
+  **„Add python.exe to PATH“** ankreuzen → *Install Now*. Danach eine **neue** PowerShell
+  öffnen und prüfen: `python --version` (3.9 oder neuer).
+- **Mac:** https://www.python.org/downloads/ → macOS-Installer (.pkg) installieren. Im
+  Terminal prüfen: `python3 --version`. (Alternativ mit Homebrew: `brew install python`.)
+
+### 2. Pakete installieren (einmalig)
+
+```powershell
+# Windows (PowerShell)
+python -m pip install rasterio numpy pillow
+```
+```bash
+# Mac (Terminal)
+python3 -m pip install rasterio numpy pillow
+```
+Meldet der Mac „externally-managed-environment“ (Homebrew-Python), ein eigenes Umfeld anlegen:
+`python3 -m venv ~/heightmap-venv && source ~/heightmap-venv/bin/activate` und den
+pip-Befehl nochmals ausführen (in jedem neuen Terminal wieder `source ...activate`).
+
+### 3. Kacheln herunterladen
+
+1. https://www.swisstopo.admin.ch/de/hoehenmodell-swissalti3d → *Auswahl per Rechteck*
+   (oder Gemeinde), Format **Cloud Optimized GeoTIFF**, Auflösung **2 m**.
+2. „Link zu allen Dateien exportieren“ bzw. die Kacheln einzeln herunterladen.
+3. Alle `.tif`-Dateien in **einen** Ordner legen, z. B. `kacheln` (andere Dateien stören nicht).
+
+### 4. Umrechnen
+
+Im Projektordner (Windows `python`, Mac `python3`):
+
+```bash
+python tools/swissalti_to_heightmap.py kacheln -o huegel.png
+```
+
+Optionen:
+
+| Option | Wirkung |
+|---|---|
+| `-o datei.png` | Name der Ausgabe (Standard `heightmap.png`) |
+| `--bbox O_MIN N_MIN O_MAX N_MAX` | Nur einen Ausschnitt nehmen, LV95-Koordinaten in Metern. Ablesen auf https://map.geo.admin.ch (Rechtsklick → Koordinaten „CH1903+ / LV95“), z. B. `--bbox 2600000 1199000 2601500 1200000` |
+| `--blur 1.5` | Leichter Weichzeichner (Sigma in Pixeln; 1–2 = kleine Unebenheiten weg, 0 = aus) |
+| `--target-width 2000` | Breite in Studs für die verkleinerte Variante in der Ausgabe (Standard 2000) |
+| `--max-pixels 1024` | Bild verkleinern, wenn die längere Seite grösser ist (Fläche in Metern bleibt gleich). Nützlich, falls Studio das Bild zu gross findet. |
+
+Die Ausgabe zeigt Grösse in Metern, tiefste und höchste Höhe und zwei Vorschläge:
+
+```
+Roblox-Import, echte Proportionen (1 m = 3.57 Studs)
+  Size X: 7143   Y: 892   Z: 3571
+
+Roblox-Import, verkleinert auf 2000 Studs Breite (Faktor 0.280)
+  Size X: 2000   Y: 250   Z: 1000
+```
+
+### 5. In Studio importieren
+
+*Terrain Editor → Import* → bei *Heightmap* die PNG wählen → bei *Size* die Werte X, Y, Z
+aus der Ausgabe eintragen (Y = Höhe von Schwarz bis Weiss) → *Generate*. Die Bildbreite ist
+Ost-West (X), die Bildhöhe Nord-Süd (Z); Norden ist oben im Bild.
+Tipp: Echte Proportionen werden schnell riesig (2 km = über 7000 Studs). Für eine Strecke
+reicht meist ein Ausschnitt mit `--bbox` oder die verkleinerte Variante.
 
 ## Speichern (Spielstand)
 
