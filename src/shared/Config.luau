@@ -221,6 +221,8 @@ export type CosmeticDef = {
 	material: Enum.Material?,
 	colors: { Color3 }?,
 	rainbow: boolean?,
+	exclusive: boolean?, -- nicht kaufbar, nur als Belohnung (Login-Tag 7)
+	sparkle: boolean?, -- Funkeln am Wagen
 	lifetime: number?,
 	lightEmission: number?,
 }
@@ -245,6 +247,16 @@ Config.Cosmetics = {
 			price = 600,
 			color = Color3.fromRGB(80, 255, 200),
 			material = Enum.Material.Neon,
+		},
+		-- exklusiv: nur als Login-Belohnung (Tag 7), nirgends zu kaufen
+		{
+			id = "GoldenSkin",
+			name = "Goldener Glanz",
+			price = 0,
+			exclusive = true,
+			sparkle = true,
+			color = Color3.fromRGB(255, 205, 60),
+			material = Enum.Material.Foil,
 		},
 	} :: { CosmeticDef },
 	Trails = {
@@ -1229,6 +1241,30 @@ Config.Achievements = {
 			badge = 0,
 		},
 	} :: { AchievementDef },
+}
+
+-- Taegliche Login-Belohnung (7-Tage-Serie, Logik: Progression/LoginStreak). Beim ersten
+-- Login des Tages (UTC, Wechsel wie die Hausaufgaben) Popup mit Kalender, Abholen per Knopf.
+-- Verpasster Tag = zurueck auf Tag 1; nach Tag 7 wieder Tag 1.
+-- kind: "Coins" (amount), "MeterBoost" (runs = so viele Laeufe x2 Meter),
+--       "Skin" (skin = exklusive Farbe aus Config.Cosmetics.Colors; schon da = fallbackCoins)
+export type LoginRewardDef = {
+	kind: string,
+	amount: number?,
+	runs: number?,
+	skin: string?,
+	fallbackCoins: number?,
+}
+Config.LoginRewards = {
+	Days = {
+		{ kind = "Coins", amount = 25 },
+		{ kind = "Coins", amount = 40 },
+		{ kind = "MeterBoost", runs = 3 },
+		{ kind = "Coins", amount = 60 },
+		{ kind = "Coins", amount = 80 },
+		{ kind = "Coins", amount = 120 },
+		{ kind = "Skin", skin = "GoldenSkin", fallbackCoins = 250 },
+	} :: { LoginRewardDef },
 }
 
 -- Spielstand (DataStore): Muenzen, Upgrades, Bestzeiten, freigeschaltete Tracks ...

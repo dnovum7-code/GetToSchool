@@ -23,6 +23,7 @@ local SPECS = {
 	"./ComboSpec",
 	"./DailySpinSpec",
 	"./MetersSpec",
+	"./LoginStreakSpec",
 }
 
 for _, path in SPECS do

@@ -19,6 +19,7 @@ local DriftEffects = require(script.Parent:WaitForChild("DriftEffects"))
 local EnterPrompt = require(script.Parent:WaitForChild("EnterPrompt"))
 local AchievementUI = require(script.Parent:WaitForChild("AchievementUI"))
 local ComboUI = require(script.Parent:WaitForChild("ComboUI"))
+local LoginRewardUI = require(script.Parent:WaitForChild("LoginRewardUI"))
 local MeterUI = require(script.Parent:WaitForChild("MeterUI"))
 local ControlsInfo = require(script.Parent:WaitForChild("ControlsInfo"))
 local GarageUI = require(script.Parent:WaitForChild("GarageUI"))
@@ -231,6 +232,7 @@ Tricks.init() -- Lufttricks (Anzeige)
 VisualFX.init() -- Speed-Linien, Konfetti ...
 ComboUI.init() -- Kuh-Kombo-Anzeige
 MeterUI.init() -- Meterzaehler und x2-Anzeige
+LoginRewardUI.init() -- taegliche Login-Belohnung (Kalender-Popup)
 ProgressClient.onChanged(function(snapshot)
 	Abilities.setLevels(snapshot.upgrades) -- gekaufte Upgrade-Stufen
 	Settings.load(snapshot) -- gespeicherte Einstellungen (einmal nach dem Laden)

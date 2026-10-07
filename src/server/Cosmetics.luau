@@ -42,7 +42,13 @@ local function applyTo(player: Player, cart: Model)
 	) :: Def?
 	local trail =
 		CosmeticsLogic.trailFor(trails() :: any, data.cosmetics.trails, data.cosmetics.trail) :: Def?
-	CartBuilder.applyLook(cart, color and color.color, color and color.material, trail)
+	CartBuilder.applyLook(
+		cart,
+		color and color.color,
+		color and color.material,
+		trail,
+		color and color.sparkle
+	)
 end
 
 local function refresh(player: Player)
@@ -58,6 +64,9 @@ end
 local function ensureOwned(player: Player, item: Def, owned: { [string]: boolean }): (boolean, string?)
 	if CosmeticsLogic.isOwned(item :: any, owned) then
 		return true, nil
+	end
+	if item.exclusive then
+		return false, `{item.name} gibt es nur als Login-Belohnung (Tag 7).`
 	end
 	local ok, reason = Economy.buyOnce(Profiles.get(player), owned, item.id, item.price)
 	if not ok then
@@ -107,6 +116,14 @@ local function setTrail(player: Player, id: unknown): (boolean, string)
 	data.cosmetics.trail = item.id
 	refresh(player)
 	return true, if wasOwned then `Spur: {item.name}` else `Gekauft: {item.name}`
+end
+
+-- Belohnung (Login-Tag 7, Gluecksrad): Farbe schenken und fuer das aktuelle Fahrzeug setzen
+function Cosmetics.grantColor(player: Player, id: string)
+	local data = Profiles.get(player)
+	data.cosmetics.colors[id] = true
+	data.cosmetics.vehicleColors[Garage.selected(player)] = id
+	refresh(player)
 end
 
 function Cosmetics.init()

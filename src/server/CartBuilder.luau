@@ -310,7 +310,13 @@ export type TrailLook = {
 	lightEmission: number?,
 }
 
-function CartBuilder.applyLook(cart: Model, color: Color3?, material: Enum.Material?, trail: TrailLook?)
+function CartBuilder.applyLook(
+	cart: Model,
+	color: Color3?,
+	material: Enum.Material?,
+	trail: TrailLook?,
+	sparkle: boolean?
+)
 	for _, part in cart:GetDescendants() do
 		if part:IsA("BasePart") and part:GetAttribute("Paint") == true then
 			local original = part:GetAttribute("OriginalColor")
@@ -333,6 +339,27 @@ function CartBuilder.applyLook(cart: Model, color: Color3?, material: Enum.Mater
 	local old = base:FindFirstChild("CosmeticTrail")
 	if old then
 		old:Destroy()
+	end
+	-- Funkeln (exklusiver Skin): goldene Sterne rund um den Wagen
+	local oldSparkle = base:FindFirstChild("CosmeticSparkle")
+	if oldSparkle then
+		oldSparkle:Destroy()
+	end
+	if sparkle then
+		local emitter = Instance.new("ParticleEmitter")
+		emitter.Name = "CosmeticSparkle"
+		emitter.Rate = 12
+		emitter.Lifetime = NumberRange.new(0.4, 0.9)
+		emitter.Speed = NumberRange.new(1, 3)
+		emitter.SpreadAngle = Vector2.new(180, 180)
+		emitter.LightEmission = 1
+		emitter.Color = ColorSequence.new(Color3.fromRGB(255, 240, 150), Color3.fromRGB(255, 200, 60))
+		emitter.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(0.3, 0.35),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		emitter.Parent = base
 	end
 	for _, name in { "TrailLeft", "TrailRight" } do
 		local attachment = base:FindFirstChild(name)

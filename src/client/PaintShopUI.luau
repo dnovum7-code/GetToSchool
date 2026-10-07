@@ -52,6 +52,7 @@ local function render(snapshot: ProgressClient.Snapshot)
 			end
 			local owned = info.colors[item.id] == true
 			local selected = info.color == item.id
+			local locked = item.exclusive == true and not owned
 			local swatch = ShopUI.button(row, {
 				LayoutOrder = i,
 				Size = UDim2.fromOffset(152, 58),
@@ -60,7 +61,10 @@ local function render(snapshot: ProgressClient.Snapshot)
 				TextStrokeTransparency = 0.3,
 				TextSize = 15,
 				TextWrapped = true,
-				Text = swatchText(item.name, owned, item.price, selected),
+				Text = if locked
+					then `{item.name}\nLogin-Tag 7`
+					else swatchText(item.name, owned, item.price, selected),
+				AutoButtonColor = not locked,
 			})
 			if selected then
 				local stroke = Instance.new("UIStroke")
@@ -69,9 +73,11 @@ local function render(snapshot: ProgressClient.Snapshot)
 				stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 				stroke.Parent = swatch
 			end
-			swatch.Activated:Connect(function()
-				shopRemote:FireServer("Color", item.id)
-			end)
+			if not locked then
+				swatch.Activated:Connect(function()
+					shopRemote:FireServer("Color", item.id)
+				end)
+			end
 		end
 	end
 
