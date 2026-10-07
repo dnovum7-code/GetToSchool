@@ -45,6 +45,7 @@ local Obstacles = require(script.Parent:WaitForChild("Obstacles"))
 local RandomEventsClient = require(script.Parent:WaitForChild("RandomEventsClient"))
 local SoundSystem = require(script.Parent:WaitForChild("SoundSystem"))
 local StatReporter = require(script.Parent:WaitForChild("StatReporter"))
+local TerrainRescue = require(script.Parent:WaitForChild("TerrainRescue"))
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local RaceTime = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RaceTime"))
@@ -1030,6 +1031,14 @@ RunService.PreSimulation:Connect(function(dt)
 		crashDetector:expectVelocityChange(Vector3.zero) -- Drift-Boost: nur toleranter
 	end
 	wasBoostingForCrash = telemetry.boosting
+
+	-- Unter das Terrain geraten (durchgefallen)? Zurueck auf die Oberflaeche statt Crash.
+	-- Der Sprung nach oben ist kein Aufprall: Crash-Erkennung zuruecksetzen.
+	if not crashed and TerrainRescue.step(dt, current) then
+		crashDetector:reset()
+		current:settle()
+		ChaseCamera.snap()
+	end
 
 	if not crashed then
 		local reason = crashDetector:update(dt, current.base)

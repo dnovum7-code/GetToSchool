@@ -24,6 +24,7 @@ local ProgressSync = require(script.Parent:WaitForChild("ProgressSync"))
 local RaceManager = require(script.Parent:WaitForChild("RaceManager"))
 local RandomEvents = require(script.Parent:WaitForChild("RandomEvents"))
 local Shop = require(script.Parent:WaitForChild("Shop"))
+local StreamAhead = require(script.Parent:WaitForChild("StreamAhead"))
 local Track = require(script.Parent:WaitForChild("Track"))
 local TrackPieces = require(script.Parent:WaitForChild("TrackPieces"))
 local TrackUnlocks = require(script.Parent:WaitForChild("TrackUnlocks"))
@@ -67,6 +68,7 @@ Leaderboards.init() -- Bestenlisten (Global, Server, Freunde)
 Leaderstats.init() -- Spielerliste oben rechts: Meter und Muenzen
 PlayerEvents.init() -- Ereignisse (Ziel, Wurf, Drift ...) fuer Hausaufgaben und Erfolge
 Homework.init() -- Hausaufgaben (taegliche Aufgaben)
+StreamAhead.init() -- StreamingEnabled: Gelaende in Fahrtrichtung vorausladen
 DevTuning.init(cartsFolder) -- Tuning-Panel (nur in Studio aktiv)
 
 -- Eingaben vom Client nie blind vertrauen: Der Client darf nur "bitte Neustart" sagen
