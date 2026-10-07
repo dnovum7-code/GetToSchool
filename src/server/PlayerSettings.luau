@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local SaveData = require(Shared:WaitForChild("Progression"):WaitForChild("SaveData"))
+local DayClock = require(script.Parent:WaitForChild("DayClock"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local ProgressSync = require(script.Parent:WaitForChild("ProgressSync"))
 
@@ -38,6 +39,13 @@ function PlayerSettings.init()
 			if ok and (data.settings :: any)[key] ~= clean then
 				(data.settings :: any)[key] = clean
 				Profiles.markChanged(player)
+			end
+		elseif kind == "DebugNextDay" then
+			-- nur Studio + Config.Debug.DayTravel (DayClock prueft das)
+			if DayClock.advance() then
+				for _, other in Players:GetPlayers() do
+					ProgressSync.schedule(other)
+				end
 			end
 		elseif kind == "ResetHints" then
 			table.clear(data.hintsSeen)

@@ -10,7 +10,7 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local DailySpinLogic = require(Shared:WaitForChild("Progression"):WaitForChild("DailySpin"))
-local HomeworkLogic = require(Shared:WaitForChild("Progression"):WaitForChild("Homework"))
+local DayClock = require(script.Parent:WaitForChild("DayClock"))
 local PlayerEvents = require(script.Parent:WaitForChild("PlayerEvents"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local ProgressSync = require(script.Parent:WaitForChild("ProgressSync"))
@@ -24,7 +24,7 @@ local DailySpin = {}
 local random = Random.new()
 
 local function today(): number
-	return HomeworkLogic.dayIndex(os.time(), Config.Homework.ResetHourUtc)
+	return DayClock.today()
 end
 
 local function freeSpins(): boolean
@@ -86,7 +86,7 @@ function DailySpin.init()
 		snapshot.spin = {
 			canSpin = Config.DailySpin.Enabled
 				and (freeSpins() or DailySpinLogic.canSpin(data.spinDay, today())),
-			nextReset = HomeworkLogic.nextReset(os.time(), Config.Homework.ResetHourUtc),
+			nextReset = DayClock.nextReset(),
 			items = table.clone(data.items),
 		}
 	end)

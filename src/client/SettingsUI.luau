@@ -3,11 +3,19 @@
 -- Geist an/aus, Einstiegs-Hinweise nochmal zeigen, Steuerungsuebersicht.
 -- Knoepfe statt Schieberegler, damit es auch mit Gamepad und Touch gut geht.
 
+local ContextActionService = game:GetService("ContextActionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local ControlsInfo = require(script.Parent:WaitForChild("ControlsInfo"))
+local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
 local Onboarding = require(script.Parent:WaitForChild("Onboarding"))
 local ProgressClient = require(script.Parent:WaitForChild("ProgressClient"))
 local Settings = require(script.Parent:WaitForChild("Settings"))
 local ShopUI = require(script.Parent:WaitForChild("ShopUI"))
+
+local settingsRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Settings") :: RemoteEvent
 
 local SettingsUI = {}
 
@@ -134,6 +142,16 @@ end
 
 function SettingsUI.init()
 	ShopUI.addTab("Settings", "Einstellungen", render)
+	-- Debug (nur Studio, Config.Debug.DayTravel): F3 = Tageswechsel simulieren
+	if Config.Debug.DayTravel and RunService:IsStudio() then
+		ContextActionService:BindAction("GetToSchoolDebugNextDay", function(_, inputState)
+			if inputState == Enum.UserInputState.Begin then
+				settingsRemote:FireServer("DebugNextDay")
+				RaceUI.showToast("Debug: naechster Tag", 2, Color3.fromRGB(255, 200, 90))
+			end
+			return Enum.ContextActionResult.Sink
+		end, false, Enum.KeyCode.F3)
+	end
 end
 
 return SettingsUI

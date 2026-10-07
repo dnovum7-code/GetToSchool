@@ -756,6 +756,8 @@ Config.Debug = {
 	ShowHintsAlways = false,
 	-- true = Gluecksrad beliebig oft drehen (zum Testen)
 	FreeSpins = false,
+	-- true = Taste F3 schaltet einen Tag weiter (Hausaufgaben, Gluecksrad, Login-Serie testen)
+	DayTravel = false,
 }
 
 -- Einstieg: einmalige Hinweise beim ersten Lauf (Fahren, Drift, Neustart). Texte passen sich

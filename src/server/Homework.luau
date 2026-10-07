@@ -11,6 +11,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local HomeworkLogic = require(Shared:WaitForChild("Progression"):WaitForChild("Homework"))
 local Unlocks = require(Shared:WaitForChild("Progression"):WaitForChild("Unlocks"))
+local DayClock = require(script.Parent:WaitForChild("DayClock"))
 local PlayerEvents = require(script.Parent:WaitForChild("PlayerEvents"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local ProgressSync = require(script.Parent:WaitForChild("ProgressSync"))
@@ -25,7 +26,7 @@ local function pool(): { HomeworkLogic.Def }
 end
 
 local function today(): number
-	return HomeworkLogic.dayIndex(os.time(), Config.Homework.ResetHourUtc)
+	return DayClock.today()
 end
 
 -- Darf diese Aufgabe beim Spieler vorkommen? (Strecke vorhanden und frei)
@@ -131,7 +132,7 @@ local function snapshotFor(player: Player): { [string]: any }?
 		tasks = tasks,
 		bonus = Config.Homework.AllDoneBonus,
 		bonusDone = data.homework.bonusDone,
-		nextReset = HomeworkLogic.nextReset(os.time(), Config.Homework.ResetHourUtc),
+		nextReset = DayClock.nextReset(),
 	}
 end
 
@@ -148,6 +149,13 @@ function Homework.init()
 		end
 	end)
 	-- Tageswechsel, waehrend jemand spielt: neue Aufgaben und Hinweis
+	DayClock.onAdvance(function()
+		for _, player in Players:GetPlayers() do
+			if ensureToday(player) then
+				ProgressSync.notice(player, "Neue Hausaufgaben! (Menue B)", Color3.fromRGB(255, 215, 80))
+			end
+		end
+	end)
 	task.spawn(function()
 		while true do
 			task.wait(30)

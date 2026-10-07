@@ -14,10 +14,12 @@
 --              Felder ohne neue Version dazu (fehlende Felder bekommen Standardwerte).
 --              Nach der Veroeffentlichung: jedes neue Feld = neue Version, sonst wuerde ein
 --              noch laufender alter Server die neuen Felder beim Speichern loeschen.
+--   Version 3: Gefahrene Meter (stats.totalMeters), x2-Meter-Boost (meterBoostRuns),
+--              Login-Serie (login). Aeltere Spielstaende bekommen Standardwerte.
 
 local SaveData = {}
 
-SaveData.VERSION = 2
+SaveData.VERSION = 3
 
 export type BestTime = {
 	time: number, -- Sekunden
@@ -29,6 +31,13 @@ export type Stats = {
 	coinsCollected: number, -- eingesammelte Muenzen (ohne Belohnungen)
 	objectsLaunched: number,
 	driftSeconds: number, -- insgesamt gedriftet (fuer Erfolge)
+	totalMeters: number, -- insgesamt gefahrene Meter (Bestenliste "Gesamtmeter")
+}
+
+-- Taegliche Login-Belohnung (7-Tage-Serie, siehe Progression/LoginStreak)
+export type Login = {
+	lastDay: number, -- Tag der letzten abgeholten Belohnung (-1 = noch nie)
+	streak: number, -- welcher Serien-Tag (1..7) zuletzt abgeholt wurde (0 = keiner)
 }
 
 -- Hausaufgaben des Tages (siehe Progression/Homework)
@@ -87,6 +96,8 @@ export type Data = {
 	settings: Settings,
 	hintsSeen: { [string]: boolean }, -- Einstiegs-Hinweise, die schon gezeigt wurden
 	spinDay: number, -- Tag des letzten Gluecksrad-Drehens (-1 = noch nie)
+	meterBoostRuns: number, -- so viele Laeufe zaehlen die Meter noch doppelt (x2-Boost)
+	login: Login,
 	items: { [string]: number }, -- Powerups aus dem Gluecksrad (Id -> Anzahl)
 }
 
@@ -103,7 +114,13 @@ function SaveData.new(): Data
 		vehicles = { [DEFAULT_VEHICLE] = true },
 		selectedVehicle = DEFAULT_VEHICLE,
 		launchRecords = {},
-		stats = { finishedRuns = 0, coinsCollected = 0, objectsLaunched = 0, driftSeconds = 0 },
+		stats = {
+			finishedRuns = 0,
+			coinsCollected = 0,
+			objectsLaunched = 0,
+			driftSeconds = 0,
+			totalMeters = 0,
+		},
 		homework = SaveData.newHomework(),
 		cosmetics = { colors = {}, trails = {}, vehicleColors = {}, trail = "" },
 		achievements = {},
@@ -111,6 +128,8 @@ function SaveData.new(): Data
 		hintsSeen = {},
 		spinDay = -1,
 		items = {},
+		meterBoostRuns = 0,
+		login = { lastDay = -1, streak = 0 },
 	}
 end
 
@@ -251,6 +270,7 @@ function SaveData.sanitize(raw: { [any]: any }): Data
 		coinsCollected = wholeNumber(stats.coinsCollected, 0) or 0,
 		objectsLaunched = wholeNumber(stats.objectsLaunched, 0) or 0,
 		driftSeconds = if isNumber(stats.driftSeconds) then math.max(stats.driftSeconds, 0) else 0,
+		totalMeters = if isNumber(stats.totalMeters) then math.max(stats.totalMeters, 0) else 0,
 	}
 	data.achievements = sanitizeFlags(raw.achievements)
 	local settings = if type(raw.settings) == "table" then raw.settings else {}
@@ -263,6 +283,12 @@ function SaveData.sanitize(raw: { [any]: any }): Data
 	data.hintsSeen = sanitizeFlags(raw.hintsSeen)
 	data.spinDay = wholeNumber(raw.spinDay, -1) or -1
 	data.items = sanitizeNumberMap(raw.items, 0, 99, true)
+	data.meterBoostRuns = math.min(wholeNumber(raw.meterBoostRuns, 0) or 0, 99)
+	local login = if type(raw.login) == "table" then raw.login else {}
+	data.login = {
+		lastDay = wholeNumber(login.lastDay, -1) or -1,
+		streak = math.clamp(wholeNumber(login.streak, 0) or 0, 0, 7),
+	}
 	data.homework = sanitizeHomework(raw.homework)
 	local cosmetics = if type(raw.cosmetics) == "table" then raw.cosmetics else {}
 	local vehicleColors: { [string]: string } = {}
@@ -292,6 +318,12 @@ local MIGRATIONS: { [number]: (raw: { [any]: any }) -> { [any]: any } } = {
 	[1] = function(raw)
 		local copy = table.clone(raw)
 		copy.version = 2
+		return copy
+	end,
+	-- 2 -> 3: Meter, x2-Boost, Login-Serie (neue Felder, Standardwerte)
+	[2] = function(raw)
+		local copy = table.clone(raw)
+		copy.version = 3
 		return copy
 	end,
 }
@@ -359,6 +391,11 @@ function SaveData.merge(stored: Data, session: Data): Data
 	result.stats.coinsCollected += session.stats.coinsCollected
 	result.stats.objectsLaunched += session.stats.objectsLaunched
 	result.stats.driftSeconds += session.stats.driftSeconds
+	result.stats.totalMeters += session.stats.totalMeters
+	result.meterBoostRuns = math.max(result.meterBoostRuns, session.meterBoostRuns)
+	if session.login.lastDay > result.login.lastDay then
+		result.login = table.clone(session.login)
+	end
 	for id in session.achievements do
 		result.achievements[id] = true
 	end
