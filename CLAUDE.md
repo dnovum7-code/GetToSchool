@@ -43,6 +43,16 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
   Config.TuningPanel. Fehlersuche bei Bodenbausteinen: Config.Debug.TrackPieces.
 
 ## Aktueller Meilenstein
+Map-Test-Feedback (gebaut, noch nicht in Studio getestet; README „Map-Test-Werkzeuge,
+Kamera, Federung testen“):
+- F2-Panel hat Schalter (Config.TuningSwitches, auch server = true): Crash durch Aufprall
+  (Debug.NoImpactCrash), Umkippen (Debug.NoTipCrash), God Mode (Debug.GodMode, Tempo
+  Config.GodMode.SpeedKmh; Client hält Tempo, Server zieht keine Leben ab), Selbstaufrichtung.
+- Kamera: frei drehen (rechte Maus / rechter Stick / Touch-Wischen), Mausrad-Zoom, kehrt nach
+  OrbitReturnDelay zurück (ChaseCamera). Standard weiter hinten/höher, FOV größer.
+- Selbstaufrichtung: CartController.righting (Config.Righting, begrenzt, ab StartAngle).
+- Federung: Raycast-Feder + Dämpfer pro Radecke (CartController.suspension, Config.Suspension);
+  Räder sind dann nur Optik (CanCollide aus). Enabled = false = altes Verhalten.
 Terrain aus swissALTI3D, Streaming (gebaut, noch nicht in Studio getestet; Testtabelle im
 README „Terrain-Import und Streaming testen“):
 - Höhendaten: tools/swissalti_to_heightmap.py (16-Bit-PNG für den Roblox-Import, 1 Pixel = 1

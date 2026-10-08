@@ -1044,6 +1044,24 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Konfetti | Ins Ziel fahren | Konfetti fällt von oben; bei neuer Bestzeit doppelt so viel |
 | Effekte aus | Einstellungen → „Extra-Effekte“ aus | Nichts davon mehr zu sehen |
 
+## Map-Test-Werkzeuge, Kamera, Federung testen
+
+Alles im F2-Panel (nur Studio). Oben stehen die Schalter, darunter die Regler.
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| Crash durch Aufprall aus | F2 → „Crash durch harten Aufprall“ auf Aus, gegen eine Wand fahren | Kein Crash, Wagen prallt ab |
+| Crash durch Umkippen aus | F2 → „Crash durch Umkippen“ auf Aus, Wagen umwerfen | Kein Crash (mit Selbstaufrichtung steht er oft wieder auf) |
+| God Mode | F2 → „God Mode“ an, W halten, steilen Hang hoch und runter | Tacho bleibt bei ca. 60 km/h, kein Crash, keine Leben weg (auch Kühe nicht); abstürzen = zurück zum Checkpoint |
+| God-Mode-Tempo | Regler „God Mode: Tempo (km/h)“ | Wirkt sofort |
+| Kamera drehen | Rechte Maustaste halten und ziehen / Gamepad rechter Stick / Touch rechts wischen | Kamera kreist um den Wagen |
+| Kamera zurück | Loslassen, ca. 1,5 s warten | Kamera dreht weich zurück hinter den Wagen |
+| Zoom | Mausrad | Näher / weiter weg (Faktor 0,5 bis 2,5), bleibt so |
+| Kamera-Standard | Normal fahren | Etwas weiter hinten und höher, Sichtfeld größer als vorher; Regler „Kamera: Abstand/Höhe/Sichtfeld“ |
+| Selbstaufrichtung | Mit 30–60° Schräglage landen oder an eine Böschung fahren | Wagen richtet sich sanft wieder auf; bei harten Überschlägen kippt er trotzdem. Schalter und Regler „Aufrichten: Stärke / ab Winkel“ |
+| Federung | Über welliges Terrain fahren | Wagen fährt ruhig, schüttelt kaum; große Sprünge setzen spürbar auf. Regler „Federung: Härte / Dämpfung / Federweg“ (zu weich = schaukelt, zu hart = rüttelt) |
+| Federung aus | `Config.Suspension.Enabled = false`, Play | Altes Verhalten (Räder rollen auf dem Boden) |
+
 ## Meter, Login-Belohnung, Glücksrad testen
 
 Zum schnellen Testen in `Config.Debug`: `DayTravel = true` (F3 = nächster Tag),
