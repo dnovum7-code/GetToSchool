@@ -493,6 +493,13 @@ end
 
 -- `text`: eigener Untertitel (z. B. Attribut "Message" eines Hazards)
 local function onCrash(reason: string, base: BasePart, text: string?)
+	-- God Mode (F2, nur Studio): kein Crash, kein Lebensverlust; abgestuerzt = zum Checkpoint
+	if Config.Debug.GodMode then
+		if reason == "Fell" then
+			requestRestartNow("Checkpoint")
+		end
+		return
+	end
 	reportCrash:FireServer(reason) -- Server zieht das Leben ab (oder die Helm-Ladung)
 	if livesCount() and lifeState.shield > 0 then
 		helmetSave(reason, base, true)

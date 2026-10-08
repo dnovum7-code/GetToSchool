@@ -11,6 +11,7 @@
 --
 -- Die Regler aendern die Config-Werte dieses Clients sofort (das Fahrskript liest sie jeden
 -- Frame). Werte mit server = true gehen zusaetzlich an den Server.
+-- Oben stehen Schalter (an/aus) aus Config.TuningSwitches, z. B. Crash aus, God Mode.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -29,6 +30,13 @@ type Entry = {
 	path: string, -- "Abschnitt.Name" (auch tiefer: "Vehicles.OfficeChair.scale.Drive.SteerRate")
 	span: number?,
 	min: number?,
+	server: boolean?,
+}
+
+type Switch = {
+	label: string,
+	path: string,
+	invert: boolean?, -- Anzeige "An", wenn der Config-Wert false ist (z. B. Debug.NoTipCrash)
 	server: boolean?,
 }
 
@@ -165,8 +173,11 @@ function DevPanel.init()
 	gui.Enabled = false
 	gui.DisplayOrder = 10
 
+	local switches = ((Config :: any).TuningSwitches or {}) :: { Switch }
+	local SWITCH_HEIGHT = 34
+	local switchesHeight = SWITCH_HEIGHT * #switches
 	-- Scrollbar, damit auch viele Regler auf kleine Bildschirme passen
-	local contentHeight = 44 + ROW_HEIGHT * #entries + 48
+	local contentHeight = 44 + switchesHeight + ROW_HEIGHT * #entries + 48
 	local panel = Instance.new("ScrollingFrame")
 	panel.Name = "Panel"
 	panel.Position = UDim2.new(0, 16, 0, 100)
@@ -193,6 +204,40 @@ function DevPanel.init()
 	})
 
 	local rows: { Row } = {}
+
+	-- Schalter (an/aus)
+	for index, switch in switches do
+		local holder, key = resolvePath(switch.path)
+		if not holder or not key or type(holder[key]) ~= "boolean" then
+			warn(`[DevPanel] Unbekannter Schalter "{switch.path}" in Config.TuningSwitches`)
+			continue
+		end
+		local y = 40 + (index - 1) * SWITCH_HEIGHT
+		makeText(panel, {
+			Position = UDim2.new(0, 12, 0, y + 4),
+			Size = UDim2.new(0, PANEL_WIDTH - 110, 0, 22),
+			Text = switch.label,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		})
+		local toggle = makeButton(panel, {
+			Position = UDim2.new(0, PANEL_WIDTH - 82, 0, y + 2),
+			Size = UDim2.new(0, 70, 0, 26),
+		})
+		local function show()
+			local value = holder[key] == true
+			local on = if switch.invert then not value else value
+			toggle.Text = if on then "An" else "Aus"
+			toggle.BackgroundColor3 = if on then Color3.fromRGB(60, 150, 80) else Color3.fromRGB(150, 60, 60)
+		end
+		show()
+		toggle.Activated:Connect(function()
+			holder[key] = not holder[key]
+			show()
+			if switch.server then
+				remote:FireServer(switch.path, holder[key])
+			end
+		end)
+	end
 
 	local function applyValue(row: Row, value: number)
 		setConfigValue(row, value)
@@ -223,7 +268,7 @@ function DevPanel.init()
 			low, high = minBound, minBound + span
 		end
 
-		local y = 44 + (index - 1) * ROW_HEIGHT
+		local y = 44 + switchesHeight + (index - 1) * ROW_HEIGHT
 		makeText(panel, {
 			Position = UDim2.new(0, 12, 0, y),
 			Size = UDim2.new(0, PANEL_WIDTH - 110, 0, 18),

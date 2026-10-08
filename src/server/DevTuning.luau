@@ -21,7 +21,26 @@ function DevTuning.init(cartsFolder: Folder)
 		if not RunService:IsStudio() then
 			return
 		end
-		if type(path) ~= "string" or type(value) ~= "number" then
+		if type(path) ~= "string" then
+			return
+		end
+		-- Schalter (Config.TuningSwitches mit server = true): an/aus
+		if type(value) == "boolean" then
+			for _, switch in (Config :: any).TuningSwitches or {} do
+				if switch.server and switch.path == path then
+					local holder: any = Config
+					local parts = string.split(path, ".")
+					for i = 1, #parts - 1 do
+						holder = if type(holder) == "table" then holder[parts[i]] else nil
+					end
+					if type(holder) == "table" and type(holder[parts[#parts]]) == "boolean" then
+						holder[parts[#parts]] = value
+					end
+				end
+			end
+			return
+		end
+		if type(value) ~= "number" then
 			return
 		end
 		if value ~= value or math.abs(value) > MAX_ABS_VALUE then -- NaN / Unsinn abfangen

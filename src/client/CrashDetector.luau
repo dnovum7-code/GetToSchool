@@ -93,12 +93,19 @@ function CrashDetector.update(self: Detector, dt: number, base: BasePart): Crash
 	end
 	local expected = self.expectedChange
 	self.expectedChange = Vector3.zero
-	if lastVelocity and (velocity - lastVelocity - expected).Magnitude >= impactThreshold then
+	-- Debug-Schalter (F2, nur Studio): Crash durch Aufprall / Umkippen aus, God Mode
+	local noImpact = Config.Debug.NoImpactCrash or Config.Debug.GodMode
+	local noTip = Config.Debug.NoTipCrash or Config.Debug.GodMode
+	if
+		not noImpact
+		and lastVelocity
+		and (velocity - lastVelocity - expected).Magnitude >= impactThreshold
+	then
 		return "Impact"
 	end
 
 	-- UpVector.Y ist der Cosinus des Neigungswinkels gegenueber der Senkrechten
-	if base.CFrame.UpVector.Y < math.cos(math.rad(C.MaxTiltAngle)) then
+	if not noTip and base.CFrame.UpVector.Y < math.cos(math.rad(C.MaxTiltAngle)) then
 		self.tiltTime += dt
 		if self.tiltTime >= C.TiltTime then
 			return "Tipped"

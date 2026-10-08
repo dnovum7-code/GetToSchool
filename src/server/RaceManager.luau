@@ -273,6 +273,9 @@ function RaceManager.hitLaunchable(player: Player, object: unknown)
 		race.bestFlight = { name = info.name, meters = info.meters }
 	end
 	runState:FireClient(player, "Launch", object, info)
+	if Config.Debug.GodMode then
+		return -- God Mode (nur Studio): kein Lebensverlust
+	end
 	local outcome = RaceManager.applyHit(player)
 	-- Letztes Leben weg: Figur fliegt auch noch hinterher
 	if outcome == "GameOver" and CartManager.crash(player) then
@@ -558,6 +561,9 @@ local CRASH_REASONS =
 function RaceManager.reportCrash(player: Player, reason: unknown)
 	if type(reason) ~= "string" or not CRASH_REASONS[reason] or not CartManager.isSeated(player) then
 		return
+	end
+	if Config.Debug.GodMode then
+		return -- God Mode (nur Studio): kein Crash, kein Lebensverlust
 	end
 	local outcome = RaceManager.applyHit(player)
 	if outcome == "Shielded" then

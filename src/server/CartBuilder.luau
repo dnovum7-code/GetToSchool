@@ -522,6 +522,9 @@ function CartBuilder.build(owner: Player, cframe: CFrame, vehicleId: string?): M
 			Color = Color3.fromRGB(40, 40, 45),
 			Material = Enum.Material.SmoothPlastic,
 			Transparency = if model:GetAttribute("HideWheels") == true then 1 else 0,
+			-- Mit Federung (Config.Suspension) tragen unsichtbare Federn den Wagen; die Raeder
+			-- beruehren den Boden nicht (sonst schuetteln kleine Huckel wieder durch)
+			CanCollide = not Config.Suspension.Enabled,
 			CustomPhysicalProperties = PhysicalProperties.new(c.WheelDensity, c.WheelFriction, 0, 1, 1),
 		})
 		wheel.Parent = model

@@ -566,6 +566,20 @@ function CartController.step(
 		torque += up * (targetYawRate - yawRate) * H.TurnResponse * self.inertia
 	end
 
+	-- Federung: kleine Unebenheiten schlucken (Kraft an jeder Ecke)
+	local springForce, springTorque = self:suspension(dt)
+	force += springForce
+	torque += springTorque
+	-- Selbstaufrichtung: stark gekippt -> sanft zurueck (grosse Crashs gehen trotzdem durch)
+	torque += self:righting()
+	-- God Mode (nur Studio): mit W konstantes Tempo, jede Steigung hoch
+	if Config.Debug.GodMode and grounded and throttle > 0 then
+		local target = Config.GodMode.SpeedKmh / math.max(Config.UI.StudsToMeters * 3.6, 0.01)
+		local along = base.AssemblyLinearVelocity:Dot(forward)
+		addVelocity(self.cart, forward * (target - along) * math.min(1, dt * 10))
+		force += Vector3.new(0, workspace.Gravity * m, 0) * 0.9 -- Schwerkraft fast aufheben
+	end
+
 	self.driveForce.Force = force
 	self.steerTorque.Torque = torque
 
@@ -586,6 +600,81 @@ function CartController.step(
 		hopped = hopped,
 		selfImpulse = selfImpulse,
 	}
+end
+
+-- Raycast-Federung: An jeder Radecke misst ein Strahl den Abstand zum Boden. Feder (Haerte mal
+-- Einfedern) und Daempfer (Einfedergeschwindigkeit) druecken die Ecke nach oben. Die Kraft
+-- wirkt an der Ecke, darum neigt sich der Wagen natuerlich. Gibt Kraft und Drehmoment zurueck.
+-- Unity-Vergleich: wie ein WheelCollider, nur selbst gerechnet.
+function CartController.suspension(self: Controller, _dt: number): (Vector3, Vector3)
+	local S = Config.Suspension
+	if not S.Enabled then
+		return Vector3.zero, Vector3.zero
+	end
+	local base = self.base
+	local cf = base.CFrame
+	local up = cf.UpVector
+	if up.Y < 0.3 then
+		return Vector3.zero, Vector3.zero -- auf der Seite / auf dem Kopf: keine Federung
+	end
+	local c = self.stats.Cart
+	local r = c.WheelDiameter / 2
+	local wheelX = c.Width / 2 - r - 0.1
+	local wheelZ = c.Length / 2 - r - 0.1
+	local rideHeight = c.WheelDiameter + c.WheelGap + c.FloorThickness / 2
+	local stiffness = math.max(S.Stiffness, 1)
+	-- Ruhelaenge so, dass der Wagen im Stand genau auf Fahrhoehe steht
+	local natural = rideHeight + workspace.Gravity / stiffness
+	local maxCompression = math.min(S.Travel + workspace.Gravity / stiffness, natural)
+	local center = base.AssemblyCenterOfMass
+	local linear = base.AssemblyLinearVelocity
+	local angular = base.AssemblyAngularVelocity
+	local perWheel = self.mass / 4
+	local force, torque = Vector3.zero, Vector3.zero
+	for _, corner in
+		{
+			Vector3.new(-wheelX, 0, -wheelZ),
+			Vector3.new(wheelX, 0, -wheelZ),
+			Vector3.new(-wheelX, 0, wheelZ),
+			Vector3.new(wheelX, 0, wheelZ),
+		}
+	do
+		local origin = cf:PointToWorldSpace(corner)
+		local hit = workspace:Raycast(origin, -up * (natural + 0.05), self.rayParams)
+		if hit then
+			local compression = math.clamp(natural - hit.Distance, 0, maxCompression)
+			local pointVelocity = linear + angular:Cross(origin - center)
+			local compressing = -pointVelocity:Dot(up) -- positiv = federt ein
+			local amount = (stiffness * compression + S.Damping * compressing) * perWheel
+			if amount > 0 then
+				local f = up * amount
+				force += f
+				torque += (origin - center):Cross(f)
+			end
+		end
+	end
+	return force, torque
+end
+
+-- Stehaufmaennchen: Drehmoment, das den gekippten Wagen wieder aufrichtet (Config.Righting)
+function CartController.righting(self: Controller): Vector3
+	local R = Config.Righting
+	if not R.Enabled then
+		return Vector3.zero
+	end
+	local up = self.base.CFrame.UpVector
+	local angle = math.deg(math.acos(math.clamp(up.Y, -1, 1)))
+	if angle <= R.StartAngle or angle >= R.MaxAngle then
+		return Vector3.zero
+	end
+	local axis = up:Cross(Vector3.yAxis) -- um diese Achse dreht "up" zur Senkrechten
+	if axis.Magnitude < 1e-3 then
+		return Vector3.zero
+	end
+	axis = axis.Unit
+	local accel = math.min(math.rad(angle - R.StartAngle) * R.Strength, R.MaxStrength)
+	accel -= self.base.AssemblyAngularVelocity:Dot(axis) * R.Damping
+	return axis * accel * self.inertia
 end
 
 -- Alle Kraefte aus (z. B. wenn der Spieler aussteigt).

@@ -712,6 +712,21 @@ Config.Sounds = {
 --          Wert 0, gilt min .. min + span (Standard 1), weil "Mitte" dann nicht geht.
 --   min  = untere Grenze (Standard 0); der Bereich bleibt symmetrisch um den Wert
 -- server = true: Der Wert wird zusaetzlich an den Server geschickt (er baut z. B. den Ballast).
+-- God Mode (Debug.GodMode, nur Studio): mit W konstant dieses Tempo, egal ob bergauf oder bergab
+Config.GodMode = {
+	SpeedKmh = 60,
+}
+
+-- Schalter im Tuning-Panel (F2, nur Studio). invert = "An" heisst Config-Wert false.
+-- server = true: der Server bekommt den Wert auch (z. B. kein Lebensverlust).
+export type TuningSwitch = { label: string, path: string, invert: boolean?, server: boolean? }
+Config.TuningSwitches = {
+	{ label = "Crash durch harten Aufprall", path = "Debug.NoImpactCrash", invert = true },
+	{ label = "Crash durch Umkippen", path = "Debug.NoTipCrash", invert = true },
+	{ label = "God Mode", path = "Debug.GodMode", server = true },
+	{ label = "Selbstaufrichtung", path = "Righting.Enabled" },
+} :: { TuningSwitch }
+
 Config.TuningPanel = {
 	{ label = "Motorkraft", path = "Drive.PushAcceleration" },
 	{ label = "Hoechsttempo (Motor)", path = "Drive.MaxPushSpeed" },
@@ -741,6 +756,15 @@ Config.TuningPanel = {
 	{ label = "JumpPad-Staerke", path = "Track.JumpPadStrength" },
 	{ label = "Leben pro Lauf", path = "Lives.PerRun", server = true }, -- gilt ab dem naechsten T
 	{ label = "Geist-Durchsicht", path = "Ghost.Transparency", span = 0.4 }, -- 0.2 .. 1, ab dem naechsten Start
+	{ label = "Kamera: Abstand", path = "Camera.Distance" },
+	{ label = "Kamera: Hoehe", path = "Camera.Height" },
+	{ label = "Kamera: Sichtfeld (FOV)", path = "Camera.BaseFov", span = 30 },
+	{ label = "Aufrichten: Staerke", path = "Righting.Strength" },
+	{ label = "Aufrichten: ab Winkel", path = "Righting.StartAngle", span = 20 },
+	{ label = "Federung: Haerte", path = "Suspension.Stiffness" },
+	{ label = "Federung: Daempfung", path = "Suspension.Damping" },
+	{ label = "Federung: Federweg", path = "Suspension.Travel" },
+	{ label = "God Mode: Tempo (km/h)", path = "GodMode.SpeedKmh" },
 	{ label = "Meter pro Muenze", path = "Meters.MetersPerCoin", server = true },
 	{ label = "Muenzen im Ziel (Grund)", path = "Coins.FinishBase", server = true },
 	{ label = "Kombo-Zeitfenster (s)", path = "Combo.Window", server = true },
@@ -845,6 +869,10 @@ Config.Debug = {
 	TerrainTestSpawn = true,
 	-- true = Taste F3 schaltet einen Tag weiter (Hausaufgaben, Gluecksrad, Login-Serie testen)
 	DayTravel = false,
+	-- Zum Erkunden der Map (Schalter im F2-Panel). Live immer aus, siehe Ende der Datei.
+	NoImpactCrash = false, -- true = harter Aufprall ist kein Crash
+	NoTipCrash = false, -- true = Umkippen ist kein Crash
+	GodMode = false, -- true = jede Steigung hoch, mit W konstantes Tempo, kein Crash, kein Lebensverlust
 }
 
 -- Einstieg: einmalige Hinweise beim ersten Lauf (Fahren, Drift, Neustart). Texte passen sich
@@ -858,14 +886,14 @@ Config.Onboarding = {
 
 -- Verfolgerkamera
 Config.Camera = {
-	Distance = 14,
-	Height = 6,
+	Distance = 17, -- Abstand hinter dem Wagen (vorher 14)
+	Height = 7.5, -- Hoehe ueber dem Wagen (vorher 6)
 	LookAhead = 6, -- Blickpunkt vor dem Wagen
 	LookHeight = 2,
 	PositionSmoothing = 12, -- groesser = Kamera folgt straffer
 	RotationSmoothing = 5,
-	BaseFov = 70,
-	MaxFov = 90,
+	BaseFov = 76, -- Sichtfeld (vorher 70)
+	MaxFov = 95,
 	FovFullSpeed = 100, -- bei diesem Tempo ist MaxFov erreicht
 	CollisionPadding = 0.5, -- Abstand zu Waenden, damit die Kamera nicht hindurchschaut
 
@@ -881,6 +909,41 @@ Config.Camera = {
 	-- Boost (Drift-Boost, BoostPad): Sichtfeld kurz weiter, damit man den Schub spuert
 	BoostFovKick = 10, -- Grad
 	BoostFovDecay = 2.5, -- wie schnell es zurueckgeht (pro Sekunde)
+
+	-- Freie Kamera: rechte Maustaste ziehen / Gamepad rechter Stick / Touch-Wischen dreht um
+	-- den Wagen, Mausrad zoomt. Ohne Eingabe dreht sie nach OrbitReturnDelay weich zurueck.
+	OrbitMouseSensitivity = 0.3, -- Grad pro Pixel
+	OrbitStickSpeed = 180, -- Grad pro Sekunde bei vollem Stick
+	OrbitPitchMin = -20, -- tiefster Blickwinkel (Grad, negativ = von unten)
+	OrbitPitchMax = 60, -- hoechster Blickwinkel (Grad)
+	OrbitReturnDelay = 1.5, -- so lange (s) ohne Eingabe, dann zurueck hinter den Wagen
+	OrbitReturnSpeed = 3, -- wie schnell sie zurueckdreht
+	ZoomMin = 0.5, -- naeher ran (Faktor auf Distance)
+	ZoomMax = 2.5, -- weiter weg
+	ZoomStep = 0.1, -- pro Mausrad-Raster
+}
+
+-- Selbstaufrichtung ("Stehaufmaennchen"): kippt der Wagen staerker als StartAngle, zieht eine
+-- sanfte Kraft ihn zurueck. Ueber MaxAngle (z. B. auf dem Kopf) hilft sie nicht mehr, und
+-- MaxStrength begrenzt sie - grosse Crashs werfen den Wagen also trotzdem um.
+Config.Righting = {
+	Enabled = true,
+	StartAngle = 20, -- ab dieser Neigung (Grad) wirkt sie
+	MaxAngle = 110, -- darueber nicht mehr
+	Strength = 6, -- wie stark (pro Radiant ueber StartAngle)
+	Damping = 1.5, -- bremst das Zurueckschwingen
+	MaxStrength = 8, -- Obergrenze (Radiant/s^2), damit grosse Crashs durchkommen
+}
+
+-- Federung (unsichtbar, nur fuers Fahrgefuehl): An jeder Ecke misst ein Strahl den Abstand zum
+-- Boden. Eine Feder (Haerte) und ein Daempfer (Daempfung) halten den Wagen auf Fahrhoehe und
+-- schlucken kleine Unebenheiten. Die Kugelraeder beruehren den Boden dann nicht mehr (nur Optik).
+-- Ist der Federweg aufgebraucht (grosse Landung), setzt der Wagenboden hart auf.
+Config.Suspension = {
+	Enabled = true, -- false = wie vorher (Raeder rollen direkt auf dem Boden); neu bauen (T)
+	Stiffness = 400, -- Federhaerte (pro Stud Einfedern); hoeher = straffer
+	Damping = 22, -- Daempfung; hoeher = weniger Nachschwingen
+	Travel = 1.2, -- Federweg (Studs), so weit kann jede Ecke einfedern
 }
 
 -- Crash-Erkennung (laeuft auf dem Client des Fahrers).
