@@ -27,6 +27,7 @@ local StreamAhead = require(script.Parent:WaitForChild("StreamAhead"))
 local Track = require(script.Parent:WaitForChild("Track"))
 local TrackPieces = require(script.Parent:WaitForChild("TrackPieces"))
 local TrackUnlocks = require(script.Parent:WaitForChild("TrackUnlocks"))
+local Rewind = require(script.Parent:WaitForChild("Rewind"))
 local Tricks = require(script.Parent:WaitForChild("Tricks"))
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -61,6 +62,7 @@ Cosmetics.init() -- Lackiererei: Farben und Spur
 Achievements.init() -- Erfolge (Popup, Badges)
 PlayerSettings.init() -- Einstellungen und Einstiegs-Hinweise speichern
 Tricks.init() -- Lufttricks: Muenzen fuer saubere Landungen
+Rewind.init() -- Rueckspulen (Studio): Meter pausieren, Lauf markieren
 DailySpin.init() -- taegliches Gluecksrad und Powerups
 Leaderboards.init() -- Bestenlisten (Global, Server, Freunde)
 Leaderstats.init() -- Spielerliste oben rechts: Meter und Muenzen

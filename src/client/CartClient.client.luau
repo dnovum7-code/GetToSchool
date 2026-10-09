@@ -36,6 +36,7 @@ local ProgressUI = require(script.Parent:WaitForChild("ProgressUI"))
 local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
 local ShopUI = require(script.Parent:WaitForChild("ShopUI"))
 local TrackSensors = require(script.Parent:WaitForChild("TrackSensors"))
+local Rewind = require(script.Parent:WaitForChild("Rewind"))
 local Tricks = require(script.Parent:WaitForChild("Tricks"))
 local VisualFX = require(script.Parent:WaitForChild("VisualFX"))
 local Toolkit = require(script.Parent:WaitForChild("Toolkit"))
@@ -226,6 +227,7 @@ remotes:WaitForChild("Progress").OnClientEvent:Connect(function(kind: string, us
 	end
 end)
 Tricks.init() -- Lufttricks (Anzeige)
+Rewind.init() -- Rueckspulen (Zeitleiste)
 VisualFX.init() -- Speed-Linien, Konfetti ...
 ComboUI.init() -- Kuh-Kombo-Anzeige
 MeterUI.init() -- Meterzaehler und x2-Anzeige
@@ -284,6 +286,7 @@ local function deactivate()
 	jumpHeld = false
 	Abilities.deactivate()
 	Tricks.deactivate()
+	Rewind.deactivate()
 	VisualFX.detach()
 	DriftEffects.detach()
 	SoundSystem.detach()
@@ -354,6 +357,7 @@ local function activate(seat: BasePart, humanoid: Humanoid)
 	end, true, Enum.ContextActionPriority.High.Value, Enum.KeyCode.Space, Enum.KeyCode.ButtonA)
 	ContextActionService:SetTitle(HOP_ACTION, "Hopp")
 	Abilities.activate() -- Ability-Tasten (z. B. Turbo F)
+	Rewind.activate() -- Rueckspulen (Z, nur Studio bzw. Config.Rewind.EnabledLive)
 	Tricks.activate(function() -- Lufttricks (Q/E, Gamepad LB, Touch "Trick")
 		return lastSteer
 	end)
@@ -482,6 +486,7 @@ local function onCrash(reason: string, base: BasePart, text: string?)
 		return
 	end
 	Tricks.cancel()
+	Rewind.clear()
 	enterCrashed(base)
 	RaceUI.showMessage("CRASH!", Color3.fromRGB(255, 80, 60), text or CRASH_TEXTS[reason])
 	SoundSystem.play("Crash")
@@ -655,6 +660,7 @@ end
 runState.OnClientEvent:Connect(function(kind: string, ...)
 	if kind == "Reset" then
 		local spawnCFrame: CFrame, keepRunning: boolean = ...
+		Rewind.clear() -- Neustart/Checkpoint: nicht in die Zeit davor zurueckspulen
 		if not keepRunning then
 			-- kompletter Neustart: neuer Lauf. Beim Checkpoint-Neustart laeuft die Zeit weiter.
 			runPhase = "Ready"
@@ -899,6 +905,14 @@ RunService.PreSimulation:Connect(function(dt)
 	if not current.base:IsDescendantOf(workspace) then
 		deactivate()
 		return
+	end
+	-- Rueckspulen: solange die Taste gehalten wird, keine Fahrphysik und keine Crash-Erkennung
+	if not crashed and Rewind.step(dt, current) then
+		crashDetector:reset()
+		return
+	end
+	if not crashed then
+		Rewind.record(dt, current.base)
 	end
 	local throttle, steer = readInput()
 	lastSteer = steer

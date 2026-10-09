@@ -43,10 +43,25 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
   Config.TuningPanel. Fehlersuche bei Bodenbausteinen: Config.Debug.TrackPieces.
 
 ## Aktueller Meilenstein
+Änderungen nach dem Map-Test (gebaut, noch nicht in Studio getestet; README „Nach dem
+Map-Test: Rückspulen, Drift, Panel testen“):
+- Entfernt: Crash durch Umkippen (Selbstaufrichtung übernimmt), tägliche Login-Belohnung
+  (7-Tage-Serie, Tag-7-Skin, Popup), Einstiegs-Hinweise. Spielstand Version 4 (Migration
+  3 -> 4 löscht login und hintsSeen still). x2-Meter-Boost gibt es weiter über das Glücksrad.
+- Drift bremst nur leicht: Drift.SpeedLoss (Anteil des Rutsch-Tempoverlusts, Rest kommt als
+  Schub zurück) und Drift.HandbrakeDeceleration, beide im Panel.
+- F2-Panel: Config.TuningPanel = Abschnitte { title, open, items }; items sind Regler oder
+  Schalter (switch = true, invert, server). DevPanel klappt Abschnitte ein/aus, DevTuning
+  nimmt nur Einträge mit server = true an.
+- Rückspulen: src/client/Rewind (Ringpuffer Config.Rewind.Seconds, Z / Steuerkreuz runter /
+  Touch „Zurueck“, Zeitleiste), server/Rewind + RaceManager.setRewinding (Meter pausiert,
+  usedRewind: keine Bestenliste, kein Geist). Nur Studio (Debug.Rewind) oder
+  Config.Rewind.EnabledLive. Timer läuft weiter, Leben kommen nicht zurück, Checkpoints
+  bleiben erreicht.
 Map-Test-Feedback (gebaut, noch nicht in Studio getestet; README „Map-Test-Werkzeuge,
 Kamera, Federung testen“):
-- F2-Panel hat Schalter (Config.TuningSwitches, auch server = true): Crash durch Aufprall
-  (Debug.NoImpactCrash), Umkippen (Debug.NoTipCrash), God Mode (Debug.GodMode, Tempo
+- F2-Panel hat Schalter (jetzt im Abschnitt Cheats / Test): Crash durch Aufprall
+  (Debug.NoImpactCrash), God Mode (Debug.GodMode, Tempo
   Config.GodMode.SpeedKmh; Client hält Tempo, Server zieht keine Leben ab), Selbstaufrichtung.
 - Kamera: frei drehen (rechte Maus / rechter Stick / Touch-Wischen), Mausrad-Zoom, kehrt nach
   OrbitReturnDelay zurück (ChaseCamera). Standard weiter hinten/höher, FOV größer.
@@ -71,19 +86,15 @@ README „Terrain-Import und Streaming testen“):
   IntegrityMode MinimumRadiusPause). Räder sind echte Kugeln, Raycast nur für „am Boden?“.
 - Sicherheitsnetz client/TerrainRescue: Wagen unter der Terrain-Oberfläche → zurück obendrauf
   statt Crash (Tunnel/Höhlen ausgenommen), Config.TerrainSafety.
-Meter, Login-Belohnung, Glücksrad (gebaut, noch nicht in Studio getestet; Testtabelle im
-README „Meter, Login-Belohnung, Glücksrad testen“):
+Meter, Glücksrad (gebaut, noch nicht in Studio getestet; Testtabelle im
+README „Meter und Glücksrad testen“):
 - Gefahrene Meter: Server zählt pro Lauf (RaceManager countMeters, Logik Progression/
   MeterMath; nur im Wagen, Teleport/Neustart setzt den Messpunkt zurück, Stücke schneller als
   Config.Meters.MaxSpeed zählen nicht). 1 Münze pro Config.Meters.MetersPerCoin, Zielbonus
   dafür gesenkt. Gesamtmeter in stats.totalMeters, Bestenliste „Gesamtmeter“ (Kind Meters),
   leaderstats (server/Leaderstats), HUD src/client/MeterUI.
-- Tagesuhr: server/DayClock (UTC, ResetHourUtc) für Hausaufgaben, Glücksrad, Login.
+- Tagesuhr: server/DayClock (UTC, ResetHourUtc) für Hausaufgaben und Glücksrad.
   Debug.DayTravel: F3 = nächster Tag (nur Studio, Settings-Remote "DebugNextDay").
-- Login-Belohnung: 7-Tage-Serie (Progression/LoginStreak, server/LoginRewards, Popup
-  src/client/LoginRewardUI, Settings-Remote "ClaimLogin"), Config.LoginRewards. Tag 3 =
-  x2-Meter-Boost (meterBoostRuns, verbraucht beim Start eines Laufs), Tag 7 = exklusiver Skin
-  „GoldenSkin“ (Config.Cosmetics, exclusive + sparkle; schon da = Münzen).
 - Glücksrad erweitert: Felder x2 Meter und Wagenfarbe, Prozente im Fenster, Hinweis am
   Menü-Knopf (ShopUI.setBadge), Konfetti beim Gewinn.
 - Spielstand Version 3 (Migration 2 -> 3).
@@ -137,8 +148,7 @@ M4 – Wiederspielwert (gebaut, noch nicht in Studio getestet; Testliste im READ
   Reiter „Erfolge“. Spielstand: achievements, stats.driftSeconds.
 - Einstellungen: Reiter „Einstellungen“ (Musik/Effekte über SoundGroups, Kamera-Wackeln,
   Geist, Steuerungstabelle), gespeichert im Spielstand (settings, server/PlayerSettings,
-  Remote "Settings"). Einstieg: einmalige Hinweise (src/client/Onboarding, hintsSeen,
-  Config.Onboarding, Debug.ShowHintsAlways). Steuerungstexte je Gerät: src/client/ControlsInfo.
+  Remote "Settings"). Steuerungstexte je Gerät: src/client/ControlsInfo.
 - Eingabe: Gamepad (RT/LT, Stick) und Touch-Joystick über das Roblox-Steuermodul
   (CartClient readInput, Config.Input). Vorher ging Fahren nur mit Tastatur.
 M3 – Progression (gebaut, noch nicht in Studio getestet):
@@ -183,7 +193,7 @@ Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 
 ## Später
 - Noch offen: nichts geplant. Nächster Schritt ist das Testen in Studio (Testlisten im
-  README: M2.5/M3, M4, M5, Meter/Login, Terrain/Streaming) und Feedback einarbeiten.
+  README: Nach dem Map-Test, M2.5/M3, M4, M5, Meter/Glücksrad, Terrain/Streaming) und Feedback einarbeiten.
 
 ## Steuerung
 | Aktion | Tastatur | Gamepad | Touch |
@@ -200,4 +210,5 @@ Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 | Fallschirm (Upgrade): in der Luft halten | Leertaste halten | A halten | Button „Hopp“ halten |
 | Turbo-Pausenbrot (Upgrade) | F | RB | Button „Turbo“ |
 | Lufttrick: in der Luft drehen (sauber landen = Münzen, schief = Crash) | Q / E (E nur in der Luft, am Boden Aussteigen) | LB (Richtung vom Stick) | Button „Trick“ |
+| Rückspulen (nur Studio bzw. Config.Rewind.EnabledLive): halten | Z | Steuerkreuz runter | Button „Zurueck“ |
 | Menü „Pausen-Kiosk“ (Shop, Strecken, Rekorde, Bestenliste, Hausaufgaben, Garage, Lackiererei, Erfolge, Einstellungen; nur außerhalb eines Laufs) | B | Select | Button „Shop“ |

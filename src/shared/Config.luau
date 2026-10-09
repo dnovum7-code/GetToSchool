@@ -997,6 +997,18 @@ Config.Righting = {
 	MaxStrength = 8, -- Obergrenze (Radiant/s^2), damit grosse Crashs durchkommen
 }
 
+-- Rueckspulen wie in Forza (fuer Streckentests): Die letzten Seconds Sekunden der Fahrt werden
+-- aufgezeichnet. Taste halten (Z, Gamepad Steuerkreuz runter, Touch "Zurueck") spult zurueck,
+-- loslassen faehrt an dieser Stelle mit dem damaligen Tempo weiter.
+-- In Studio an (Schalter Debug.Rewind im F2-Panel), im Spiel nur mit EnabledLive = true.
+-- Laeufe mit Rueckspulen zaehlen nicht fuer die Bestenliste und speichern keinen Geist.
+Config.Rewind = {
+	EnabledLive = false, -- true = auch im veroeffentlichten Spiel erlaubt
+	Seconds = 10, -- so viel wird aufgezeichnet
+	SampleRate = 30, -- Aufnahmen pro Sekunde
+	PlaybackSpeed = 1.5, -- so viel schneller als echt laeuft das Rueckspulen
+}
+
 -- Federung (unsichtbar, nur fuers Fahrgefuehl): An jeder Ecke misst ein Strahl den Abstand zum
 -- Boden. Eine Feder (Haerte) und ein Daempfer (Daempfung) halten den Wagen auf Fahrhoehe und
 -- schlucken kleine Unebenheiten. Die Kugelraeder beruehren den Boden dann nicht mehr (nur Optik).

@@ -132,7 +132,7 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/client/RaceUI.luau` | Client | Anzeige (Zeit, Tacho, CRASH!/ZIEL!) |
 | `src/client/EnterPrompt.luau` | Client | Hinweis „E Einsteigen“ am eigenen leeren Wagen |
 | `src/client/OwnCart.luau` | Client | Helfer: eigenen Wagen finden, Bewegung stoppen |
-| `src/client/DevPanel.luau` | Client | Tuning-Panel (nur Studio, F2) |
+| `src/client/DevPanel.luau` | Client | Tuning-Panel (nur Studio, F2), Abschnitte aus `Config.TuningPanel`, einklappbar |
 | `src/client/DriftEffects.luau` | Client | Funken und Reifenspuren beim Drift (nur lokal) |
 | `src/server/DevTuning.luau` | Server | Tuning-Werte, die der Server braucht (nur Studio) |
 | `src/shared/RaceTime.luau` | beiden | Zeit-Anzeige (1:23.45), Abstand (+0.45), Schulnote |
@@ -189,8 +189,7 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/server/Cosmetics.luau` | Server | Lackiererei: Farben/Spuren kaufen, wählen, am Wagen anwenden |
 | `src/client/PaintShopUI.luau` | Client | Reiter „Lackiererei“ im Menü |
 | `src/client/Settings.luau`, `SettingsUI.luau` | Client | Einstellungen (gespeichert über `server/PlayerSettings.luau`) und Reiter „Einstellungen“ |
-| `src/client/ControlsInfo.luau` | Client | Steuerung als Text je Gerät (Tabelle, Hilfezeile, Hinweise) |
-| `src/client/Onboarding.luau` | Client | Einmalige Einstiegs-Hinweise (Fahren, Drift, Neustart) |
+| `src/client/ControlsInfo.luau` | Client | Steuerung als Text je Gerät (Tabelle, Hilfezeile) |
 | `src/shared/Progression/TrickMath.luau` | beiden | Reine Logik (getestet): Lufttricks zählen und Landung bewerten |
 | `src/shared/Progression/Combo.luau` | beiden | Reine Logik (getestet): Kuh-Kombo zählen, Multiplikator, Bonus |
 | `src/shared/Progression/DailySpin.luau` | beiden | Reine Logik (getestet): Glücksrad würfeln, Gewinne, Powerups pro Lauf verbrauchen |
@@ -199,8 +198,8 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/client/MeterUI.luau` | Client | Meterzähler oben links, Anzeige „x2 METER!“ |
 | `src/server/Leaderstats.luau` | Server | Spielerliste oben rechts: Meter und Münzen |
 | `src/server/DayClock.luau` | Server | Gemeinsamer UTC-Tag für alles Tägliche; Debug-Tageswechsel (F3) |
-| `src/shared/Progression/LoginStreak.luau` | beiden | Reine Logik (getestet): 7-Tage-Login-Serie |
-| `src/server/LoginRewards.luau`, `src/client/LoginRewardUI.luau` | beide | Login-Belohnung: prüfen und gutschreiben / Kalender-Popup |
+| `src/client/Rewind.luau` | Client | Rückspulen: Ringpuffer der letzten Sekunden, Taste Z, Zeitleiste |
+| `src/server/Rewind.luau` | Server | Nimmt die Rückspul-Meldung an (nur wenn erlaubt), Meter pausieren, Lauf nicht für die Bestenliste |
 | `src/client/VisualFX.luau` | Client | Visuelle Extras: Speed-Linien, Landestaub, Boost-Flammen, Konfetti |
 | `src/client/ComboUI.luau` | Client | Große Anzeige „3x KOMBO!“ mit ablaufendem Zeitbalken |
 | `src/client/Tricks.luau`, `src/server/Tricks.luau` | beide | Lufttricks: drehen, Anzeige, Crash bei schiefer Landung / Münzen prüfen und gutschreiben |
@@ -762,7 +761,7 @@ kompletter Neustart; der Timer zeigt Minuten, Sekunden und Hundertstel.
 |---|---|---|
 | b) Wagen | Play | Ein grauer Einkaufswagen mit rotem Griff und vier schwarzen Kugel-Rädern erscheint. Im Explorer: `Workspace/Carts/Cart_<Name>` |
 | c) Fahren | W / S / A / D (oder Pfeiltasten) | Die Figur sitzt im Wagen. W schiebt an, S bremst/fährt rückwärts, A/D lenken. Leertaste wirft dich **nicht** raus. Die Kamera hängt hinter dem Wagen, das Sichtfeld wird bei Tempo weiter. Unten rechts: Tempo |
-| d) Crash | Wagen umkippen lassen, gegen eine Wand rasen, über eine Kante fallen | „CRASH!“ mit Grund (Umgekippt / Harter Aufprall / Abgestürzt) |
+| d) Crash | Wagen umkippen lassen, gegen eine Wand rasen, über eine Kante fallen | „CRASH!“ mit Grund (Harter Aufprall / Abgestürzt; Umkippen ist seit dem Map-Test kein Crash mehr) |
 | e) Neustart | R drücken, oder crashen | Wagen steht sofort (unter 1 s) wieder am Start, Tempo 0, Kamera dahinter |
 | f) Zeit | Durch die Startzone hinaus und in die Zielzone fahren | Oben läuft die Zeit; im Ziel „ZIEL!“ mit Zeit und ggf. „Neue Bestzeit!“, nach 3 s automatischer Neustart |
 
@@ -877,7 +876,7 @@ höchster Stufe. Debug-Schalter wirken nur in Studio; im veröffentlichten Spiel
 | Speichern | Studio-API-Zugriff an, Münzen sammeln, Stop, Play | Münzen sind noch da |
 | Ohne API-Zugriff | API-Zugriff aus, Play | Warnung im Output „nur im Arbeitsspeicher“, kurzer Hinweis oben; alles funktioniert |
 | Leben | Oben rechts | 5 rote Schulranzen |
-| Crash kostet Leben | Umkippen/Hazard | Ein Ranzen wird grau und wackelt, „-1 Leben“, Figur fliegt weit mit Luftspur |
+| Crash kostet Leben | Harter Aufprall/Hazard | Ein Ranzen wird grau und wackelt, „-1 Leben“, Figur fliegt weit mit Luftspur |
 | Game Over | 5x crashen | „NACHSITZEN!“ o. ä. wackelt, lustiger Text, Zahlen; nach ~4.5 s Neustart, T sofort; R tut nichts |
 | Leben auffüllen | T | Wieder 5 Ranzen |
 | Ohne Checkpoint | Vor dem ersten Checkpoint crashen | Zurück zum Start, Zeit und Leben laufen weiter (kein kompletter Neustart) |
@@ -890,7 +889,7 @@ höchster Stufe. Debug-Schalter wirken nur in Studio; im veröffentlichten Spiel
 | Kaufen | Genug Münzen, *Kaufen* | „Gekauft: …“, Münzen weniger, Stufe +1; bei zu wenig Münzen Hinweis |
 | Sprungfeder 1 | Leertaste | Deutlich höherer Sprung (ca. 9 Studs) statt Hopp |
 | Sprungfeder 2 | In der Luft nochmal Leertaste | Doppelsprung mit Ring-Effekt, einmal pro Sprung |
-| Fahrradhelm | Mit Helm crashen | „HELM!“, kein Leben weg, Helm-Symbol wird grau. Umgekippt: Wagen steht wieder; Aufprall: weiterfahren; Hazard: zum Checkpoint |
+| Fahrradhelm | Mit Helm crashen | „HELM!“, kein Leben weg, Helm-Symbol wird grau. Aufprall: weiterfahren; Hazard: zum Checkpoint |
 | Helm laden | Nach Rettung durch einen neuen Checkpoint | Helm-Symbol wieder blau |
 | Turbo | **F** (Gamepad RB) | Schub, Krümel-Wolke, Sichtfeld zieht auf; unten links Abklingzeit, erneut F: „noch nicht verdaut“ |
 | Fallschirm | Springen, Leertaste halten | Schirm über dem Wagen, langsames Fallen, gleitet weiter, A/D lenkt |
@@ -985,13 +984,11 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Erfolge (Menü) | B → „Erfolge“ | „X von 12 Erfolgen“, erreichte golden mit 🏆, andere mit 🔒 und Fortschritt „3 / 25“ |
 | Speichern | Stop, Play | Erreichte Erfolge bleiben, kein zweites Popup |
 | Badges | Badge im Creator Dashboard anlegen, Id in `Config.Achievements.List` (`badge`) eintragen, im veröffentlichten Spiel freischalten | Roblox-Badge wird vergeben (in Studio nur mit echtem Spieler, Testspieler werden übersprungen) |
-| Einstellungen | B → „Einstellungen“ | Musik/Effekte mit −/+ (10-%-Schritte), Kamera-Wackeln und Geist An/Aus, „Hinweise nochmal zeigen“, Steuerungstabelle (Spalte deines Geräts gelb) |
+| Einstellungen | B → „Einstellungen“ | Musik/Effekte mit −/+ (10-%-Schritte), Kamera-Wackeln und Geist An/Aus, Steuerungstabelle (Spalte deines Geräts gelb) |
 | Lautstärke | Effekte auf 0 % | Keine Geräusche mehr (Musik bleibt); Musik braucht eine Id in `Config.Sounds.Music` |
 | Kamera-Wackeln aus | Aus, dann schnell fahren / hart landen | Kamera bleibt ruhig |
 | Geist aus | Aus, T, losfahren | Kein Geist; wieder an: beim nächsten Start da |
 | Einstellungen speichern | Etwas umstellen, Stop, Play | Einstellungen sind wieder so |
-| Einstiegs-Hinweise | Neuer Spielstand (oder „Nochmal zeigen“, oder `Debug.ShowHintsAlways`), losfahren | Unten „💡 Los geht's!“ (Gas/Lenken), nach ~7 s „Driften“, beim ersten Crash „Hingefallen? …“; je nur einmal |
-| Hinweise je Gerät | Mit Gamepad losfahren | Texte nennen RT/LT/Stick/Y statt W/S/R |
 | Gamepad fahren | Gamepad anschließen: RT Gas, LT Bremse, linker Stick lenken (oder nach vorne = Gas) | Wagen fährt und lenkt analog; B = normal fahren, A = Hopp, Y = Checkpoint, Steuerkreuz hoch = Neustart, Select = Menü |
 | Touch fahren | Studio: *Test → Device* (Handy) | Joystick links: Gas/Lenken; Knöpfe Hopp, Normal, R, Start, Raus, Turbo, Shop; Hilfezeile unten ausgeblendet. Prüfen: Knöpfe überlappen nicht |
 | Menü mit Gamepad | Select, dann Steuerkreuz/Stick | Knöpfe lassen sich auswählen, A drückt; Reiter oben scrollen mit |
@@ -1014,7 +1011,6 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 8. **Hausaufgaben**: Fortschritt steigt, Belohnung und Bonus kommen.
 9. **Erfolge**: Popup beim ersten Lauf, Liste im Menü.
 10. **Lackiererei**: Farbe pro Fahrzeug, Spur sichtbar (auch für einen zweiten Spieler).
-11. **Einstiegs-Hinweise**: erscheinen einmal, „Nochmal zeigen“ funktioniert.
 
 ## M5 testen (Spaß-Extras)
 
@@ -1044,6 +1040,22 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Konfetti | Ins Ziel fahren | Konfetti fällt von oben; bei neuer Bestzeit doppelt so viel |
 | Effekte aus | Einstellungen → „Extra-Effekte“ aus | Nichts davon mehr zu sehen |
 
+## Nach dem Map-Test: Rückspulen, Drift, Panel testen
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| Umkippen | Wagen an einer Böschung umwerfen | Kein Crash mehr; die Selbstaufrichtung stellt ihn wieder hin (Aufprall/Hazard/Absturz crashen weiterhin) |
+| Login-Belohnung weg | Play mit altem Spielstand | Kein Kalender-Popup, keine Fehler im Output |
+| Hinweise weg | Neuer Spielstand, losfahren | Keine „💡“-Tipps mehr; Einstellungen ohne „Hinweise nochmal zeigen“ |
+| Drift bremst leicht | Lange Kurve im Drift auf flachem Stück | Tempo fällt nur wenig (vorher deutlich); Regler „Drift-Bremse“ und „Drift-Tempoverlust (0..1)“ im Abschnitt Drift |
+| Panel-Abschnitte | F2 | Titel Fahren (offen), Drift, Federung und Aufrichten, Kamera, Crash und Leben, Abilities, Bausteine, Münzen und Belohnungen, Fahrzeuge, Cheats / Test; Klick auf den Titel klappt auf/zu |
+| Rückspulen | Fahren, dann Z halten (Gamepad: Steuerkreuz runter) | Wagen fährt sichtbar rückwärts durch die letzten Sekunden, unten „◀◀ Rückspulen -3.2 s“ mit Zeitleiste |
+| Weiterfahren | Z loslassen | Fahrt geht an der Stelle mit dem damaligen Tempo weiter |
+| Grenze | Länger als 10 s halten | Bleibt am ältesten Punkt stehen |
+| Nach Crash/R/T | Crash, dann Z | Nichts (Puffer ist leer, nur die Fahrt seit dem letzten Neustart zählt) |
+| Rückspulen aus | F2 → Cheats / Test → „Rückspulen“ Aus | Z macht nichts |
+| Bestenliste | Mit Rückspulen ins Ziel | Ergebnis: „Nicht in der Bestenliste: Rückspulen benutzt“, kein neuer Geist |
+
 ## Map-Test-Werkzeuge, Kamera, Federung testen
 
 Alles im F2-Panel (nur Studio). Oben stehen die Schalter, darunter die Regler.
@@ -1051,7 +1063,6 @@ Alles im F2-Panel (nur Studio). Oben stehen die Schalter, darunter die Regler.
 | Funktion | Was du tun kannst | Was passieren sollte |
 |---|---|---|
 | Crash durch Aufprall aus | F2 → „Crash durch harten Aufprall“ auf Aus, gegen eine Wand fahren | Kein Crash, Wagen prallt ab |
-| Crash durch Umkippen aus | F2 → „Crash durch Umkippen“ auf Aus, Wagen umwerfen | Kein Crash (mit Selbstaufrichtung steht er oft wieder auf) |
 | God Mode | F2 → „God Mode“ an, W halten, steilen Hang hoch und runter | Tacho bleibt bei ca. 60 km/h, kein Crash, keine Leben weg (auch Kühe nicht); abstürzen = zurück zum Checkpoint |
 | God-Mode-Tempo | Regler „God Mode: Tempo (km/h)“ | Wirkt sofort |
 | Kamera drehen | Rechte Maustaste halten und ziehen / Gamepad rechter Stick / Touch rechts wischen | Kamera kreist um den Wagen |
@@ -1062,7 +1073,7 @@ Alles im F2-Panel (nur Studio). Oben stehen die Schalter, darunter die Regler.
 | Federung | Über welliges Terrain fahren | Wagen fährt ruhig, schüttelt kaum; große Sprünge setzen spürbar auf. Regler „Federung: Härte / Dämpfung / Federweg“ (zu weich = schaukelt, zu hart = rüttelt) |
 | Federung aus | `Config.Suspension.Enabled = false`, Play | Altes Verhalten (Räder rollen auf dem Boden) |
 
-## Meter, Login-Belohnung, Glücksrad testen
+## Meter und Glücksrad testen
 
 Zum schnellen Testen in `Config.Debug`: `DayTravel = true` (F3 = nächster Tag),
 `FreeSpins = true` (Rad beliebig oft).
@@ -1076,17 +1087,11 @@ Zum schnellen Testen in `Config.Debug`: `DayTravel = true` (F3 = nächster Tag),
 | Ergebnis | Ins Ziel | Zeile „Gefahren: 504 m (+16 Münzen)“ |
 | Gesamtmeter | Spielerliste oben rechts (Tab) | Spalten „Meter“ und „Münzen“, Meter steigen beim Fahren |
 | Bestenliste Gesamtmeter | B → Bestenliste → „Gesamtmeter“; Teststrecke: Tafel über der Schule | Top 10 + dein Platz (Eintrag spätestens nach 60 s bzw. beim Verlassen) |
-| Login Tag 1 | Neuer Spielstand, Play | Kalender-Popup, Tag 1 golden umrandet, „Abholen!“ → 25 Münzen, Konfetti, Popup geht zu |
-| Nur einmal am Tag | Stop, Play | Kein Popup mehr |
-| Serie | `DayTravel` an, F3, Popup | Tag 2 (40 Münzen); F3, F3: Tag 3 = x2 Meter |
-| x2-Boost | Nach Tag 3 losfahren | „x2 METER!“ unter dem Zähler, Meter zählen doppelt; gilt für 3 Läufe (Rest steht im Glücksrad-Reiter) |
-| Tag 7 | Bis Tag 7 weiter | „Goldener Glanz – exklusiv!“: Wagen golden mit Funkeln, Lackiererei zeigt ihn; in der Lackiererei sonst „Login-Tag 7“ (nicht kaufbar) |
-| Tag 7 nochmal | Weiter bis zum nächsten Tag 7 | 250 Münzen statt Skin |
-| Verpasster Tag | F3 zweimal hintereinander ohne Abholen dazwischen, dann Play/Popup | Wieder Tag 1 |
+| x2-Boost | Glücksrad-Feld „x2 Meter“, dann losfahren | „x2 METER!“ unter dem Zähler, Meter zählen doppelt; gilt für 2 Läufe (Rest steht im Glücksrad-Reiter) |
 | Glücksrad-Hinweis | Rad noch nicht gedreht | Menü-Knopf orange „Shop [B] !“, Reiter „Gluecksrad (!)“ |
 | Glücksrad | Drehen | Rad hält am vom Server gewürfelten Feld, Tick-Sound (Id eintragen), Konfetti + „Gewonnen: …“; darunter Gewinnchancen in % |
 | Wagenfarbe gewonnen | Feld „Wagenfarbe“ | Eine Farbe, die du noch nicht hattest, ist gekauft und am aktuellen Fahrzeug |
-| Alter Spielstand | Mit Spielstand von vorher (Version 2) | Lädt ohne Fehler, Gesamtmeter 0, Serie beginnt bei Tag 1 |
+| Alter Spielstand | Mit Spielstand von vorher (Version 2 oder 3) | Lädt ohne Fehler; alte Login-Serie und Hinweise fallen still weg |
 
 **Balance-Vorschlag (eingetragen, im Tuning-Panel änderbar):** 1 Münze pro 30 m; Zielbonus
 von 10 + 20/12/7/4/2/0 auf 3 + 12/7/4/2/1/0 gesenkt. Teststrecke (~500 m, Note 4, ~15

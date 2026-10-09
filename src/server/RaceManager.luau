@@ -73,6 +73,8 @@ type RaceState = {
 	lastMeterPos: Vector3?, -- letzte gemessene Position (nil = nach Teleport neu anfangen)
 	lastMeterAt: number,
 	lastMeterSend: number,
+	rewinding: boolean, -- spult gerade zurueck (Meter zaehlen nicht)
+	usedRewind: boolean, -- in diesem Lauf zurueckgespult (keine Bestenliste, kein Geist)
 }
 
 -- Ergebnis eines Laufs, so wie es an den Client geht
@@ -125,6 +127,8 @@ local function getRace(player: Player): RaceState
 			lastMeterPos = nil,
 			lastMeterAt = 0,
 			lastMeterSend = 0,
+			rewinding = false,
+			usedRewind = false,
 		}
 		races[player] = race
 	end
@@ -188,6 +192,8 @@ function RaceManager.restart(player: Player)
 	race.meterCoins = 0
 	race.meterBoost = false
 	race.lastMeterPos = nil
+	race.rewinding = false
+	race.usedRewind = false
 	runState:FireClient(player, "Meters", 0, false)
 	Launchables.resetRun(player) -- umgeschleuderte Objekte stehen wieder
 	-- Neuer Lauf: Zufallsereignisse neu wuerfeln (vor "Reset", damit die Strecke steht)
@@ -314,6 +320,16 @@ function RaceManager.addRunBonus(player: Player, lives: number, shield: number)
 	race.life.maxLives += lives
 	race.life.shield += shield
 	sendLives(player, race)
+end
+
+-- Rueckspulen (server/Rewind): Meter pausieren, Lauf markieren
+function RaceManager.setRewinding(player: Player, on: boolean)
+	local race = getRace(player)
+	race.rewinding = on
+	race.lastMeterPos = nil -- der Sprung zaehlt nicht als Strecke
+	if on and race.phase == "Running" then
+		race.usedRewind = true
+	end
 end
 
 -- Laeuft gerade ein Lauf (Zeit laeuft)?
@@ -444,6 +460,9 @@ end
 
 -- Lauf plausibel? Dann in die globale Bestenliste. Sonst: Grund fuer die Anzeige.
 local function submitToLeaderboard(player: Player, race: RaceState, time: number, position: Vector3): string?
+	if race.usedRewind then
+		return "Nicht in der Bestenliste: Rueckspulen benutzt"
+	end
 	local LB = Config.Leaderboard
 	local ok, reason = RunValidation.check(
 		{
@@ -507,7 +526,7 @@ local function finish(player: Player, race: RaceState, finishZone: BasePart, pos
 	-- Ziel erreicht: die eingesammelten Muenzen dieser Strecke erscheinen wieder
 	Coins.restoreTrack(player, race.trackId)
 	-- Neue Bestzeit: Aufnahme wird der neue Geist
-	Ghosts.finish(player, race.trackId, isNewBest, time)
+	Ghosts.finish(player, race.trackId, isNewBest and not race.usedRewind, time)
 	PlayerEvents.fire(player, {
 		type = "Finish",
 		trackId = race.trackId,
@@ -591,6 +610,11 @@ end
 local function countMeters(player: Player, race: RaceState, position: Vector3)
 	local M = Config.Meters
 	local now = os.clock()
+	if race.rewinding then
+		race.lastMeterPos = nil -- beim Rueckspulen zaehlen keine Meter
+		race.lastMeterAt = now
+		return
+	end
 	local last = race.lastMeterPos
 	race.lastMeterPos = position
 	local dt = now - race.lastMeterAt
