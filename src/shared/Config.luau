@@ -564,6 +564,15 @@ Config.Toolkit = {
 
 -- Spawner (Tag "Spawner", Part): Objekte erscheinen an zufaelligen Stellen innerhalb des
 -- Parts und bekommen Schwung in Richtung seiner Vorderseite. Standardwerte der Attribute:
+-- TextTrigger (Tag "TextTrigger", Part): Text auf dem Bildschirm beim Hineinfahren.
+-- Attribute Text, SubText, Color, Duration, Once, Cooldown (siehe client/Toolkit/TextTriggers)
+Config.TextTrigger = {
+	Duration = 3, -- Sekunden sichtbar
+	Once = true, -- nur einmal pro Lauf (bei R und T wieder scharf)
+	Cooldown = 3,
+	Color = Color3.fromRGB(255, 220, 80),
+}
+
 Config.Spawner = {
 	Template = "", -- Name der Vorlage in ReplicatedStorage/Templates, mehrere durch Komma
 	Interval = 3, -- Sekunden zwischen zwei Ausloesungen (Dauerbetrieb)
@@ -571,6 +580,10 @@ Config.Spawner = {
 	Burst = 1, -- Anzahl Objekte pro Ausloesung
 	Speed = 30, -- Schwung (Studs/s) in Richtung der Vorderseite
 	Strength = 1, -- Schuss-Staerke: Faktor auf Speed (Attribut "Strength" an Spawner oder Vorlage)
+	-- BoostPad/JumpPad wirken auch auf gespawnte Objekte: Faktor auf die Pad-Staerke
+	-- (Attribut "PadFactor" am Spawner; 0 = Pads ignorieren)
+	PadFactor = 1,
+	PadSensorPadding = 0.5, -- so viel (Studs) um das Objekt herum zaehlt als "auf dem Pad"
 	SpeedRandom = 5, -- +/- so viel
 	SpreadAngle = 10, -- Streuung der Richtung (Grad)
 	Spin = 0, -- zufaellige Drehung (Radiant/s), z. B. 4 fuer Steine
@@ -714,6 +727,15 @@ Config.Sounds = {
 	SpinWin = { Id = "", Volume = 0.8 }, -- Gluecksrad: Gewinn
 }
 
+-- Flugmodus (Debug.FlyMode, nur Studio, Schalter im F2-Panel): W/S vor/zurueck, A/D drehen,
+-- Leertaste steigen, Shift sinken. Keine Schwerkraft, kein Crash.
+Config.FlyMode = {
+	Speed = 80, -- Studs/s vorwaerts
+	VerticalSpeed = 50, -- Studs/s hoch/runter
+	TurnSpeed = 2.5, -- Drehen (Radiant/s)
+	Responsiveness = 6, -- wie schnell das Tempo folgt (hoeher = direkter)
+}
+
 -- God Mode (Debug.GodMode, nur Studio): mit W konstant dieses Tempo, egal ob bergauf oder bergab
 Config.GodMode = {
 	SpeedKmh = 60,
@@ -840,6 +862,7 @@ Config.TuningPanel = {
 			{ label = "Himmel-Chance (0..1)", path = "Launch.SkyChance", server = true, span = 0.25 },
 			{ label = "Flug-Schwerkraft", path = "Launch.Gravity", server = true, min = 5 },
 			{ label = "Spawner: Schuss-Staerke (Faktor)", path = "Spawner.Strength" },
+			{ label = "Spawner: Pad-Faktor (Boost/Jump)", path = "Spawner.PadFactor" },
 			{ label = "LowGravity: Schwerkraft-Anteil", path = "ObjectPhysics.GravityScale", server = true },
 			{ label = "NoFriction: Reibung", path = "ObjectPhysics.Friction", server = true, span = 0.5 },
 			{ label = "KeepUpright: Kraft", path = "ObjectPhysics.UprightStrength", server = true },
@@ -881,6 +904,10 @@ Config.TuningPanel = {
 				server = true,
 			},
 			{ label = "God Mode: Tempo (km/h)", path = "GodMode.SpeedKmh" },
+			{ label = "Flugmodus (Leertaste hoch, Shift runter)", path = "Debug.FlyMode", switch = true },
+			{ label = "Flugmodus: Tempo", path = "FlyMode.Speed" },
+			{ label = "Flugmodus: Steigen/Sinken", path = "FlyMode.VerticalSpeed" },
+			{ label = "Flugmodus: Drehen", path = "FlyMode.TurnSpeed" },
 			{
 				label = "Crash durch harten Aufprall",
 				path = "Debug.NoImpactCrash",
@@ -976,6 +1003,7 @@ Config.Debug = {
 	-- true = keine Tode zum Testen: kein Crash (Aufprall, Hazard, Landung), kein Lebensverlust
 	-- (auch nicht durch Launchables), kein Game Over; abgestuerzt = zurueck zum Checkpoint
 	NoDeaths = true,
+	FlyMode = false, -- true = fliegen wie in Minecraft (nur ueber das F2-Panel, Config.FlyMode)
 	Rewind = true, -- true = Rueckspulen (Z) in Studio an (live: Config.Rewind.EnabledLive)
 }
 

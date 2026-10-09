@@ -248,7 +248,7 @@ geschrieben wie in der Tabelle). Mehrere Tags pro Part sind erlaubt (z. B. `Move
 | `StartZone` | Start: Wagen steht in der Mitte, schaut bergab. Zeit läuft beim Verlassen | `TrackId` (Text) – „Track1“, nur für Zonen außerhalb eines Track-Models (siehe „Zweiten Track anlegen“) |
 | `FinishZone` | Ziel: beendet den Lauf, Ergebnis mit Note | `Grade6` … `Grade2` (Zahl, Sekunden) – 60 / 75 / 90 / 110 / 130; langsamer = Note 1 |
 | `Checkpoint` | Durchfahren speichert Position + Richtung. R / Crash → hierher. Für die globale Bestenliste müssen alle durchfahren werden (alternative Wege: gleiche `Order`, einer reicht) | `Order` (Zahl) – keine. Mit Order zählt ein Checkpoint mit kleinerer Zahl als der letzte nicht; `Optional` (Bool) – false (= muss für die Bestenliste nicht durchfahren werden) |
-| `BoostPad` | Schub in Blickrichtung (Vorderseite) des Parts, beim Drauffahren | `Strength` (Zahl, Studs/s) – 40 |
+| `BoostPad` | Schub in Blickrichtung (Vorderseite) des Parts, beim Drauffahren. Wirkt auch auf gespawnte Objekte (Spawner-Attribut `PadFactor`) | `Strength` (Zahl, Studs/s) – 40 |
 | `JumpPad` | Schleudert entlang der Oberseite des Parts nach oben | `Strength` (Zahl, Studs/s) – 86 (≈ 19 Studs hoch) |
 | `Mud` | Bremst stark, Drift-Ladung pausiert | `Drag` (Zahl, pro Sekunde) – 3 |
 | `Ice` | Kaum Seitenhalt und Lenkhilfe, alles rutscht | `Grip` (Zahl, 0–1) – 0.1 |
@@ -259,6 +259,7 @@ geschrieben wie in der Tabelle). Mehrere Tags pro Part sind erlaubt (z. B. `Move
 | `Pendulum` | Schwingt um die Oberkante des Parts (Modell: um den Pivot), Achse X | `Angle` (Grad) – 45; `Duration` (s, hin und zurück) – 3; `Phase` (s) – 0 |
 | `RandomEvent` | Pro Lauf aktiv oder ausgeblendet | `Chance` (0–1) – 0.5; `Group` (Text) – keine. Aus jeder Gruppe ist genau eins aktiv (`Chance` = Gewicht) |
 | `TriggerZone` | Fährt dein Wagen hinein, wird ein **Signal** ausgelöst (siehe „Erweiterter Baukasten“) | `Signal` (Text) – nötig; `Once` (Bool) – false (nur einmal pro Lauf); `Cooldown` (s) – 2 |
+| `TextTrigger` | Fährt dein Wagen hinein, erscheint ein **Text groß auf dem Bildschirm** (nur bei dir). Der Bereich ist im Spiel unsichtbar, bei R und T wieder scharf | `Text` (Text) – nötig; `SubText` (Text) – keiner (kleine Zeile darunter); `Color` (Color3) – gelb; `Duration` (s) – 3; `Once` (Bool) – true; `Cooldown` (s) – 3 |
 | `Spawner` | Spawn-Bereich (Part): erzeugt Objekte aus Vorlagen mit Schwung Richtung Vorderseite | siehe Tabelle „Spawner“ unten |
 | `PathMover` | Modell fährt Wegpunkte ab (Ordner `Waypoints` mit Parts `1`, `2`, `3` …) | `Speed` – 16; `Loop` (Bool) – false (= hin und zurück); `WaitAtPoints` (s) – 0; `FaceDirection` (Bool) – true; `Phase` (s) – 0; `ListenSignal` – keins |
 | `Gate` | Tor/Schranke/Klappbrücke: bewegt sich um den Pivot | `Offset` (Vector3) – 0; `Angle` (Grad) – 0; `Axis` („X“/„Y“/„Z“) – X; `Duration` (s) – 2; `OpenTime` – 3; `ClosedTime` – 3; `Phase` – 0; `StartOpen` (Bool) – false; `ListenSignal`; `CloseAfter` (s, 0 = bleibt offen) – 0 |
@@ -378,6 +379,7 @@ nicht in Git. Fehlt eine Vorlage, spawnt eine graue Ersatz-Kugel und im Output s
 | `Hazard` | Bool | false | true = Berührung ist ein Crash (`Message` = Text), false = nur Schubs |
 | `Kinematic` | Bool | false | true = fährt stur geradeaus, ohne Schwerkraft (Autos) |
 | `ListenSignal` | Text | – | pro Signal ein Burst statt Dauerbetrieb |
+| `PadFactor` | Zahl (Faktor) | 1 | BoostPad/JumpPad wirken auf die Objekte mal diesem Faktor (0 = Pads ignorieren; nicht bei `Kinematic`) |
 | Tag `Launchable` (oder Attribut `Launchable` = true) | – | – | alle gespawnten Objekte sind wegschleuderbar (wie die Kuh in der Welt); der Spawner selbst fliegt nicht |
 | Tags `LowGravity` / `NoFriction` / `KeepUpright` | – | – | gelten für alle gespawnten Objekte (siehe „Physik-Tags“) |
 
@@ -1095,6 +1097,10 @@ Im Test-Place: Station 13 (Kuh-Spawner „SpawnerKuehe“, Vorlage „KuhRutsch�
 | Schuss-Stärke | Attribut `Strength` (Number) am Spawner „SpawnerKuehe“ auf 3 stellen (Standard im Test-Place: 2) | Kühe schießen deutlich schneller aus dem Spawner; Pfeil der Bau-Hilfe wird länger. Ohne Attribut gilt der Regler „Spawner: Schuss-Stärke“ (F2 → Bausteine) für alle Spawner |
 | Keine Tode | F2 → Cheats / Test → „Tode (Crash, Leben, Game Over)“ ist **Aus** (Standard) | Kein Crash bei Aufprall, Hazard, schiefer Landung; Launchable-Treffer kosten kein Leben; kein Game Over; unter die Welt gefallen = zurück zum Checkpoint |
 | Tode wieder an | Schalter auf An | Crashs und Lebensverlust wie im echten Spiel |
+| BoostPad für Kühe | Station 13: Kühe rutschen über das grüne Pad „BoostPadKuehe“ | Sie werden deutlich schneller und kommen weiter; Attribut `PadFactor` am Spawner (z. B. 2) verstärkt das, 0 schaltet es ab. JumpPads werfen sie hoch |
+| TextTrigger | Station 13: durch den Anfang fahren | Groß „ACHTUNG, KUEHE!“ mit „Einholen und wegschleudern“, 3 s; nach R/T wieder |
+| Flugmodus | F2 → Cheats / Test → „Flugmodus“ An | W/S vor/zurück, A/D drehen, Leertaste hoch, Shift runter (Gamepad A/B); kein Fallen, kein Crash; Regler Tempo/Steigen/Drehen |
+| Flugmodus aus | Schalter Aus (in der Luft) | Wagen fällt normal herunter und fährt weiter |
 
 ## Nach dem Map-Test: Rückspulen, Drift, Panel testen
 

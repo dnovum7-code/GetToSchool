@@ -30,6 +30,7 @@ local Settings = require(script.Parent:WaitForChild("Settings"))
 local SettingsUI = require(script.Parent:WaitForChild("SettingsUI"))
 local SpinUI = require(script.Parent:WaitForChild("SpinUI"))
 local LaunchablesClient = require(script.Parent:WaitForChild("LaunchablesClient"))
+local FlyMode = require(script.Parent:WaitForChild("FlyMode"))
 local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 local ProgressClient = require(script.Parent:WaitForChild("ProgressClient"))
 local ProgressUI = require(script.Parent:WaitForChild("ProgressUI"))
@@ -919,6 +920,16 @@ RunService.PreSimulation:Connect(function(dt)
 	lastSteer = steer
 	-- Shift zaehlt nur, wenn nicht gerade im Chat getippt wird
 	local shift = shiftHeld and UserInputService:GetFocusedTextBox() == nil
+	-- Flugmodus (F2 -> Cheats / Test): Leertaste steigen, Shift sinken, keine Fahrphysik
+	local typing = UserInputService:GetFocusedTextBox() ~= nil
+	if not crashed and FlyMode.step(dt, current, throttle, steer, jumpHeld and not typing, shift) then
+		hopRequested = false
+		crashDetector:reset()
+		Toolkit.step({ dt = dt, cart = current.cart, base = current.base, controller = current })
+		CoinsClient.update(current.base)
+		RaceUI.setSpeed(current.base.AssemblyLinearVelocity.Magnitude)
+		return
+	end
 	local driftMode = if Config.Drift.DriftByDefault then not shift else shift
 	local surface = TrackSensors.sampleGround(current.cart)
 	local hop = hopRequested and UserInputService:GetFocusedTextBox() == nil

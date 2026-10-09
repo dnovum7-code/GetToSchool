@@ -16,6 +16,7 @@ local TrackPieces = {}
 -- Tags des erweiterten Baukastens (M2.5)
 local TOOLKIT_TAGS = {
 	"TriggerZone",
+	"TextTrigger",
 	"Spawner",
 	"PathMover",
 	"Gate",
@@ -164,7 +165,7 @@ function TrackPieces.init()
 	end)
 
 	-- Unsichtbare Bereiche (TriggerZone, Spawner): nur Messbereich, im Spiel unsichtbar
-	for _, tag in { "TriggerZone", "Spawner" } do
+	for _, tag in { "TriggerZone", "TextTrigger", "Spawner" } do
 		TagList.watch(tag, function(instance)
 			forEachPart(instance, function(part)
 				part.Anchored = true

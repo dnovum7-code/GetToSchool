@@ -62,7 +62,14 @@ README „Launchables aus Spawnern, Physik-Tags, keine Tode testen“):
   Lebensverlust (RaceManager.applyHit), kein Game Over; Absturz = Checkpoint.
 - Spawner-Attribut Strength (Faktor auf Speed, an Spawner oder Vorlage, Spawner gewinnt;
   Standard Config.Spawner.Strength, Regler unter Bausteine).
-- Test-Place Station 13: Kuh-Spawner (Vorlage KuhRutsch mit allen Tags, Strength 2).
+- BoostPad/JumpPad wirken auch auf gespawnte Objekte (Spawners applyPads, Faktor PadFactor am
+  Spawner bzw. Config.Spawner.PadFactor, 0 = aus).
+- TextTrigger (Tag, Part, client/Toolkit/TextTriggers): Text/SubText/Color/Duration/Once/Cooldown,
+  zeigt RaceUI.showMessage; Config.TextTrigger.
+- Flugmodus (Debug.FlyMode, nur F2-Panel, client/FlyMode, Config.FlyMode): W/S, A/D drehen,
+  Leertaste hoch, Shift runter, Schwerkraft aufgehoben.
+- Test-Place Station 13: Kuh-Spawner (Vorlage KuhRutsch mit allen Tags, Strength 2), BoostPad
+  für die Kühe, TextTrigger.
 Änderungen nach dem Map-Test (gebaut, noch nicht in Studio getestet; README „Nach dem
 Map-Test: Rückspulen, Drift, Panel testen“):
 - Entfernt: Crash durch Umkippen (Selbstaufrichtung übernimmt), tägliche Login-Belohnung
@@ -230,5 +237,6 @@ Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 | Fallschirm (Upgrade): in der Luft halten | Leertaste halten | A halten | Button „Hopp“ halten |
 | Turbo-Pausenbrot (Upgrade) | F | RB | Button „Turbo“ |
 | Lufttrick: in der Luft drehen (sauber landen = Münzen, schief = Crash) | Q / E (E nur in der Luft, am Boden Aussteigen) | LB (Richtung vom Stick) | Button „Trick“ |
+| Flugmodus (nur Studio, Schalter im F2-Panel): hoch / runter | Leertaste / Shift | A / B | Hopp / Normal |
 | Rückspulen (nur Studio bzw. Config.Rewind.EnabledLive): halten | Z | Steuerkreuz runter | Button „Zurueck“ |
 | Menü „Pausen-Kiosk“ (Shop, Strecken, Rekorde, Bestenliste, Hausaufgaben, Garage, Lackiererei, Erfolge, Einstellungen; nur außerhalb eines Laufs) | B | Select | Button „Shop“ |

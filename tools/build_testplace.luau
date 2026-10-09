@@ -515,6 +515,26 @@ station(13, "Launchable: Kuh, Muelltonne (ins All), Kuh-Spawner (Kuehe rutschen 
 		},
 		Parent = track,
 	})
+	-- BoostPad auf der Strasse: schiebt auch die gespawnten Kuehe weiter
+	part({
+		Name = "BoostPadKuehe",
+		Size = Vector3.new(ROAD_WIDTH - 2, 0.2, 6),
+		CFrame = frame(s + 6, 0, 0.05),
+		Color = Color3.fromRGB(60, 255, 120),
+		Material = Enum.Material.Neon,
+		Tags = { "BoostPad" },
+		Parent = track,
+	})
+	-- TextTrigger am Anfang der Station: Text auf dem Bildschirm
+	zone(
+		track,
+		"TextKuehe",
+		frame(s - 28, 0, 5),
+		Vector3.new(ROAD_WIDTH, 10, 4),
+		Color3.fromRGB(240, 240, 240),
+		{ "TextTrigger" },
+		{ Text = "ACHTUNG, KUEHE!", SubText = "Einholen und wegschleudern" }
+	)
 	part({
 		Name = "Muelltonne",
 		Shape = Enum.PartType.Cylinder,

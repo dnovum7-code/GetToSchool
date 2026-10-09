@@ -12,6 +12,7 @@
 --   gelb    Gate (Lage im geoeffneten Zustand)
 --   blau    ForceZone (Bereich und Richtung)
 --   rot     TriggerZone (Bereich, Name des Signals)
+--   weiss   TextTrigger (Bereich, angezeigter Text)
 --   braun   Chaser (Radius, ab dem er losrennt)
 --   gelb    UpgradeDoor (welches Upgrade die Abkuerzungs-Tuer braucht)
 -- Bausteine mit ListenSignal zeigen "hoert: <Signal>".
@@ -38,6 +39,7 @@ local COLORS = {
 	Gate = Color3.fromRGB(255, 220, 60),
 	Force = Color3.fromRGB(70, 140, 255),
 	Trigger = Color3.fromRGB(255, 70, 90),
+	Text = Color3.fromRGB(240, 240, 240),
 	Chaser = Color3.fromRGB(170, 110, 60),
 	Label = Color3.fromRGB(255, 255, 255),
 }
@@ -387,6 +389,18 @@ local function draw()
 				instance,
 				"Signal: " .. (if type(signal) == "string" and signal ~= "" then signal else "FEHLT"),
 				COLORS.Trigger
+			)
+		end
+	end
+
+	for _, instance in tagged("TextTrigger") do
+		if instance:IsA("BasePart") then
+			box(instance.CFrame, instance.Size, COLORS.Text, 0.8)
+			local text = instance:GetAttribute("Text")
+			label(
+				instance,
+				"Text: " .. (if type(text) == "string" and text ~= "" then text else "FEHLT"),
+				COLORS.Text
 			)
 		end
 	end

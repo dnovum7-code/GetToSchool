@@ -19,6 +19,7 @@ local PathMovers = require(script:WaitForChild("PathMovers"))
 local Props = require(script:WaitForChild("Props"))
 local Spawners = require(script:WaitForChild("Spawners"))
 local ToolkitTypes = require(script:WaitForChild("ToolkitTypes"))
+local TextTriggers = require(script:WaitForChild("TextTriggers"))
 local TriggerZones = require(script:WaitForChild("TriggerZones"))
 local UpgradeDoors = require(script:WaitForChild("UpgradeDoors"))
 
@@ -26,6 +27,7 @@ local Toolkit = {}
 
 local MODULES: { ToolkitTypes.Piece } = {
 	TriggerZones,
+	TextTriggers,
 	Spawners,
 	PathMovers,
 	Gates,

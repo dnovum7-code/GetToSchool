@@ -10,6 +10,8 @@
 -- Tag "Launchable" am Spawner oder an der Vorlage: Die Kopien sind wegschleuderbar (wie eine
 -- Kuh in der Welt; der Server prueft den Treffer ueber Spawner + Objekt-Nummer).
 -- Tags LowGravity / NoFriction / KeepUpright an Spawner oder Vorlage: siehe shared/ObjectPhysics.
+-- BoostPad / JumpPad wirken auch auf gespawnte Objekte (nicht Kinematic), Faktor "PadFactor"
+-- am Spawner (Standard Config.Spawner.PadFactor, 0 = Pads ignorieren).
 -- Attribut "Strength" (Zahl, Faktor auf Speed) an Spawner oder Vorlage: Schuss-Staerke.
 -- Unity-Vergleich: Object Pool + Instantiate mit Rigidbody.velocity.
 
@@ -39,6 +41,7 @@ type Active = {
 	start: CFrame?,
 	velocity: Vector3?,
 	last: CFrame?,
+	pads: { [Instance]: number }, -- BoostPad/JumpPad: zuletzt beruehrt (os.clock)
 }
 
 type Spawner = {
@@ -256,6 +259,7 @@ local function spawnOne(spawner: Spawner, index: number, now: number)
 		start = if kinematic then cframe else nil,
 		velocity = if kinematic then velocity else nil,
 		last = if kinematic then cframe else nil,
+		pads = {},
 	})
 end
 
@@ -305,6 +309,75 @@ local function register(instance: Instance)
 	spawners[instance] = spawner
 end
 
+-- BoostPad / JumpPad unter einem gespawnten Objekt: wie beim Wagen (nur beim Drauffahren;
+-- wer PadCooldown Sekunden weg war, wird wieder geschoben)
+local PAD_TAGS = { "BoostPad", "JumpPad" }
+local padParams = OverlapParams.new()
+padParams.FilterType = Enum.RaycastFilterType.Include
+local padList: { Instance } = {}
+
+local function findPad(part: Instance): (Instance?, string?)
+	local current: Instance? = part
+	while current and current ~= workspace do
+		for _, tag in PAD_TAGS do
+			if current:HasTag(tag) then
+				return current, tag
+			end
+		end
+		current = current.Parent
+	end
+	return nil, nil
+end
+
+local function applyPads(spawner: Spawner, entry: Active)
+	local factor = Pieces.number(spawner.part, "PadFactor", Config.Spawner.PadFactor)
+	if factor <= 0 or #padList == 0 then
+		return
+	end
+	local object = entry.object
+	local cframe, size
+	if object:IsA("Model") then
+		cframe, size = object:GetBoundingBox()
+	elseif object:IsA("BasePart") then
+		cframe, size = object.CFrame, object.Size
+	else
+		return
+	end
+	local root: BasePart? = if object:IsA("Model")
+		then object.PrimaryPart or object:FindFirstChildWhichIsA("BasePart", true)
+		elseif object:IsA("BasePart") then object
+		else nil
+	if not root then
+		return
+	end
+	local T = Config.Track
+	local now = os.clock()
+	local padding = Vector3.one * Config.Spawner.PadSensorPadding * 2
+	local done: { [Instance]: boolean } = {}
+	for _, part in workspace:GetPartBoundsInBox(cframe, size + padding, padParams) do
+		local pad, tag = findPad(part)
+		if not pad or done[pad] then
+			continue
+		end
+		done[pad] = true
+		local last = entry.pads[pad]
+		entry.pads[pad] = now
+		if last ~= nil and now - last < T.PadCooldown then
+			continue
+		end
+		local velocity = root.AssemblyLinearVelocity
+		local padCFrame = Pieces.getCFrame(pad :: PVInstance)
+		if tag == "BoostPad" then
+			local strength = Pieces.number(pad, "Strength", T.BoostPadStrength)
+			root.AssemblyLinearVelocity = velocity + padCFrame.LookVector * strength * factor
+		else
+			local strength = Pieces.number(pad, "Strength", T.JumpPadStrength) * factor
+			local up = padCFrame.UpVector
+			root.AssemblyLinearVelocity = velocity + up * (strength - velocity:Dot(up))
+		end
+	end
+end
+
 local function updateActive(spawner: Spawner, now: number, dt: number)
 	local part = spawner.part
 	local lifetime = Pieces.number(part, "Lifetime", Config.Spawner.Lifetime)
@@ -323,6 +396,8 @@ local function updateActive(spawner: Spawner, now: number, dt: number)
 			local target = start + velocity * (now - entry.bornAt)
 			Kinematic.move(entry.object, last, target, dt)
 			entry.last = target
+		else
+			applyPads(spawner, entry)
 		end
 		local position = Pieces.getCFrame(entry.object).Position
 		if now - entry.bornAt > lifetime or position.Y < despawnY then
@@ -340,6 +415,14 @@ local Spawners: ToolkitTypes.Piece = {
 	step = function(ctx)
 		local now = workspace:GetServerTimeNow()
 		local S = Config.Spawner
+		-- Pads fuer gespawnte Objekte (einmal pro Frame sammeln)
+		table.clear(padList)
+		for _, tag in PAD_TAGS do
+			for _, pad in TagList.get(tag) do
+				table.insert(padList, pad)
+			end
+		end
+		padParams.FilterDescendantsInstances = padList
 		for instance, spawner in spawners do
 			if not instance:IsDescendantOf(workspace) then
 				-- entfernt oder entladen (Streaming): aufraeumen
