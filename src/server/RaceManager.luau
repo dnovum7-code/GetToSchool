@@ -551,8 +551,7 @@ function RaceManager.requestEnter(player: Player)
 	CartManager.enter(player)
 end
 
-local CRASH_REASONS =
-	{ Tipped = true, Impact = true, Fell = true, Hazard = true, HitHazard = true, BadLanding = true }
+local CRASH_REASONS = { Impact = true, Fell = true, Hazard = true, HitHazard = true, BadLanding = true }
 
 -- Crash (vom Client gemeldet, mit Grund). Der Server prueft, ob der Spieler wirklich faehrt.
 -- Kostet ein Leben, ausser der Helm faengt ihn ab ("Shielded": keine Ragdoll). Sonst fliegt

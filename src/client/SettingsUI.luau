@@ -10,7 +10,6 @@ local RunService = game:GetService("RunService")
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local ControlsInfo = require(script.Parent:WaitForChild("ControlsInfo"))
 local RaceUI = require(script.Parent:WaitForChild("RaceUI"))
-local Onboarding = require(script.Parent:WaitForChild("Onboarding"))
 local ProgressClient = require(script.Parent:WaitForChild("ProgressClient"))
 local Settings = require(script.Parent:WaitForChild("Settings"))
 local ShopUI = require(script.Parent:WaitForChild("ShopUI"))
@@ -96,18 +95,6 @@ local function render(_snapshot: ProgressClient.Snapshot)
 	toggleRow(3, "Kamera-Wackeln", "CameraShake")
 	toggleRow(4, "Geist vom besten Lauf", "Ghost")
 	toggleRow(5, "Extra-Effekte (Speed-Linien, Staub, Konfetti)", "VisualEffects")
-	local hints = row(6, "Einstiegs-Hinweise")
-	local again = ShopUI.button(hints, {
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -14, 0.5, 0),
-		Size = UDim2.fromOffset(200, 38),
-		BackgroundColor3 = Color3.fromRGB(60, 120, 200),
-		Text = "Nochmal zeigen",
-	})
-	again.Activated:Connect(function()
-		Onboarding.reset()
-		again.Text = "Beim naechsten Lauf"
-	end)
 
 	-- Steuerung: Spalte des aktuellen Geraets hervorgehoben
 	local device = ControlsInfo.device()

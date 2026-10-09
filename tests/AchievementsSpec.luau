@@ -165,22 +165,17 @@ describe("SaveData: Einstellungen und Hinweise", function()
 		expect((SaveData.validateSetting("CameraShake", false))).toBe(true)
 	end)
 
-	it("gespeicherte Einstellungen werden bereinigt, Hinweise zusammengefuehrt", function()
+	it("gespeicherte Einstellungen werden bereinigt", function()
 		local data = SaveData.migrate({
 			version = 2,
 			settings = { Ghost = false, EffectsVolume = -3, MusicVolume = "x", Hack = true },
-			hintsSeen = { Drive = true },
 		})
 		assert(data)
 		expect(data.settings.Ghost).toBe(false)
 		expect(data.settings.EffectsVolume).toBe(0)
 		expect(data.settings.MusicVolume).toBe(0.5)
 		expect((data.settings :: any).Hack).toBeNil()
-		local session = SaveData.new()
-		session.hintsSeen.Drift = true
-		local merged = SaveData.merge(data, session)
-		expect(merged.hintsSeen.Drive).toBe(true)
-		expect(merged.hintsSeen.Drift).toBe(true)
+		local merged = SaveData.merge(data, SaveData.new())
 		expect(merged.settings.Ghost).toBe(false)
 	end)
 end)

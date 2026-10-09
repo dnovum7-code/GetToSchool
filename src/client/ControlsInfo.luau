@@ -1,6 +1,6 @@
 --!strict
--- Steuerung als Text: Uebersicht fuer das Einstellungsmenue, Hilfezeile unten und die Texte der
--- Einstiegs-Hinweise - jeweils passend zum Geraet (Tastatur, Gamepad, Touch).
+-- Steuerung als Text: Uebersicht fuer das Einstellungsmenue und Hilfezeile unten - jeweils
+-- passend zum Geraet (Tastatur, Gamepad, Touch).
 
 local UserInputService = game:GetService("UserInputService")
 
@@ -48,36 +48,6 @@ function ControlsInfo.helpLine(device: Device): string
 		return ""
 	end
 	return "W/S: Anschieben/Bremsen   A/D: Lenken   Shift: normal fahren   Leertaste: Hopp   Q/E in der Luft: Trick   E: Aus-/Einsteigen   R: Checkpoint   T: Neustart   B: Menue"
-end
-
--- Einstiegs-Hinweise: Titel und Text je Geraet
-local HINTS: { [string]: { title: string, Keyboard: string, Gamepad: string, Touch: string } } = {
-	Drive = {
-		title = "Los geht's!",
-		Keyboard = "W = anschieben, S = bremsen, A/D = lenken. Bergab wird's schnell!",
-		Gamepad = "RT (oder Stick nach vorne) = Gas, LT = Bremse, linker Stick = lenken.",
-		Touch = "Joystick links: nach vorne = Gas, zur Seite = lenken.",
-	},
-	Drift = {
-		title = "Driften",
-		Keyboard = "In Kurven driftest du automatisch. Lang driften = Boost am Ende! Shift halten = ruhig fahren.",
-		Gamepad = "In Kurven driftest du automatisch. Lang driften = Boost am Ende! B halten = ruhig fahren.",
-		Touch = 'In Kurven driftest du automatisch. Lang driften = Boost am Ende! "Normal" halten = ruhig fahren.',
-	},
-	Restart = {
-		title = "Hingefallen? Kein Problem",
-		Keyboard = "R = zurueck zum letzten Checkpoint, T = ganz von vorne.",
-		Gamepad = "Y = zurueck zum letzten Checkpoint, Steuerkreuz hoch = ganz von vorne.",
-		Touch = '"R" = zurueck zum letzten Checkpoint, "Start" = ganz von vorne.',
-	},
-}
-
-function ControlsInfo.hint(id: string, device: Device): (string, string)
-	local hint = HINTS[id]
-	if not hint then
-		return "", ""
-	end
-	return hint.title, (hint :: any)[device] or hint.Keyboard
 end
 
 return ControlsInfo

@@ -23,7 +23,6 @@ local SPECS = {
 	"./ComboSpec",
 	"./DailySpinSpec",
 	"./MetersSpec",
-	"./LoginStreakSpec",
 	"./TerrainImportSpec",
 }
 

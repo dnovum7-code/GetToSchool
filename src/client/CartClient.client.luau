@@ -19,14 +19,12 @@ local DriftEffects = require(script.Parent:WaitForChild("DriftEffects"))
 local EnterPrompt = require(script.Parent:WaitForChild("EnterPrompt"))
 local AchievementUI = require(script.Parent:WaitForChild("AchievementUI"))
 local ComboUI = require(script.Parent:WaitForChild("ComboUI"))
-local LoginRewardUI = require(script.Parent:WaitForChild("LoginRewardUI"))
 local MeterUI = require(script.Parent:WaitForChild("MeterUI"))
 local ControlsInfo = require(script.Parent:WaitForChild("ControlsInfo"))
 local GarageUI = require(script.Parent:WaitForChild("GarageUI"))
 local GhostClient = require(script.Parent:WaitForChild("GhostClient"))
 local HomeworkUI = require(script.Parent:WaitForChild("HomeworkUI"))
 local LeaderboardClient = require(script.Parent:WaitForChild("LeaderboardClient"))
-local Onboarding = require(script.Parent:WaitForChild("Onboarding"))
 local PaintShopUI = require(script.Parent:WaitForChild("PaintShopUI"))
 local Settings = require(script.Parent:WaitForChild("Settings"))
 local SettingsUI = require(script.Parent:WaitForChild("SettingsUI"))
@@ -183,7 +181,6 @@ end
 
 local CRASH_TEXTS: { [string]: string } = {
 	HitHazard = "Getroffen!",
-	Tipped = "Umgekippt",
 	Impact = "Harter Aufprall",
 	Fell = "Abgestuerzt",
 }
@@ -228,16 +225,13 @@ remotes:WaitForChild("Progress").OnClientEvent:Connect(function(kind: string, us
 		RaceUI.showToast("Powerup: " .. table.concat(names, ", "), 3, Color3.fromRGB(120, 220, 255))
 	end
 end)
-Onboarding.init() -- einmalige Hinweise beim ersten Lauf
 Tricks.init() -- Lufttricks (Anzeige)
 VisualFX.init() -- Speed-Linien, Konfetti ...
 ComboUI.init() -- Kuh-Kombo-Anzeige
 MeterUI.init() -- Meterzaehler und x2-Anzeige
-LoginRewardUI.init() -- taegliche Login-Belohnung (Kalender-Popup)
 ProgressClient.onChanged(function(snapshot)
 	Abilities.setLevels(snapshot.upgrades) -- gekaufte Upgrade-Stufen
 	Settings.load(snapshot) -- gespeicherte Einstellungen (einmal nach dem Laden)
-	Onboarding.load(snapshot)
 end)
 -- Hilfezeile unten passend zum Geraet (Tastatur, Gamepad, Touch)
 RaceUI.setHelpText(ControlsInfo.helpLine(ControlsInfo.device()))
@@ -458,25 +452,7 @@ local function helmetSave(reason: string, base: BasePart, predicted: boolean)
 	RaceUI.showMessage("HELM!", Color3.fromRGB(90, 180, 255), "Der Fahrradhelm hat dich gerettet!", 1.2)
 	SoundSystem.play("Shield")
 	ChaseCamera.addShake(1.5)
-	if reason == "Tipped" then
-		local cart = OwnCart.find()
-		if cart then
-			local look = Vector3.new(base.CFrame.LookVector.X, 0, base.CFrame.LookVector.Z)
-			if look.Magnitude < 0.1 then
-				look = Vector3.new(base.CFrame.UpVector.X, 0, base.CFrame.UpVector.Z)
-			end
-			look = if look.Magnitude > 0.1 then look.Unit else -Vector3.zAxis
-			local position = base.Position + Vector3.new(0, 3, 0)
-			local keep = base.AssemblyLinearVelocity * Vector3.new(0.5, 0, 0.5)
-			cart:PivotTo(CFrame.lookAt(position, position + look))
-			for _, part in cart:GetDescendants() do
-				if part:IsA("BasePart") then
-					part.AssemblyAngularVelocity = Vector3.zero
-					part.AssemblyLinearVelocity = keep
-				end
-			end
-		end
-	elseif reason == "BadLanding" then
+	if reason == "BadLanding" then
 		-- schief gelandet: Wagen in Fahrtrichtung drehen und weiterfahren
 		local cart = OwnCart.find()
 		local velocity = base.AssemblyLinearVelocity
@@ -505,7 +481,6 @@ local function onCrash(reason: string, base: BasePart, text: string?)
 		helmetSave(reason, base, true)
 		return
 	end
-	Onboarding.onCrash() -- Hinweis "R = Checkpoint, T = Neustart" (nur beim ersten Mal)
 	Tricks.cancel()
 	enterCrashed(base)
 	RaceUI.showMessage("CRASH!", Color3.fromRGB(255, 80, 60), text or CRASH_TEXTS[reason])
@@ -685,7 +660,6 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 			runPhase = "Ready"
 			gameOver = false
 			GhostClient.stopRun()
-			Onboarding.onRunEnded()
 			Tricks.cancel()
 			RaceUI.hideResult()
 			RaceUI.hideGameOver()
@@ -747,12 +721,10 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		onExited(...)
 	elseif kind == "Aborted" then
 		GhostClient.stopRun()
-		Onboarding.onRunEnded()
 		runPhase = "Aborted"
 		RaceUI.showMessage("Lauf abgebrochen", Color3.fromRGB(255, 200, 80), "R: Neustart", 2)
 	elseif kind == "Started" then
 		GhostClient.startRun() -- Geist faehrt los
-		Onboarding.onRunStarted() -- Einstiegs-Hinweise (nur beim ersten Mal)
 		runPhase = "Running"
 		ShopUI.close() -- Lauf beginnt: Menue zu
 		runStartedAt = os.clock()
@@ -760,7 +732,6 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		local result: RunResult = ...
 		runPhase = "Finished"
 		StatReporter.flush()
-		Onboarding.onRunEnded()
 		finishedTime = result.time
 		RaceUI.setBest(result.bestTime)
 		showResult(result)

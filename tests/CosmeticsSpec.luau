@@ -68,3 +68,29 @@ describe("Cosmetics (Farben und Spuren)", function()
 		expect(merged.cosmetics.vehicleColors.ShoppingCart).toBe("Gold")
 	end)
 end)
+
+describe("Cosmetics: exklusive Farben und Zufallsfarbe (Gluecksrad)", function()
+	local LIST = {
+		{ id = "Standard", name = "Original", price = 0 },
+		{ id = "Red", name = "Rot", price = 0 },
+		{ id = "Green", name = "Gruen", price = 40 },
+		{ id = "Pink", name = "Pink", price = 60 },
+		{ id = "Special", name = "Spezial", price = 0, exclusive = true },
+	}
+
+	it("exklusiv heisst: nur wenn wirklich bekommen", function()
+		expect(Cosmetics.isOwned(LIST[5], {})).toBe(false)
+		expect(Cosmetics.isOwned(LIST[5], { Special = true })).toBe(true)
+	end)
+
+	it("Zufallsfarbe: nur kaufbare, die man noch nicht hat", function()
+		local picked = Cosmetics.pickUnowned(LIST, { Green = true }, 0.5)
+		expect(picked and picked.id).toBe("Pink")
+		expect(Cosmetics.pickUnowned(LIST, { Green = true, Pink = true }, 0.5)).toBeNil()
+	end)
+
+	it("unbekannte (entfernte) Farbe am Fahrzeug: Standard", function()
+		local color = Cosmetics.colorFor(LIST, { Weg = true }, { ShoppingCart = "Weg" }, "ShoppingCart")
+		expect(color and color.id).toBe("Standard")
+	end)
+end)

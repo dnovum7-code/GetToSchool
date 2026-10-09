@@ -1,6 +1,6 @@
 --!strict
 -- Einstellungen und gesehene Einstiegs-Hinweise speichern (im Spielstand). Der Client schickt
--- ("Set", Name, Wert) bzw. ("HintSeen", Id); der Server prueft Name und Typ
+-- ("Set", Name, Wert); der Server prueft Name und Typ
 -- (SaveData.validateSetting) und speichert. Zurueck an den Client gehen sie im Snapshot.
 
 local Players = game:GetService("Players")
@@ -16,7 +16,6 @@ local settingsRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("S
 
 local PlayerSettings = {}
 
-local MAX_HINTS = 50 -- Schutz: so viele Hinweis-Ids hoechstens
 local MAX_PER_SECOND = 30 -- Spam-Schutz (normale Klicks gehen nie verloren)
 type Window = { start: number, count: number }
 local window: { [Player]: Window } = {}
@@ -47,27 +46,11 @@ function PlayerSettings.init()
 					ProgressSync.schedule(other)
 				end
 			end
-		elseif kind == "ResetHints" then
-			table.clear(data.hintsSeen)
-			Profiles.markChanged(player)
-		elseif kind == "HintSeen" then
-			if type(key) ~= "string" or #key > 32 or data.hintsSeen[key] then
-				return
-			end
-			local count = 0
-			for _ in data.hintsSeen do
-				count += 1
-			end
-			if count < MAX_HINTS then
-				data.hintsSeen[key] = true
-				Profiles.markChanged(player)
-			end
 		end
 	end)
 	ProgressSync.addExtender(function(player, snapshot)
 		local data = Profiles.get(player)
 		snapshot.settings = table.clone(data.settings)
-		snapshot.hintsSeen = table.clone(data.hintsSeen)
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		window[player] = nil

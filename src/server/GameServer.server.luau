@@ -16,7 +16,6 @@ local Homework = require(script.Parent:WaitForChild("Homework"))
 local Launchables = require(script.Parent:WaitForChild("Launchables"))
 local Leaderboards = require(script.Parent:WaitForChild("Leaderboards"))
 local Leaderstats = require(script.Parent:WaitForChild("Leaderstats"))
-local LoginRewards = require(script.Parent:WaitForChild("LoginRewards"))
 local PlayerEvents = require(script.Parent:WaitForChild("PlayerEvents"))
 local PlayerSettings = require(script.Parent:WaitForChild("PlayerSettings"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
@@ -63,7 +62,6 @@ Achievements.init() -- Erfolge (Popup, Badges)
 PlayerSettings.init() -- Einstellungen und Einstiegs-Hinweise speichern
 Tricks.init() -- Lufttricks: Muenzen fuer saubere Landungen
 DailySpin.init() -- taegliches Gluecksrad und Powerups
-LoginRewards.init() -- taegliche Login-Belohnung (7-Tage-Serie)
 Leaderboards.init() -- Bestenlisten (Global, Server, Freunde)
 Leaderstats.init() -- Spielerliste oben rechts: Meter und Muenzen
 PlayerEvents.init() -- Ereignisse (Ziel, Wurf, Drift ...) fuer Hausaufgaben und Erfolge

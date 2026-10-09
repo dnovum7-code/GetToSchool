@@ -16,10 +16,12 @@
 --              noch laufender alter Server die neuen Felder beim Speichern loeschen.
 --   Version 3: Gefahrene Meter (stats.totalMeters), x2-Meter-Boost (meterBoostRuns),
 --              Login-Serie (login). Aeltere Spielstaende bekommen Standardwerte.
+--   Version 4: Login-Serie und Einstiegs-Hinweise entfernt (Felder login, hintsSeen fallen
+--              beim Laden still weg).
 
 local SaveData = {}
 
-SaveData.VERSION = 3
+SaveData.VERSION = 4
 
 export type BestTime = {
 	time: number, -- Sekunden
@@ -32,12 +34,6 @@ export type Stats = {
 	objectsLaunched: number,
 	driftSeconds: number, -- insgesamt gedriftet (fuer Erfolge)
 	totalMeters: number, -- insgesamt gefahrene Meter (Bestenliste "Gesamtmeter")
-}
-
--- Taegliche Login-Belohnung (7-Tage-Serie, siehe Progression/LoginStreak)
-export type Login = {
-	lastDay: number, -- Tag der letzten abgeholten Belohnung (-1 = noch nie)
-	streak: number, -- welcher Serien-Tag (1..7) zuletzt abgeholt wurde (0 = keiner)
 }
 
 -- Hausaufgaben des Tages (siehe Progression/Homework)
@@ -94,10 +90,8 @@ export type Data = {
 	cosmetics: Cosmetics,
 	achievements: { [string]: boolean }, -- freigeschaltete Erfolge
 	settings: Settings,
-	hintsSeen: { [string]: boolean }, -- Einstiegs-Hinweise, die schon gezeigt wurden
 	spinDay: number, -- Tag des letzten Gluecksrad-Drehens (-1 = noch nie)
 	meterBoostRuns: number, -- so viele Laeufe zaehlen die Meter noch doppelt (x2-Boost)
-	login: Login,
 	items: { [string]: number }, -- Powerups aus dem Gluecksrad (Id -> Anzahl)
 }
 
@@ -125,11 +119,9 @@ function SaveData.new(): Data
 		cosmetics = { colors = {}, trails = {}, vehicleColors = {}, trail = "" },
 		achievements = {},
 		settings = table.clone(SaveData.SETTINGS_DEFAULTS),
-		hintsSeen = {},
 		spinDay = -1,
 		items = {},
 		meterBoostRuns = 0,
-		login = { lastDay = -1, streak = 0 },
 	}
 end
 
@@ -280,15 +272,9 @@ function SaveData.sanitize(raw: { [any]: any }): Data
 			(data.settings :: any)[key] = value
 		end
 	end
-	data.hintsSeen = sanitizeFlags(raw.hintsSeen)
 	data.spinDay = wholeNumber(raw.spinDay, -1) or -1
 	data.items = sanitizeNumberMap(raw.items, 0, 99, true)
 	data.meterBoostRuns = math.min(wholeNumber(raw.meterBoostRuns, 0) or 0, 99)
-	local login = if type(raw.login) == "table" then raw.login else {}
-	data.login = {
-		lastDay = wholeNumber(login.lastDay, -1) or -1,
-		streak = math.clamp(wholeNumber(login.streak, 0) or 0, 0, 7),
-	}
 	data.homework = sanitizeHomework(raw.homework)
 	local cosmetics = if type(raw.cosmetics) == "table" then raw.cosmetics else {}
 	local vehicleColors: { [string]: string } = {}
@@ -324,6 +310,14 @@ local MIGRATIONS: { [number]: (raw: { [any]: any }) -> { [any]: any } } = {
 	[2] = function(raw)
 		local copy = table.clone(raw)
 		copy.version = 3
+		return copy
+	end,
+	-- 3 -> 4: Login-Serie und Einstiegs-Hinweise gibt es nicht mehr
+	[3] = function(raw)
+		local copy = table.clone(raw)
+		copy.version = 4
+		copy.login = nil
+		copy.hintsSeen = nil
 		return copy
 	end,
 }
@@ -393,14 +387,8 @@ function SaveData.merge(stored: Data, session: Data): Data
 	result.stats.driftSeconds += session.stats.driftSeconds
 	result.stats.totalMeters += session.stats.totalMeters
 	result.meterBoostRuns = math.max(result.meterBoostRuns, session.meterBoostRuns)
-	if session.login.lastDay > result.login.lastDay then
-		result.login = table.clone(session.login)
-	end
 	for id in session.achievements do
 		result.achievements[id] = true
-	end
-	for id in session.hintsSeen do
-		result.hintsSeen[id] = true
 	end
 	result.spinDay = math.max(result.spinDay, session.spinDay)
 	for id, count in session.items do

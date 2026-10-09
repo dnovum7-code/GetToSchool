@@ -131,36 +131,47 @@ describe("SaveData", function()
 		expect(merged.homework.day).toBe(10)
 	end)
 
-	it("Version 2 wird auf Version 3 hochgestuft (Meter, Boost, Login)", function()
+	it("Version 2 wird hochgestuft (Meter, Boost)", function()
 		local data, note = SaveData.migrate({ version = 2, coins = 7, stats = { finishedRuns = 3 } })
 		expect(note).toBe("migrated")
 		assert(data)
-		expect(data.version).toBe(3)
+		expect(data.version).toBe(SaveData.VERSION)
 		expect(data.coins).toBe(7)
 		expect(data.stats.finishedRuns).toBe(3)
 		expect(data.stats.totalMeters).toBe(0)
 		expect(data.meterBoostRuns).toBe(0)
-		expect(data.login.lastDay).toBe(-1)
-		expect(data.login.streak).toBe(0)
 	end)
 
-	it("Meter, Boost und Login: bereinigt und zusammengefuehrt", function()
-		local data = SaveData.migrate({
+	it("Version 3 mit Login-Serie und Hinweisen laedt ohne Fehler, die Felder fallen weg", function()
+		local data, note = SaveData.migrate({
 			version = 3,
+			coins = 50,
+			login = { lastDay = 20000, streak = 3 },
+			hintsSeen = { Drive = true },
+			cosmetics = { colors = { GoldenSkin = true }, vehicleColors = { ShoppingCart = "GoldenSkin" } },
+		})
+		expect(note).toBe("migrated")
+		assert(data)
+		expect(data.version).toBe(4)
+		expect(data.coins).toBe(50)
+		expect((data :: any).login).toBeNil()
+		expect((data :: any).hintsSeen).toBeNil()
+		expect(SaveData.serialize(data).login).toBeNil()
+	end)
+
+	it("Meter und Boost: bereinigt und zusammengefuehrt", function()
+		local data = SaveData.migrate({
+			version = 4,
 			stats = { totalMeters = 1234.5 },
 			meterBoostRuns = 500,
-			login = { lastDay = 20000, streak = 9 },
 		})
 		assert(data)
 		expect(data.stats.totalMeters).toBe(1234.5)
 		expect(data.meterBoostRuns).toBe(99)
-		expect(data.login.streak).toBe(7)
 		local session = SaveData.new()
 		session.stats.totalMeters = 100
-		session.login = { lastDay = 20001, streak = 1 }
 		local merged = SaveData.merge(data, session)
 		expect(merged.stats.totalMeters).toBe(1334.5)
-		expect(merged.login.lastDay).toBe(20001)
 	end)
 
 	it("serialize -> migrate ergibt dieselben Daten", function()

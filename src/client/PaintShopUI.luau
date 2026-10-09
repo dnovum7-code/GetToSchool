@@ -62,7 +62,7 @@ local function render(snapshot: ProgressClient.Snapshot)
 				TextSize = 15,
 				TextWrapped = true,
 				Text = if locked
-					then `{item.name}\nLogin-Tag 7`
+					then `{item.name}\nnur Belohnung`
 					else swatchText(item.name, owned, item.price, selected),
 				AutoButtonColor = not locked,
 			})

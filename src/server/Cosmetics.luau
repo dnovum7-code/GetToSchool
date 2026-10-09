@@ -66,7 +66,7 @@ local function ensureOwned(player: Player, item: Def, owned: { [string]: boolean
 		return true, nil
 	end
 	if item.exclusive then
-		return false, `{item.name} gibt es nur als Login-Belohnung (Tag 7).`
+		return false, `{item.name} gibt es nur als Belohnung.`
 	end
 	local ok, reason = Economy.buyOnce(Profiles.get(player), owned, item.id, item.price)
 	if not ok then

@@ -1,21 +1,21 @@
 --!strict
 -- Erkennt Crashs des eigenen Wagens. Laeuft auf dem Client, weil dort die Physik
--- gerechnet wird (sofortige Reaktion). Drei Arten:
---   1. Umgekippt: Wagen ist laenger als TiltTime staerker als MaxTiltAngle geneigt
---   2. Harter Aufprall: Geschwindigkeit aendert sich in einem Frame um mehr als ImpactSpeedChange
---   3. Abgestuerzt: Wagen ist unter KillY gefallen
+-- gerechnet wird (sofortige Reaktion). Zwei Arten:
+--   1. Harter Aufprall: Geschwindigkeit aendert sich in einem Frame um mehr als ImpactSpeedChange
+--   2. Abgestuerzt: Wagen ist unter KillY gefallen
+-- Umkippen ist kein Crash mehr: Die Selbstaufrichtung (CartController.righting) stellt den
+-- Wagen wieder auf.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 
-export type CrashReason = "Tipped" | "Impact" | "Fell"
+export type CrashReason = "Impact" | "Fell"
 
 local CrashDetector = {}
 CrashDetector.__index = CrashDetector
 
 type DetectorData = {
-	tiltTime: number,
 	graceTime: number,
 	lastVelocity: Vector3?,
 	impactMultiplier: number, -- Aufprall-Schwelle mal diesem Faktor (z. B. nach JumpPad)
@@ -27,7 +27,6 @@ export type Detector = typeof(setmetatable({} :: DetectorData, CrashDetector))
 
 function CrashDetector.new(): Detector
 	local self = setmetatable({
-		tiltTime = 0,
 		graceTime = Config.Crash.GracePeriod,
 		lastVelocity = nil,
 		impactMultiplier = 1,
@@ -40,7 +39,6 @@ end
 -- Nach einem Neustart: Zustand vergessen und kurz nichts erkennen
 -- (das Zuruecksetzen selbst ist eine riesige Tempoaenderung).
 function CrashDetector.reset(self: Detector)
-	self.tiltTime = 0
 	self.graceTime = Config.Crash.GracePeriod
 	self.lastVelocity = nil
 	self.impactMultiplier = 1
@@ -75,7 +73,6 @@ function CrashDetector.update(self: Detector, dt: number, base: BasePart): Crash
 
 	if self.graceTime > 0 then
 		self.graceTime -= dt
-		self.tiltTime = 0
 		self.expectedChange = Vector3.zero
 		return nil
 	end
@@ -95,23 +92,12 @@ function CrashDetector.update(self: Detector, dt: number, base: BasePart): Crash
 	self.expectedChange = Vector3.zero
 	-- Debug-Schalter (F2, nur Studio): Crash durch Aufprall / Umkippen aus, God Mode
 	local noImpact = Config.Debug.NoImpactCrash or Config.Debug.GodMode
-	local noTip = Config.Debug.NoTipCrash or Config.Debug.GodMode
 	if
 		not noImpact
 		and lastVelocity
 		and (velocity - lastVelocity - expected).Magnitude >= impactThreshold
 	then
 		return "Impact"
-	end
-
-	-- UpVector.Y ist der Cosinus des Neigungswinkels gegenueber der Senkrechten
-	if not noTip and base.CFrame.UpVector.Y < math.cos(math.rad(C.MaxTiltAngle)) then
-		self.tiltTime += dt
-		if self.tiltTime >= C.TiltTime then
-			return "Tipped"
-		end
-	else
-		self.tiltTime = 0
 	end
 
 	return nil
