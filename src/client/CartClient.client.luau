@@ -473,8 +473,9 @@ end
 
 -- `text`: eigener Untertitel (z. B. Attribut "Message" eines Hazards)
 local function onCrash(reason: string, base: BasePart, text: string?)
-	-- God Mode (F2, nur Studio): kein Crash, kein Lebensverlust; abgestuerzt = zum Checkpoint
-	if Config.Debug.GodMode then
+	-- God Mode / keine Tode (F2, nur Studio): kein Crash, kein Lebensverlust;
+	-- abgestuerzt = zum Checkpoint
+	if Config.Debug.GodMode or Config.Debug.NoDeaths then
 		if reason == "Fell" then
 			requestRestartNow("Checkpoint")
 		end

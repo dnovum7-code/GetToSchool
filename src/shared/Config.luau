@@ -522,6 +522,10 @@ Config.Launch = {
 	-- Server-Pruefung: so weit (Studs) darf der Wagen weg sein (plus Groesse des Objekts) ...
 	HitTolerance = 8,
 	LatencyAllowance = 0.3, -- ... plus Tempo * diese Sekunden
+	-- Gespawnte Launchables (Tag "Launchable" an Spawner oder Vorlage): Der Server prueft die
+	-- Objekt-Nummer gegen den Zeitplan des Spawners (shared/Toolkit/SpawnedHit)
+	SpawnedTimeSlack = 3, -- Spielraum (s) fuer Verzoegerung
+	SpawnedMaxPerMinute = 40, -- hoechstens so viele Treffer an gespawnten Objekten pro Minute
 	-- Kleiner Muenzbonus je nach Flugweite
 	BonusPerMeter = 0.02, -- 100 m = 2 Muenzen
 	MaxBonus = 10,
@@ -619,6 +623,17 @@ Config.Collapse = {
 -- Prop (Tag "Prop", Part oder Modell): lose Gegenstaende (Kisten, Pylonen, Marktstaende), die
 -- der Wagen wegschiesst, ohne selbst zu crashen. Jeder Spieler hat seine eigenen (lokale
 -- Kopien). Zurueck an den Ursprung nur bei T; bei R bleiben sie liegen.
+-- Physik-Tags fuer lose Objekte (Spawner-Kopien, Props, lose Teile), siehe shared/ObjectPhysics:
+-- LowGravity, NoFriction, KeepUpright (Tag oder Attribut = true; an Vorlage, Spawner oder Objekt)
+Config.ObjectPhysics = {
+	GravityScale = 0.35, -- LowGravity: so viel Schwerkraft bleibt (1 = normal), Attribut "GravityScale"
+	Friction = 0, -- NoFriction: Reibung (normal etwa 0.3-0.5), Attribut "Friction"
+	-- KeepUpright: weiche Aufricht-Kraft, keine starre Achse (Achse: Attribut "UprightAxis")
+	UprightStrength = 3, -- so viel mal die Kraft, die zum Aufstehen aus dem Liegen noetig ist
+	UprightResponsiveness = 12, -- wie schnell sie zurueckdreht (hoeher = straffer)
+	UprightFreeSpin = 6, -- dreht es sich schneller (Radiant/s, z. B. Flip nach Stoss): Kraft aus
+}
+
 Config.Props = {
 	Density = 0.4, -- leicht, damit sie schoen fliegen (Attribut "Density"; Wasser = 1)
 	KickBoost = 0.9, -- beim ersten Treffer: Anteil des Wagen-Tempos, den der Prop bekommt ...
@@ -698,13 +713,6 @@ Config.Sounds = {
 	SpinWin = { Id = "", Volume = 0.8 }, -- Gluecksrad: Gewinn
 }
 
--- Tuning-Panel (nur in Studio, Taste F2): welche Werte als Regler erscheinen.
--- path: "Abschnitt.Name" in dieser Config. Jeder Regler startet in der MITTE, die Mitte ist
--- der Wert beim Spielstart. Bereich: 0 bis doppelter Wert. Sonderfaelle:
---   span = halbe Breite (Bereich = Wert - span .. Wert + span), z. B. fuer Winkel. Ist der
---          Wert 0, gilt min .. min + span (Standard 1), weil "Mitte" dann nicht geht.
---   min  = untere Grenze (Standard 0); der Bereich bleibt symmetrisch um den Wert
--- server = true: Der Wert wird zusaetzlich an den Server geschickt (er baut z. B. den Ballast).
 -- God Mode (Debug.GodMode, nur Studio): mit W konstant dieses Tempo, egal ob bergauf oder bergab
 Config.GodMode = {
 	SpeedKmh = 60,
@@ -713,7 +721,8 @@ Config.GodMode = {
 -- Tuning-Panel (nur in Studio, Taste F2): Abschnitte mit Titel, einklappbar.
 -- Regler (path = Zahl in dieser Config): Jeder Regler startet in der MITTE, die Mitte ist der
 -- Wert beim Spielstart. Bereich: 0 bis doppelter Wert. Sonderfaelle:
---   span = halbe Breite (Bereich = Wert - span .. Wert + span), z. B. fuer Winkel
+--   span = halbe Breite (Bereich = Wert - span .. Wert + span), z. B. fuer Winkel. Ist der
+--          Wert 0, gilt min .. min + span (Standard 1), weil "Mitte" dann nicht geht.
 --   min  = untere Grenze
 -- Schalter (switch = true, path = true/false in dieser Config): An/Aus-Knopf.
 --   invert = true: "An" heisst Config-Wert false (z. B. Debug.NoImpactCrash)
@@ -829,6 +838,11 @@ Config.TuningPanel = {
 			{ label = "Schleuder-Drehung", path = "Launch.SpinPower", server = true },
 			{ label = "Himmel-Chance (0..1)", path = "Launch.SkyChance", server = true, span = 0.25 },
 			{ label = "Flug-Schwerkraft", path = "Launch.Gravity", server = true, min = 5 },
+			{ label = "LowGravity: Schwerkraft-Anteil", path = "ObjectPhysics.GravityScale", server = true },
+			{ label = "NoFriction: Reibung", path = "ObjectPhysics.Friction", server = true, span = 0.5 },
+			{ label = "KeepUpright: Kraft", path = "ObjectPhysics.UprightStrength", server = true },
+			{ label = "KeepUpright: Reaktion", path = "ObjectPhysics.UprightResponsiveness", server = true },
+			{ label = "KeepUpright: frei ab Drehung", path = "ObjectPhysics.UprightFreeSpin", server = true },
 		},
 	},
 	{
@@ -857,6 +871,13 @@ Config.TuningPanel = {
 		title = "Cheats / Test",
 		items = {
 			{ label = "God Mode", path = "Debug.GodMode", switch = true, server = true },
+			{
+				label = "Tode (Crash, Leben, Game Over)",
+				path = "Debug.NoDeaths",
+				switch = true,
+				invert = true,
+				server = true,
+			},
 			{ label = "God Mode: Tempo (km/h)", path = "GodMode.SpeedKmh" },
 			{
 				label = "Crash durch harten Aufprall",
@@ -874,7 +895,12 @@ Config.TuningPanel = {
 			{ label = "Gluecksrad beliebig oft", path = "Debug.FreeSpins", switch = true, server = true },
 			{ label = "F3 = naechster Tag", path = "Debug.DayTravel", switch = true, server = true },
 			{ label = "Bodenbausteine im Output", path = "Debug.TrackPieces", switch = true },
-			{ label = "Signale im Output", path = "Debug.Toolkit", switch = true },
+			{
+				label = "Baukasten + Launchables im Output",
+				path = "Debug.Toolkit",
+				switch = true,
+				server = true,
+			},
 		},
 	},
 } :: { TuningSection }
@@ -931,8 +957,10 @@ Config.Debug = {
 	TrackPieces = false,
 	-- true = alle Upgrades auf hoechster Stufe (nur in Studio), zum Testen ohne Shop
 	AllUpgrades = false,
-	-- true = Baukasten meldet im Output, welche Signale ausgeloest werden und wer reagiert
-	Toolkit = false,
+	-- true = Baukasten meldet im Output, welche Signale ausgeloest werden und wer reagiert,
+	-- welche Launchables erkannt / nicht erkannt werden (auch Spawner-Kopien), abgelehnte
+	-- Treffer und Physik-Tags (Warnungen mit "[Launchable]" / "[Physik-Tag]")
+	Toolkit = true,
 	-- true = Gluecksrad beliebig oft drehen (zum Testen)
 	FreeSpins = false,
 	-- true = Terrain-Vergleich: Der Wagen startet an der aktiven Varianten-SpawnLocation des
@@ -943,6 +971,9 @@ Config.Debug = {
 	-- Zum Erkunden der Map (Schalter im F2-Panel). Live immer aus, siehe Ende der Datei.
 	NoImpactCrash = false, -- true = harter Aufprall ist kein Crash
 	GodMode = false, -- true = jede Steigung hoch, mit W konstantes Tempo, kein Crash, kein Lebensverlust
+	-- true = keine Tode zum Testen: kein Crash (Aufprall, Hazard, Landung), kein Lebensverlust
+	-- (auch nicht durch Launchables), kein Game Over; abgestuerzt = zurueck zum Checkpoint
+	NoDeaths = true,
 	Rewind = true, -- true = Rueckspulen (Z) in Studio an (live: Config.Rewind.EnabledLive)
 }
 

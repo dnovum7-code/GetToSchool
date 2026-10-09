@@ -6,6 +6,10 @@
 --     einer Kopie des Objekts ab: wilde Drehung, Luftspur, hochzaehlende Flugweite.
 --     Himmelsfluege verschwinden mit einem Stern-Blinken.
 --   * Kompletter Neustart (T): alle Objekte stehen wieder.
+--   * Gespawnte Launchables (Spawner/Vorlage mit Tag "Launchable", nur bei uns vorhanden,
+--     Tag "LocalLaunchable"): gleiche Show; der Server prueft Spawner + Objekt-Nummer.
+--   * Debug (Config.Debug.Toolkit, nur Studio): Treffer, fehlende Vorbereitung und
+--     abgelehnte Treffer stehen als Warnung "[Launchable]" im Output.
 -- Die Kopie fliegt nur bei uns; andere Spieler sehen das Objekt weiter an seinem Platz.
 
 local Players = game:GetService("Players")
@@ -21,6 +25,7 @@ local LocalClone = require(script.Parent:WaitForChild("LocalClone"))
 local LocalHide = require(script.Parent:WaitForChild("LocalHide"))
 local ComboUI = require(script.Parent:WaitForChild("ComboUI"))
 local SoundSystem = require(script.Parent:WaitForChild("SoundSystem"))
+local SpawnedLaunchables = require(script.Parent:WaitForChild("SpawnedLaunchables"))
 local TrackSensors = require(script.Parent:WaitForChild("TrackSensors"))
 
 local hitRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("HitLaunchable") :: RemoteEvent
@@ -38,6 +43,7 @@ export type LaunchInfo = {
 	isRecord: boolean,
 	combo: number, -- Treffer in Folge (Kuh-Kombo)
 	multiplier: number,
+	key: string?, -- gespawntes Objekt: dessen Schluessel (sonst LaunchId des Objekts)
 }
 
 type Pending = {
@@ -58,12 +64,19 @@ type Flying = {
 
 local hitIds: { [string]: boolean } = {} -- in diesem Lauf getroffen
 local retryAfter: { [string]: number } = {}
-local pending: { [Instance]: Pending } = {}
+local pending: { [string]: Pending } = {} -- Schluessel: LaunchId bzw. Schluessel der Kopie
+local warnedNoId: { [Instance]: boolean } = setmetatable({}, { __mode = "k" }) :: any
 local flying: { Flying } = {}
 local labelFlight: Flying? = nil -- dessen Flugweite gerade angezeigt wird
 local effectsFolder: Folder? = nil
 local flightLabel: TextLabel
 local labelToken = 0
+
+local function debugWarn(message: string)
+	if Config.Debug.Toolkit and RunService:IsStudio() then
+		warn("[Launchable] " .. message)
+	end
+end
 
 local STAR_IMAGE = "rbxasset://textures/particles/sparkles_main.dds" -- in Roblox eingebaut
 
@@ -269,26 +282,13 @@ local function finalText(flight: Flying): string
 	return text
 end
 
--- Jeden Frame waehrend der Fahrt: Beruehrt der Wagen ein Launchable?
--- `onHit` macht die Fahr-Effekte (Hit-Stop, Kamera), siehe CartClient.
-function LaunchablesClient.update(cart: Model, base: BasePart, onHit: () -> ())
-	local object = TrackSensors.touching(cart, "Launchable")
-	if not object then
-		return
-	end
-	local id = object:GetAttribute("LaunchId")
-	if type(id) ~= "string" or hitIds[id] or (retryAfter[id] or 0) > os.clock() then
-		return
-	end
-	hitIds[id] = true
-	local ghost = makeGhost(object) -- vor dem Ausblenden kopieren (sonst ist die Kopie unsichtbar)
-	if ghost then
-		pending[object] = { ghost = ghost, home = getCFrame(ghost), hitAt = os.clock() }
-	end
-	LocalHide.set(object, "Launched", true)
-	hitRemote:FireServer(object)
+-- Spawner mit Tag "Launchable" ist kein Objekt zum Wegschleudern (nur seine Kopien)
+local function isSpawner(object: Instance): boolean
+	return object:HasTag("Spawner")
+end
 
-	-- Show sofort, ohne auf den Server zu warten
+-- Show sofort, ohne auf den Server zu warten
+local function playHitShow(object: Instance, ghost: PVInstance?, base: BasePart, onHit: () -> ())
 	local center = if ghost then getCFrame(ghost).Position else base.Position
 	local comic = object:GetAttribute("ComicText")
 	local texts = Config.Launch.ComicTexts
@@ -298,13 +298,71 @@ function LaunchablesClient.update(cart: Model, base: BasePart, onHit: () -> ())
 	onHit()
 end
 
+-- Jeden Frame waehrend der Fahrt: Beruehrt der Wagen ein Launchable?
+-- `onHit` macht die Fahr-Effekte (Hit-Stop, Kamera), siehe CartClient.
+function LaunchablesClient.update(cart: Model, base: BasePart, onHit: () -> ())
+	-- Objekte in der Welt (vom Server vorbereitet, Attribut LaunchId)
+	local object = TrackSensors.touching(cart, "Launchable", isSpawner)
+	if object then
+		local id = object:GetAttribute("LaunchId")
+		if type(id) ~= "string" then
+			if not warnedNoId[object] then
+				warnedNoId[object] = true
+				debugWarn(
+					`{object:GetFullName()} beruehrt, hat aber keine LaunchId: Der Server hat es nicht vorbereitet `
+						.. "(nur Objekte, die beim Server im Workspace liegen, zaehlen; Kopien aus Spawnern brauchen "
+						.. "den Tag am Spawner oder an der Vorlage)."
+				)
+			end
+		elseif not hitIds[id] and (retryAfter[id] or 0) <= os.clock() then
+			hitIds[id] = true
+			local ghost = makeGhost(object) -- vor dem Ausblenden kopieren (sonst ist die Kopie unsichtbar)
+			if ghost then
+				pending[id] = { ghost = ghost, home = getCFrame(ghost), hitAt = os.clock() }
+			end
+			LocalHide.set(object, "Launched", true)
+			hitRemote:FireServer(object)
+			debugWarn(`Treffer: {object:GetFullName()} (Objekt in der Welt), frage den Server`)
+			playHitShow(object, ghost, base, onHit)
+			return
+		end
+	end
+
+	-- Kopien aus Spawnern (nur bei uns)
+	local spawned = TrackSensors.touching(cart, SpawnedLaunchables.TAG)
+	local info = spawned and SpawnedLaunchables.get(spawned)
+	if not spawned or not info or hitIds[info.key] then
+		return
+	end
+	hitIds[info.key] = true
+	local ghost = makeGhost(spawned)
+	if ghost then
+		pending[info.key] = { ghost = ghost, home = getCFrame(ghost), hitAt = os.clock() }
+	end
+	local position = getCFrame(spawned :: PVInstance).Position
+	spawned.Parent = nil -- der Spawner legt sie zurueck in den Pool
+	hitRemote:FireServer(info.spawner, {
+		index = info.index,
+		template = info.template,
+		position = position,
+		key = info.key,
+	})
+	debugWarn(`Treffer: Kopie "{info.template}" aus Spawner {info.spawner:GetFullName()}, frage den Server`)
+	playHitShow(spawned, ghost, base, onHit)
+end
+
 -- Server hat den Flug geplant: Kopie fliegen lassen
 function LaunchablesClient.onLaunch(object: Instance?, info: LaunchInfo)
-	if object == nil then
+	local key = info.key
+	if not key and object then
+		local id = object:GetAttribute("LaunchId")
+		key = if type(id) == "string" then id else nil
+	end
+	if not key then
 		return -- Objekt inzwischen entladen (Streaming)
 	end
-	local entry = pending[object]
-	pending[object] = nil
+	local entry = pending[key]
+	pending[key] = nil
 	if not entry then
 		return
 	end
@@ -327,24 +385,36 @@ function LaunchablesClient.onLaunch(object: Instance?, info: LaunchInfo)
 	ComboUI.show(info.combo or 1, info.multiplier or 1, info.bonus) -- "3x KOMBO!"
 end
 
--- Server hat den Treffer nicht anerkannt: Objekt wieder zeigen
-function LaunchablesClient.onRejected(object: Instance?)
-	if object == nil then
+-- Server hat den Treffer nicht anerkannt: Objekt wieder zeigen (gespawnte Kopien sind
+-- schon weg, da faellt nur der Flug aus). `reason`: Grund vom Server (Debug-Ausgabe).
+function LaunchablesClient.onRejected(object: Instance?, spawnedKey: string?, reason: string?)
+	debugWarn(
+		`Treffer abgelehnt: {if object then object:GetFullName() else "?"}`
+			.. (if spawnedKey then ` (Kopie {spawnedKey})` else "")
+			.. ` - {reason or "ohne Grund"}`
+	)
+	if type(spawnedKey) == "string" then
+		local entry = pending[spawnedKey]
+		pending[spawnedKey] = nil
+		if entry then
+			entry.ghost:Destroy()
+		end
 		return
 	end
-	local entry = pending[object]
-	pending[object] = nil
-	if entry then
-		entry.ghost:Destroy()
+	if typeof(object) ~= "Instance" then
+		return
 	end
-	if typeof(object) == "Instance" then
-		local id = object:GetAttribute("LaunchId")
-		if type(id) == "string" then
-			hitIds[id] = nil
-			retryAfter[id] = os.clock() + 1
+	local id = object:GetAttribute("LaunchId")
+	if type(id) == "string" then
+		local entry = pending[id]
+		pending[id] = nil
+		if entry then
+			entry.ghost:Destroy()
 		end
-		LocalHide.set(object, "Launched", false)
+		hitIds[id] = nil
+		retryAfter[id] = os.clock() + 1
 	end
+	LocalHide.set(object, "Launched", false)
 end
 
 -- Kompletter Neustart: alle Objekte stehen wieder, fliegende Kopien weg
@@ -408,10 +478,10 @@ local function updateFlights(dt: number)
 		end
 	end
 	-- Kopien ohne Antwort vom Server (z. B. verlorene Nachricht) aufraeumen
-	for object, entry in pending do
+	for key, entry in pending do
 		if os.clock() - entry.hitAt > 5 then
 			entry.ghost:Destroy()
-			pending[object] = nil
+			pending[key] = nil
 		end
 	end
 end

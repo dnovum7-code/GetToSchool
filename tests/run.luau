@@ -24,6 +24,7 @@ local SPECS = {
 	"./DailySpinSpec",
 	"./MetersSpec",
 	"./TerrainImportSpec",
+	"./SpawnedHitSpec",
 }
 
 for _, path in SPECS do

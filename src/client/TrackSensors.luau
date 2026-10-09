@@ -176,7 +176,8 @@ local overlapParams = OverlapParams.new()
 overlapParams.FilterType = Enum.RaycastFilterType.Include
 
 -- Beruehrt der Wagen gerade ein Objekt mit diesem Tag? Liefert das getaggte Objekt.
-function TrackSensors.touching(cart: Model, tag: string): Instance?
+-- `skip`: Objekte, die nicht zaehlen sollen (z. B. ein Spawner mit Tag "Launchable").
+function TrackSensors.touching(cart: Model, tag: string, skip: ((Instance) -> boolean)?): Instance?
 	local tagged = TagList.get(tag)
 	if #tagged == 0 then
 		return nil
@@ -187,7 +188,7 @@ function TrackSensors.touching(cart: Model, tag: string): Instance?
 	local parts = workspace:GetPartBoundsInBox(cframe, size + padding, overlapParams)
 	for _, part in parts do
 		local piece = findTagged(part, tag)
-		if piece then
+		if piece and not (skip and skip(piece)) then
 			return piece
 		end
 	end

@@ -14,6 +14,7 @@ local DevTuning = require(script.Parent:WaitForChild("DevTuning"))
 local Garage = require(script.Parent:WaitForChild("Garage"))
 local Homework = require(script.Parent:WaitForChild("Homework"))
 local Launchables = require(script.Parent:WaitForChild("Launchables"))
+local ObjectPhysics = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObjectPhysics"))
 local Leaderboards = require(script.Parent:WaitForChild("Leaderboards"))
 local Leaderstats = require(script.Parent:WaitForChild("Leaderstats"))
 local PlayerEvents = require(script.Parent:WaitForChild("PlayerEvents"))
@@ -55,6 +56,7 @@ TrackPieces.init() -- getaggte Streckenbausteine einstellen
 RandomEvents.init() -- Zufallsereignisse durchnummerieren
 Coins.init() -- Muenzen einsammeln (Server prueft)
 Launchables.init() -- Objekte zum Wegschleudern
+ObjectPhysics.watchWorld() -- Tags LowGravity / NoFriction / KeepUpright an losen Objekten
 Shop.init() -- Kaeufe pruefen
 TrackUnlocks.init() -- Strecken freischalten und waehlen
 Garage.init() -- Fahrzeuge kaufen und waehlen
@@ -88,8 +90,9 @@ reportCrash.OnServerEvent:Connect(function(player, reason)
 	RaceManager.reportCrash(player, reason)
 end)
 -- Treffer an einem Launchable: Server prueft Abstand und plant den Flug
-hitLaunchable.OnServerEvent:Connect(function(player, object)
-	RaceManager.hitLaunchable(player, object)
+-- (spawn: Kopie aus einem Spawner, object ist dann der Spawner)
+hitLaunchable.OnServerEvent:Connect(function(player, object, spawn)
+	RaceManager.hitLaunchable(player, object, spawn)
 end)
 
 local function onCharacterAdded(player: Player, character: Model)

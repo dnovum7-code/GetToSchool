@@ -43,6 +43,24 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
   Config.TuningPanel. Fehlersuche bei Bodenbausteinen: Config.Debug.TrackPieces.
 
 ## Aktueller Meilenstein
+Launchables aus Spawnern, Physik-Tags, keine Tode (gebaut, noch nicht in Studio getestet;
+README „Launchables aus Spawnern, Physik-Tags, keine Tode testen“):
+- Feste Launchables (Tag am Model/Part im Workspace) gingen schon; Spawner-Kopien nicht (Kopien
+  ohne Tags, nur beim Client). Jetzt: Tag "Launchable" an Vorlage (auch an einem Teil darin)
+  oder Spawner -> Kopien bekommen lokal den Tag "LocalLaunchable" (client/SpawnedLaunchables).
+  Treffer: Client meldet HitLaunchable(spawner, {index, template, position, key}); Server
+  (Launchables.tryLaunchSpawned) prueft Vorlage gehoert zum Spawner, Tag, Nummer gegen Zeitplan
+  (shared/Toolkit/SpawnedHit), einmal pro Nummer, Rate (Config.Launch.SpawnedMaxPerMinute),
+  Wagen am Ort. Spawner mit Tag fliegt nicht selbst.
+- Debug.Toolkit (jetzt Standard an, Schalter server = true): Warnungen "[Launchable]"
+  erkannt / NICHT erkannt (Objekte, Vorlagen, Spawner), Treffer, abgelehnte Treffer mit Grund.
+- Physik-Tags LowGravity / NoFriction / KeepUpright (shared/ObjectPhysics, Config.ObjectPhysics,
+  Regler unter Bausteine): an Vorlage, Spawner, Prop oder losem Objekt in der Welt (Server).
+  KeepUpright = AlignOrientation (PrimaryAxisParallel, begrenztes Drehmoment), aus bei schneller
+  Drehung (UprightFreeSpin), Achse per Attribut UprightAxis.
+- Debug.NoDeaths (Standard an, nur Studio, Schalter „Tode“ in Cheats / Test): kein Crash, kein
+  Lebensverlust (RaceManager.applyHit), kein Game Over; Absturz = Checkpoint.
+- Test-Place Station 13: Kuh-Spawner (Vorlage KuhRutsch mit allen Tags).
 Änderungen nach dem Map-Test (gebaut, noch nicht in Studio getestet; README „Nach dem
 Map-Test: Rückspulen, Drift, Panel testen“):
 - Entfernt: Crash durch Umkippen (Selbstaufrichtung übernimmt), tägliche Login-Belohnung

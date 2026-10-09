@@ -252,6 +252,9 @@ end
 -- Laufs (vor dem Start und waehrend der Fahrt). Rueckgabe: "Shielded", "LifeLost",
 -- "GameOver" (siehe RunRules.applyHit) oder nil.
 function RaceManager.applyHit(player: Player): string?
+	if Config.Debug.NoDeaths then
+		return nil -- keine Tode (nur Studio, F2): Leben bleiben voll
+	end
 	local race = getRace(player)
 	if race.phase ~= "Ready" and race.phase ~= "Running" then
 		return nil
@@ -266,10 +269,24 @@ end
 
 -- Treffer an einem Launchable (vom Client gemeldet). Der Server prueft und plant den Flug,
 -- zieht ein Leben ab (der Wagen faehrt aber weiter) und schickt dem Client den Flug.
-function RaceManager.hitLaunchable(player: Player, object: unknown)
-	local info = Launchables.tryLaunch(player, object)
+-- `spawn` gesetzt: Kopie aus einem Spawner (object = der Spawner), siehe Launchables.
+function RaceManager.hitLaunchable(player: Player, object: unknown, spawn: unknown)
+	local info, reason
+	if spawn ~= nil then
+		info, reason = Launchables.tryLaunchSpawned(player, object, spawn)
+	else
+		info, reason = Launchables.tryLaunch(player, object)
+	end
 	if not info then
-		runState:FireClient(player, "LaunchRejected", object)
+		local key = if type(spawn) == "table" and type((spawn :: any).key) == "string"
+			then (spawn :: any).key
+			else nil
+		Launchables.debugRejected(
+			player,
+			if typeof(object) == "Instance" then object:GetFullName() else "?",
+			reason
+		)
+		runState:FireClient(player, "LaunchRejected", object, key, reason)
 		return
 	end
 	local race = getRace(player)
@@ -279,8 +296,8 @@ function RaceManager.hitLaunchable(player: Player, object: unknown)
 		race.bestFlight = { name = info.name, meters = info.meters }
 	end
 	runState:FireClient(player, "Launch", object, info)
-	if Config.Debug.GodMode then
-		return -- God Mode (nur Studio): kein Lebensverlust
+	if Config.Debug.GodMode or Config.Debug.NoDeaths then
+		return -- God Mode / keine Tode (nur Studio): kein Lebensverlust
 	end
 	local outcome = RaceManager.applyHit(player)
 	-- Letztes Leben weg: Figur fliegt auch noch hinterher
@@ -580,8 +597,8 @@ function RaceManager.reportCrash(player: Player, reason: unknown)
 	if type(reason) ~= "string" or not CRASH_REASONS[reason] or not CartManager.isSeated(player) then
 		return
 	end
-	if Config.Debug.GodMode then
-		return -- God Mode (nur Studio): kein Crash, kein Lebensverlust
+	if Config.Debug.GodMode or Config.Debug.NoDeaths then
+		return -- God Mode / keine Tode (nur Studio): kein Crash, kein Lebensverlust
 	end
 	local outcome = RaceManager.applyHit(player)
 	if outcome == "Shielded" then

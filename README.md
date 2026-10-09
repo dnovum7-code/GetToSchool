@@ -70,7 +70,7 @@ Hinweise:
 | 10 | Spinner | Am drehenden Balken vorbei | Balken dreht sich, schubst bei Berührung |
 | 11 | Pendulum | Unter dem Pendel durch | Pendel schwingt quer, trifft bei falschem Timing |
 | 12 | Zufall | Eine Seite ist gesperrt | Nach T ist es vielleicht die andere Seite |
-| 13 | Launchable | Kuh (links) bzw. Mülltonne (rechts) umfahren | „MUUH!“/„SCHEPPER!“, kurzer Stillstand, Kamera wackelt, Wagen fährt weiter, Objekt fliegt; oben „Kuh: … m“; Mülltonne verschwindet mit Stern im Himmel; ein Leben weg |
+| 13 | Launchable | Kuh (links) bzw. Mülltonne (rechts) umfahren; vorne spawnt ein Kuh-Spawner alle ~4 s eine Kuh, die aufrecht die Straße hinunterrutscht | „MUUH!“/„SCHEPPER!“, kurzer Stillstand, Kamera wackelt, Wagen fährt weiter, Objekt fliegt; oben „Kuh: … m“; Mülltonne verschwindet mit Stern im Himmel; ein Leben weg (nicht mit Schalter „Tode“ aus). Gespawnte Kühe: einholen, treffen, fliegen genauso |
 | 14 | Checkpoint 2 | Durchfahren | Hinweis „Checkpoint“ (Zwischenzeit ab dem 2. Lauf) |
 | 15 | Steinschlag | Durch den roten Trigger fahren | Steine fallen vor dir auf die Straße; Treffer = „Steinschlag!“-Crash. R: Steine weg, Trigger wieder scharf |
 | 16 | Auto-Strom | Zwischen den Autos durch | Autos fahren gleichmäßig quer, schubsen nur (kein Crash) |
@@ -161,7 +161,9 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/client/ShopUI.luau` | Client | Menü „Pausen-Kiosk“ (B): Upgrades, Strecken, Rekorde |
 | `src/client/LocalHide.luau` | Client | Objekte nur für diesen Spieler aus-/einblenden |
 | `src/client/Toolkit/` | Client | Erweiterter Baukasten (M2.5): ein Modul pro Baustein (`TriggerZones`, `Spawners`, `PathMovers`, `Gates`, `Collapses`, `Props`, `ForceZones`, `Chasers`), `Signals` (Signal-System), `init.luau` = Manager |
-| `src/shared/Toolkit/*.luau` | beiden | Reine Logik (getestet): `Rng` (reproduzierbarer Zufall), `SpawnSchedule`, `PathMath` (Wege, Tor-Takt), `TriggerRules`, `ChaserLogic` |
+| `src/shared/Toolkit/*.luau` | beiden | Reine Logik (getestet): `Rng` (reproduzierbarer Zufall), `SpawnSchedule`, `PathMath` (Wege, Tor-Takt), `TriggerRules`, `ChaserLogic`, `SpawnedHit` (Server-Prüfung gespawnter Launchables), `ObjectPhysicsMath` |
+| `src/shared/ObjectPhysics.luau` | beiden | Physik-Tags `LowGravity`, `NoFriction`, `KeepUpright` für lose Objekte (Spawner-Kopien, Props, lose Teile in der Welt) |
+| `src/client/SpawnedLaunchables.luau` | Client | Merkt sich, aus welchem Spawner eine wegschleuderbare Kopie stammt (für die Server-Prüfung) |
 | `src/client/Kinematic.luau` | Client | Verankerte Teile so bewegen, dass sie den Wagen sauber schieben |
 | `src/client/LocalClone.luau` | Client | Lokale Kopien (fliegende Kühe, Steine, Props …) |
 | `plugin/` | Studio | Bau-Hilfe-Plugin (Pfeile, Bereiche, Wege beim Bauen) |
@@ -282,7 +284,11 @@ Hinweise:
   Die Münze dreht sich um die Hochachse; leg sie etwa auf Wagenhöhe (ca. 2 Studs über die Straße).
 - **Launchables** dürfen Modelle sein (z. B. eine Kuh aus mehreren Parts). Sie sind nicht fest:
   Der Wagen fährt hindurch, das Objekt fliegt. Gib ihnen einen `DisplayName` („Kuh“), dann
-  heißt der Rekord „Weitester Kuh-Wurf“.
+  heißt der Rekord „Weitester Kuh-Wurf“. Der Tag gehört an das **Model** (oder ein einzelnes
+  Part), das direkt im Workspace steht. Für **gespawnte** Kühe den Tag an die Vorlage in
+  `ReplicatedStorage/Templates` oder an den Spawner setzen (siehe „Spawner“). Ob ein Objekt
+  erkannt wird, steht in Studio als Warnung `[Launchable] …` im Output (`Config.Debug.Toolkit`,
+  Schalter „Baukasten + Launchables im Output“ im F2-Panel).
 - **Zufallsereignisse:** Ausgeblendete Objekte sind für dich unsichtbar und ohne Wirkung.
   Lege **keine Checkpoints** in ein RandomEvent (der Server sieht die Auswahl der Spieler
   nicht). Jeder Spieler bekommt seine eigene Auswahl.
@@ -371,9 +377,37 @@ nicht in Git. Fehlt eine Vorlage, spawnt eine graue Ersatz-Kugel und im Output s
 | `Hazard` | Bool | false | true = Berührung ist ein Crash (`Message` = Text), false = nur Schubs |
 | `Kinematic` | Bool | false | true = fährt stur geradeaus, ohne Schwerkraft (Autos) |
 | `ListenSignal` | Text | – | pro Signal ein Burst statt Dauerbetrieb |
+| Tag `Launchable` (oder Attribut `Launchable` = true) | – | – | alle gespawnten Objekte sind wegschleuderbar (wie die Kuh in der Welt); der Spawner selbst fliegt nicht |
+| Tags `LowGravity` / `NoFriction` / `KeepUpright` | – | – | gelten für alle gespawnten Objekte (siehe „Physik-Tags“) |
 
 Das Spawner-Part ist der Spawn-**Bereich** (Objekte erscheinen zufällig innerhalb seiner Größe)
 und im Spiel unsichtbar. Seine **Vorderseite** gibt die Richtung (Bau-Hilfe zeigt einen Pfeil).
+
+**Gespawnte Kühe zum Wegschleudern:** Tag `Launchable` an die Vorlage (z. B.
+`ReplicatedStorage/Templates/Kuh`, ein Model; ein Tag an einem Part darin zählt auch) **oder**
+an den Spawner. Attribute wie `DisplayName`, `ComicText`, `LaunchPower`, `SkyChance` liest der
+Server von der Vorlage (sonst vom Spawner). Warum das nötig ist: Gespawnte Objekte sind Kopien,
+die es nur bei dir gibt; Kopien verlieren ihre Tags, und der Server sieht sie nicht. Deshalb
+meldet dein Client „Spawner X, Objekt Nummer N“, und der Server prüft die Nummer gegen den
+Zeitplan des Spawners (nicht in der Zukunft, nicht längst verschwunden, jede nur einmal, höchstens
+`Config.Launch.SpawnedMaxPerMinute` pro Minute) und ob dein Wagen am gemeldeten Ort ist.
+Gespawnte Launchables sind nie `Hazard` (Treffer = Flug, kostet ein Leben wie die Kuh).
+
+### Physik-Tags: LowGravity, NoFriction, KeepUpright
+
+Für **lose** Objekte: Kopien aus Spawnern (Tag an Vorlage oder Spawner), Props (Tag am Prop)
+und nicht verankerte Teile/Modelle direkt in der Welt. Statt Tag geht auch ein gleichnamiges
+Attribut = true. Werte im F2-Panel unter „Bausteine“ (`Config.ObjectPhysics`).
+
+| Tag | Wirkung | Attribute (optional) |
+|---|---|---|
+| `LowGravity` | wenig Schwerkraft: rutscht/rollt den ganzen Berg hinunter, fliegt weiter | `GravityScale` (Anteil, Standard 0.35) |
+| `NoFriction` | keine Reibung: rutscht statt liegen zu bleiben | `Friction` (Standard 0) |
+| `KeepUpright` | bleibt aufrecht: eine **begrenzte** Kraft dreht die Hochachse zurück nach oben, wenn sie abweicht. Nicht starr: Stöße drehen es weiter, Flips gehen (dreht es sich schneller als `UprightFreeSpin`, ist die Kraft aus), es kann nur nicht liegen bleiben | `UprightAxis` (Vector3 im Objekt, Standard 0, 1, 0 – falls dein Modell anders herum gebaut ist) |
+
+Kombination für „Kuh rutscht aufrecht den ganzen Hang hinunter“: `LowGravity` + `NoFriction`
++ `KeepUpright` (+ `Launchable`) an die Vorlage, am Spawner `Lifetime` hoch genug (z. B. 20–30 s),
+sonst verschwinden sie vorher. Bei `Kinematic = true` wirken die Physik-Tags nicht.
 
 ### Bau-Beispiele
 
@@ -1040,11 +1074,31 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Konfetti | Ins Ziel fahren | Konfetti fällt von oben; bei neuer Bestzeit doppelt so viel |
 | Effekte aus | Einstellungen → „Extra-Effekte“ aus | Nichts davon mehr zu sehen |
 
+## Launchables aus Spawnern, Physik-Tags, keine Tode testen
+
+Im Test-Place: Station 13 (Kuh-Spawner „SpawnerKuehe“, Vorlage „KuhRutsch“ mit allen Tags).
+`Config.Debug.Toolkit` ist an: Die Warnungen `[Launchable]` / `[Physik-Tag]` stehen im Output.
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| Erkennung beim Start | Play, Output ansehen | `[Launchable] erkannt: Workspace.…Kuh (Model, n Parts)` für jede feste Kuh, `erkannt: Vorlage ReplicatedStorage.Templates.KuhRutsch …`; Tag an einem Folder o. ä.: `NICHT erkannt … muss an ein Model oder Part` |
+| Spawner erkannt | Zur Station 13 fahren | `[Launchable] erkannt: Spawner … -> Kopien von "KuhRutsch" sind wegschleuderbar. Physik-Tags: LowGravity, NoFriction, KeepUpright` |
+| Spawner ohne Tag | Bei einem Spawner ohne Launchable (z. B. Steinschlag) | `[Launchable] NICHT erkannt: Spawner … (kein Tag "Launchable" am Spawner oder an …)` |
+| Tag am Spawner | Tag `Launchable` an `SpawnerSteinschlag` setzen, Play | Steine sind wegschleuderbar (fliegen statt Crash); der Spawner selbst bleibt und spawnt weiter |
+| Gespawnte Kuh treffen | Rutschende Kuh einholen und rammen | „MUUH!“, Kuh fliegt wie die feste, oben „Kuh: … m“; Output `Treffer: Kopie "KuhRutsch" …` |
+| Abgelehnter Treffer | (selten) | Output `Treffer … abgelehnt: <Grund>` auf Client und Server, z. B. „Wagen zu weit weg“ |
+| Feste Kuh | Feste Kuh (Station 13 links) rammen | Fliegt wie bisher (unverändert) |
+| LowGravity + NoFriction | Kühe beobachten | Rutschen ohne zu bremsen die ganze Straße hinunter |
+| KeepUpright | Kühe beobachten, eine mit dem Wagen schubsen (Schalter Tode aus, damit nichts stört) | Bleiben aufrecht; nach einem Stoß drehen sie sich, richten sich danach wieder auf, liegen nie auf der Seite |
+| Werte | F2 → Bausteine → „LowGravity: Schwerkraft-Anteil“, „KeepUpright: Kraft/Reaktion/frei ab Drehung“ | Wirkt sofort auf die Kühe |
+| Keine Tode | F2 → Cheats / Test → „Tode (Crash, Leben, Game Over)“ ist **Aus** (Standard) | Kein Crash bei Aufprall, Hazard, schiefer Landung; Launchable-Treffer kosten kein Leben; kein Game Over; unter die Welt gefallen = zurück zum Checkpoint |
+| Tode wieder an | Schalter auf An | Crashs und Lebensverlust wie im echten Spiel |
+
 ## Nach dem Map-Test: Rückspulen, Drift, Panel testen
 
 | Funktion | Was du tun kannst | Was passieren sollte |
 |---|---|---|
-| Umkippen | Wagen an einer Böschung umwerfen | Kein Crash mehr; die Selbstaufrichtung stellt ihn wieder hin (Aufprall/Hazard/Absturz crashen weiterhin) |
+| Umkippen | Wagen an einer Böschung umwerfen | Kein Crash mehr; die Selbstaufrichtung stellt ihn wieder hin (Aufprall/Hazard/Absturz crashen weiterhin, wenn der Schalter „Tode“ an ist) |
 | Login-Belohnung weg | Play mit altem Spielstand | Kein Kalender-Popup, keine Fehler im Output |
 | Hinweise weg | Neuer Spielstand, losfahren | Keine „💡“-Tipps mehr; Einstellungen ohne „Hinweise nochmal zeigen“ |
 | Drift bremst leicht | Lange Kurve im Drift auf flachem Stück | Tempo fällt nur wenig (vorher deutlich); Regler „Drift-Bremse“ und „Drift-Tempoverlust (0..1)“ im Abschnitt Drift |

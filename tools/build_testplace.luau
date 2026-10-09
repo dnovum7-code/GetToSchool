@@ -195,8 +195,8 @@ local function zone(
 end
 
 -- Platzhalter-Kuh (Modell, Vorderseite -Z)
-local function cow(parent: any, cf: any): any
-	local m = model("Kuh", parent, { "Launchable" }, { DisplayName = "Kuh", ComicText = "MUUH!" })
+local function cow(parent: any, cf: any, name: string?, tags: { string }?): any
+	local m = model(name or "Kuh", parent, tags or { "Launchable" }, { DisplayName = "Kuh", ComicText = "MUUH!" })
 	local body = part({
 		Name = "Body",
 		Size = Vector3.new(3.2, 3, 6),
@@ -489,8 +489,31 @@ station(12, "Zufall: eine Seite gesperrt (nach T evtl. die andere)", true, funct
 	end
 end)
 
-station(13, "Launchable: Kuh (links) und Muelltonne (rechts, fliegt ins All)", true, function(s)
+station(13, "Launchable: Kuh, Muelltonne (ins All), Kuh-Spawner (Kuehe rutschen bergab)", true, function(s)
 	cow(track, frame(s, -6, 0))
+	-- Spawner am Anfang der Station: rutschende Kuehe vor dir (Vorlage "KuhRutsch" mit den Tags
+	-- Launchable, LowGravity, NoFriction, KeepUpright) - einholen und wegschleudern
+	part({
+		Name = "SpawnerKuehe",
+		Size = Vector3.new(10, 2, 4),
+		CFrame = frame(s - 18, 0, 4),
+		Color = Color3.fromRGB(255, 150, 40),
+		Transparency = 0.6,
+		CanCollide = false,
+		Tags = { "Spawner" },
+		Attributes = {
+			Template = "KuhRutsch",
+			Interval = 4,
+			IntervalRandom = 1,
+			Speed = 15,
+			SpeedRandom = 3,
+			SpreadAngle = 5,
+			Lifetime = 20,
+			MaxActive = 5,
+			Hazard = false,
+		},
+		Parent = track,
+	})
 	part({
 		Name = "Muelltonne",
 		Shape = Enum.PartType.Cylinder,
@@ -939,6 +962,8 @@ part({
 	Parent = templates,
 })
 car(templates, CFrame.new(10, 10, 0), "Auto", Color3.fromRGB(220, 40, 40))
+-- Kuh fuer den Kuh-Spawner: wegschleuderbar, rutscht den ganzen Hang hinunter, bleibt stehen
+cow(templates, CFrame.new(20, 10, 0), "KuhRutsch", { "Launchable", "LowGravity", "NoFriction", "KeepUpright" })
 
 -- SpawnLocation neben dem Start
 local spawnLocation = Instance.new("SpawnLocation")

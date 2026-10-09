@@ -4,12 +4,14 @@
 -- ausgeblendet und durch eine lose, leichte Kopie ersetzt (nur bei dir).
 -- Beim ersten Treffer im Lauf gibt es einen kleinen Extra-Schubs und der Chaos-Zaehler
 -- steigt (Ergebnis-Screen). T: alles zurueck an den Ursprung, Zaehler 0. R: bleibt liegen.
+-- Physik-Tags LowGravity / NoFriction / KeepUpright am Prop wirken auf die lose Kopie.
 
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
+local ObjectPhysics = require(Shared:WaitForChild("ObjectPhysics"))
 local TagList = require(Shared:WaitForChild("TagList"))
 local LocalClone = require(script.Parent.Parent:WaitForChild("LocalClone"))
 local LocalHide = require(script.Parent.Parent:WaitForChild("LocalHide"))
@@ -59,6 +61,8 @@ local function spawnCopy(prop: Prop)
 	prop.copy = copy
 	prop.hit = false
 	byCopy[copy] = prop
+	-- Physik-Tags am Prop (LowGravity, NoFriction, KeepUpright), siehe shared/ObjectPhysics
+	ObjectPhysics.apply(copy, ObjectPhysics.flags({ prop.instance }))
 	if prop.hidden then
 		LocalHide.set(copy, "Prop", true)
 	end

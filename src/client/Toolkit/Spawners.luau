@@ -7,6 +7,9 @@
 --   Mit ListenSignal: pro Signal ein Burst (z. B. Steinschlag durch eine TriggerZone).
 -- Objekte werden wiederverwendet (Pooling) statt immer neu erzeugt und zerstoert.
 -- Kinematic = true: Objekte fahren stur geradeaus (kein Fallen, kein Bremsen), z. B. Autos.
+-- Tag "Launchable" am Spawner oder an der Vorlage: Die Kopien sind wegschleuderbar (wie eine
+-- Kuh in der Welt; der Server prueft den Treffer ueber Spawner + Objekt-Nummer).
+-- Tags LowGravity / NoFriction / KeepUpright an Spawner oder Vorlage: siehe shared/ObjectPhysics.
 -- Unity-Vergleich: Object Pool + Instantiate mit Rigidbody.velocity.
 
 local CollectionService = game:GetService("CollectionService")
@@ -14,12 +17,15 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
+local ObjectPhysics = require(Shared:WaitForChild("ObjectPhysics"))
 local TagList = require(Shared:WaitForChild("TagList"))
 local Rng = require(Shared:WaitForChild("Toolkit"):WaitForChild("Rng"))
 local SpawnSchedule = require(Shared:WaitForChild("Toolkit"):WaitForChild("SpawnSchedule"))
+local SpawnedHit = require(Shared:WaitForChild("Toolkit"):WaitForChild("SpawnedHit"))
 local Kinematic = require(script.Parent.Parent:WaitForChild("Kinematic"))
 local LocalClone = require(script.Parent.Parent:WaitForChild("LocalClone"))
 local LocalHide = require(script.Parent.Parent:WaitForChild("LocalHide"))
+local SpawnedLaunchables = require(script.Parent.Parent:WaitForChild("SpawnedLaunchables"))
 local Pieces = require(script.Parent:WaitForChild("Pieces"))
 local Signals = require(script.Parent:WaitForChild("Signals"))
 local ToolkitTypes = require(script.Parent:WaitForChild("ToolkitTypes"))
@@ -46,6 +52,7 @@ type Spawner = {
 
 local spawners: { [Instance]: Spawner } = {}
 local warnedTemplate: { [string]: boolean } = {}
+local reported: { [string]: boolean } = {} -- Debug: pro Spawner und Vorlage einmal melden
 
 local function templatesFolder(): Instance?
 	return ReplicatedStorage:FindFirstChild(Config.Toolkit.TemplatesFolder)
@@ -113,7 +120,38 @@ local function clearActive(spawner: Spawner)
 	table.clear(spawner.active)
 end
 
--- Ein Objekt erzeugen. `index` bestimmt den (reproduzierbaren) Zufall.
+-- Debug (Config.Debug.Toolkit, nur Studio): einmal pro Spawner und Vorlage melden, ob die
+-- Kopien wegschleuderbar sind und welche Physik-Tags gelten
+local function report(
+	part: BasePart,
+	name: string,
+	template: Instance?,
+	launchable: boolean,
+	flags: ObjectPhysics.Flags
+)
+	local key = part:GetFullName() .. "|" .. name
+	if reported[key] or not Config.Debug.Toolkit then
+		return
+	end
+	reported[key] = true
+	local physics = `Physik-Tags: {ObjectPhysics.describe(flags)}`
+	if not template then
+		physics ..= " (Vorlage fehlt, Ersatz-Kugel)"
+	end
+	if launchable then
+		ObjectPhysics.debugWarn(
+			`[Launchable] erkannt: Spawner {part:GetFullName()} -> Kopien von "{name}" sind wegschleuderbar. {physics}`
+		)
+	else
+		ObjectPhysics.debugWarn(
+			`[Launchable] NICHT erkannt: Spawner {part:GetFullName()} -> Kopien von "{name}" sind nicht wegschleuderbar `
+				.. `(kein Tag "Launchable" am Spawner oder an ReplicatedStorage/{Config.Toolkit.TemplatesFolder}/{name}). {physics}`
+		)
+	end
+end
+
+-- Ein Objekt erzeugen. `index` bestimmt den (reproduzierbaren) Zufall und ist zugleich die
+-- Objekt-Nummer fuer die Server-Pruefung (SpawnedHit).
 local function spawnOne(spawner: Spawner, index: number, now: number)
 	local part = spawner.part
 	local S = Config.Spawner
@@ -145,6 +183,13 @@ local function spawnOne(spawner: Spawner, index: number, now: number)
 	local scale = scaleMin + (scaleMax - scaleMin) * r(8)
 	local hazard = Pieces.bool(part, "Hazard", S.Hazard)
 
+	-- Wegschleuderbar? Physik-Tags? (Spawner oder Vorlage)
+	local folder = templatesFolder()
+	local template = folder and folder:FindFirstChild(name)
+	local launchable = SpawnedHit.isLaunchableSource(part) or SpawnedHit.isLaunchableSource(template)
+	local flags = ObjectPhysics.flags(if template then { part, template } else { part })
+	report(part, name, template, launchable, flags)
+
 	-- Kopie aus dem Pool oder neu
 	local list = spawner.pool[name]
 	local object = if list and #list > 0 then table.remove(list) :: PVInstance else createCopy(name)
@@ -161,8 +206,21 @@ local function spawnOne(spawner: Spawner, index: number, now: number)
 		item.CanQuery = true -- fuer die Beruehrungs-Abfrage (Hazard / Schubs)
 		item.CanTouch = false
 	end
-	-- Hazard = Crash bei Beruehrung, sonst nur Schubs (zaehlt nicht als harter Aufprall)
-	if hazard then
+	-- Hazard = Crash bei Beruehrung, sonst nur Schubs (zaehlt nicht als harter Aufprall).
+	-- Launchable: Treffer = Objekt fliegt (kostet ein Leben wie die Kuh), kein Hazard.
+	if launchable then
+		CollectionService:AddTag(object, SpawnedLaunchables.TAG)
+		SpawnedLaunchables.set(object, {
+			spawner = part,
+			index = index,
+			template = name,
+			key = `S{seed}:{index}`,
+		})
+	else
+		CollectionService:RemoveTag(object, SpawnedLaunchables.TAG)
+		SpawnedLaunchables.set(object, nil)
+	end
+	if hazard and not launchable then
 		CollectionService:AddTag(object, "Hazard")
 		CollectionService:RemoveTag(object, "SoftHit")
 		object:SetAttribute("Message", Pieces.string(part, "Message", S.HazardMessage))
@@ -182,6 +240,7 @@ local function spawnOne(spawner: Spawner, index: number, now: number)
 			item.AssemblyLinearVelocity = velocity
 			item.AssemblyAngularVelocity = angular
 		end
+		ObjectPhysics.apply(object, flags) -- LowGravity, NoFriction, KeepUpright
 	end
 	table.insert(spawner.active, {
 		object = object,
@@ -202,13 +261,19 @@ local function burst(spawner: Spawner, eventIndex: number, now: number)
 		if #spawner.active >= maxActive then
 			break
 		end
-		spawnOne(spawner, eventIndex * 64 + i, now)
+		spawnOne(spawner, SpawnedHit.index(eventIndex, i), now)
 	end
 end
 
 local function register(instance: Instance)
 	if spawners[instance] or not instance:IsA("BasePart") then
 		return
+	end
+	if SpawnedHit.isLaunchableSource(instance) then
+		ObjectPhysics.debugWarn(
+			`[Launchable] Spawner {instance:GetFullName()} hat den Tag "Launchable": Er selbst fliegt nicht, `
+				.. "aber alle Objekte, die er spawnt, sind wegschleuderbar."
+		)
 	end
 	local spawner: Spawner = {
 		part = instance,
@@ -227,7 +292,7 @@ local function register(instance: Instance)
 			end
 			spawner.signalCount += 1
 			-- eigener Zahlenbereich fuer Signal-Ausloesungen (anderer Zufall als der Dauerbetrieb)
-			burst(spawner, 1000000 + spawner.signalCount, workspace:GetServerTimeNow())
+			burst(spawner, SpawnedHit.SIGNAL_BASE + spawner.signalCount, workspace:GetServerTimeNow())
 		end)
 	end
 	spawners[instance] = spawner
@@ -239,6 +304,12 @@ local function updateActive(spawner: Spawner, now: number, dt: number)
 	local despawnY = Pieces.number(part, "DespawnY", Config.Spawner.DespawnY)
 	for index = #spawner.active, 1, -1 do
 		local entry = spawner.active[index]
+		if entry.object.Parent == nil then
+			-- weggeschleudert (LaunchablesClient hat es herausgenommen): zurueck in den Pool
+			recycle(spawner, entry)
+			table.remove(spawner.active, index)
+			continue
+		end
 		local start, velocity, last = entry.start, entry.velocity, entry.last
 		if start and velocity and last then
 			-- stur geradeaus: Lage aus der Serverzeit (fuer alle Spieler gleich)
