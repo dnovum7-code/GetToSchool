@@ -1,17 +1,16 @@
 --!strict
 -- Tuning-Panel fuer die Entwicklung: nur in Studio, mit F2 ein-/ausblenden.
--- Welche Werte erscheinen, steht in Config.TuningPanel.
+-- Inhalt: Config.TuningPanel - Abschnitte mit Titel (Klick auf den Titel klappt ein/aus).
 --
--- Jeder Regler startet in der MITTE; die Mitte ist der Wert beim Spielstart (aus Config.luau).
--- Bereich: 0 bis doppelter Startwert (oder Startwert +/- span, siehe Config.TuningPanel).
--- Pro Regler: aktueller Wert als Zahl, Eingabefeld fuer einen genauen Wert (auch ausserhalb
--- des Reglerbereichs) und ein Knopf zum Zuruecksetzen auf den Startwert.
--- "Werte kopieren" schreibt nur die geaenderten Werte ins Output-Fenster, z. B.
+-- Regler: starten in der MITTE; die Mitte ist der Wert beim Spielstart (aus Config.luau).
+-- Bereich: 0 bis doppelter Startwert (oder Startwert +/- span). Pro Regler: Wert als Zahl,
+-- Eingabefeld fuer einen genauen Wert (auch ausserhalb des Bereichs), Knopf "R" = zurueck.
+-- Schalter: An/Aus-Knopf fuer true/false-Werte (z. B. God Mode, Crash aus).
+-- "Werte kopieren" schreibt nur die geaenderten Regler-Werte ins Output-Fenster, z. B.
 --   Drift.LateralGrip: 3.5 -> 4.2
 --
--- Die Regler aendern die Config-Werte dieses Clients sofort (das Fahrskript liest sie jeden
--- Frame). Werte mit server = true gehen zusaetzlich an den Server.
--- Oben stehen Schalter (an/aus) aus Config.TuningSwitches, z. B. Crash aus, God Mode.
+-- Aenderungen gelten auf diesem Client sofort (das Fahrskript liest die Config jeden Frame).
+-- Eintraege mit server = true gehen zusaetzlich an den Server (server/DevTuning).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -22,26 +21,14 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 
 local DevPanel = {}
 
-local ROW_HEIGHT = 50
-local PANEL_WIDTH = 340
+local PANEL_WIDTH = 360
+local SLIDER_HEIGHT = 50
+local SWITCH_HEIGHT = 32
 
-type Entry = {
-	label: string,
-	path: string, -- "Abschnitt.Name" (auch tiefer: "Vehicles.OfficeChair.scale.Drive.SteerRate")
-	span: number?,
-	min: number?,
-	server: boolean?,
-}
+type Item = Config.TuningItem
 
-type Switch = {
-	label: string,
-	path: string,
-	invert: boolean?, -- Anzeige "An", wenn der Config-Wert false ist (z. B. Debug.NoTipCrash)
-	server: boolean?,
-}
-
-type Row = {
-	entry: Entry,
+type Slider = {
+	item: Item,
 	holder: any, -- Tabelle in der Config, die den Wert enthaelt
 	key: string,
 	base: number, -- Wert beim Spielstart = Mitte des Reglers
@@ -51,16 +38,7 @@ type Row = {
 	bar: Frame,
 	fill: Frame,
 	valueLabel: TextLabel,
-	input: TextBox,
 }
-
-local function getValue(row: Row): number
-	return row.holder[row.key] :: number
-end
-
-local function setConfigValue(row: Row, value: number)
-	row.holder[row.key] = value
-end
 
 -- "A.B.C" -> Tabelle Config.A.B und Schluessel "C" (nil, wenn es den Weg nicht gibt)
 local function resolvePath(path: string): (any, string?)
@@ -114,36 +92,6 @@ local function makeText(parent: Instance, props: { [string]: any }): TextLabel
 	return label
 end
 
-local CHANGED_COLOR = Color3.fromRGB(255, 220, 110)
-local NORMAL_COLOR = Color3.new(1, 1, 1)
-
-local function refreshRow(row: Row)
-	local value = getValue(row)
-	row.valueLabel.Text = formatNumber(value, row.decimals)
-	-- geaenderte Werte gelb, damit man sieht, was vom Config-Wert abweicht
-	row.valueLabel.TextColor3 = if value ~= row.base then CHANGED_COLOR else NORMAL_COLOR
-	local alpha = if row.high > row.low then (value - row.low) / (row.high - row.low) else 0.5
-	row.fill.Size = UDim2.fromScale(math.clamp(alpha, 0, 1), 1)
-end
-
--- Nur geaenderte Werte ausgeben: "Abschnitt.Name: alt -> neu"
-local function printChanges(rows: { Row })
-	local lines = { "", "-- Geaenderte Tuning-Werte (in src/shared/Config.luau uebernehmen):" }
-	for _, row in rows do
-		local value = getValue(row)
-		if value ~= row.base then
-			table.insert(
-				lines,
-				`{row.entry.path}: {formatNumber(row.base, 6)} -> {formatNumber(value, row.decimals + 1)}`
-			)
-		end
-	end
-	if #lines == 2 then
-		table.insert(lines, "Keine Aenderungen.")
-	end
-	print(table.concat(lines, "\n"))
-end
-
 local function makeButton(parent: Instance, props: { [string]: any }): TextButton
 	local button = Instance.new("TextButton")
 	button.TextColor3 = Color3.new(1, 1, 1)
@@ -160,12 +108,45 @@ local function makeButton(parent: Instance, props: { [string]: any }): TextButto
 	return button
 end
 
+local CHANGED_COLOR = Color3.fromRGB(255, 220, 110)
+local NORMAL_COLOR = Color3.new(1, 1, 1)
+
+local function refreshSlider(slider: Slider)
+	local value = slider.holder[slider.key] :: number
+	slider.valueLabel.Text = formatNumber(value, slider.decimals)
+	-- geaenderte Werte gelb, damit man sieht, was vom Config-Wert abweicht
+	slider.valueLabel.TextColor3 = if value ~= slider.base then CHANGED_COLOR else NORMAL_COLOR
+	local alpha = if slider.high > slider.low then (value - slider.low) / (slider.high - slider.low) else 0.5
+	slider.fill.Size = UDim2.fromScale(math.clamp(alpha, 0, 1), 1)
+end
+
+-- Nur geaenderte Werte ausgeben: "Abschnitt.Name: alt -> neu"
+local function printChanges(sliders: { Slider })
+	local lines = { "", "-- Geaenderte Tuning-Werte (in src/shared/Config.luau uebernehmen):" }
+	for _, slider in sliders do
+		local value = slider.holder[slider.key] :: number
+		if value ~= slider.base then
+			table.insert(
+				lines,
+				`{slider.item.path}: {formatNumber(slider.base, 6)} -> {formatNumber(
+					value,
+					slider.decimals + 1
+				)}`
+			)
+		end
+	end
+	if #lines == 2 then
+		table.insert(lines, "Keine Aenderungen.")
+	end
+	print(table.concat(lines, "\n"))
+end
+
 function DevPanel.init()
 	if not RunService:IsStudio() then
 		return
 	end
 	local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DevTuning") :: RemoteEvent
-	local entries = (Config :: any).TuningPanel :: { Entry }
+	local sections = (Config :: any).TuningPanel :: { Config.TuningSection }
 
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "DevTuningPanel"
@@ -173,16 +154,12 @@ function DevPanel.init()
 	gui.Enabled = false
 	gui.DisplayOrder = 10
 
-	local switches = ((Config :: any).TuningSwitches or {}) :: { Switch }
-	local SWITCH_HEIGHT = 34
-	local switchesHeight = SWITCH_HEIGHT * #switches
-	-- Scrollbar, damit auch viele Regler auf kleine Bildschirme passen
-	local contentHeight = 44 + switchesHeight + ROW_HEIGHT * #entries + 48
 	local panel = Instance.new("ScrollingFrame")
 	panel.Name = "Panel"
 	panel.Position = UDim2.new(0, 16, 0, 100)
-	panel.Size = UDim2.new(0, PANEL_WIDTH + 8, 1, -120)
-	panel.CanvasSize = UDim2.new(1, 0, 0, contentHeight)
+	panel.Size = UDim2.new(0, PANEL_WIDTH + 12, 1, -120)
+	panel.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	panel.CanvasSize = UDim2.new()
 	panel.ScrollingDirection = Enum.ScrollingDirection.Y
 	panel.ScrollBarThickness = 6
 	panel.BorderSizePixel = 0
@@ -193,39 +170,60 @@ function DevPanel.init()
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 8)
 	corner.Parent = panel
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0, 8)
+	padding.PaddingBottom = UDim.new(0, 8)
+	padding.PaddingLeft = UDim.new(0, 8)
+	padding.Parent = panel
+	local layout = Instance.new("UIListLayout")
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, 4)
+	layout.Parent = panel
+
+	local order = 0
+	local function nextOrder(): number
+		order += 1
+		return order
+	end
 
 	makeText(panel, {
-		Position = UDim2.new(0, 12, 0, 8),
-		Size = UDim2.new(0, PANEL_WIDTH - 24, 0, 24),
+		LayoutOrder = nextOrder(),
+		Size = UDim2.new(0, PANEL_WIDTH, 0, 24),
 		Font = Enum.Font.GothamBold,
 		TextSize = 16,
 		Text = "Tuning (F2)  -  Mitte = Config-Wert",
 		TextXAlignment = Enum.TextXAlignment.Left,
 	})
 
-	local rows: { Row } = {}
+	local sliders: { Slider } = {}
 
-	-- Schalter (an/aus)
-	for index, switch in switches do
-		local holder, key = resolvePath(switch.path)
-		if not holder or not key or type(holder[key]) ~= "boolean" then
-			warn(`[DevPanel] Unbekannter Schalter "{switch.path}" in Config.TuningSwitches`)
-			continue
+	local function applyValue(slider: Slider, value: number)
+		slider.holder[slider.key] = value
+		refreshSlider(slider)
+		if slider.item.server then
+			remote:FireServer(slider.item.path, value)
 		end
-		local y = 40 + (index - 1) * SWITCH_HEIGHT
-		makeText(panel, {
-			Position = UDim2.new(0, 12, 0, y + 4),
-			Size = UDim2.new(0, PANEL_WIDTH - 110, 0, 22),
-			Text = switch.label,
+	end
+
+	local function addSwitch(parent: Instance, item: Item, holder: any, key: string)
+		local frame = Instance.new("Frame")
+		frame.BackgroundTransparency = 1
+		frame.Size = UDim2.new(0, PANEL_WIDTH, 0, SWITCH_HEIGHT)
+		frame.LayoutOrder = nextOrder()
+		frame.Parent = parent
+		makeText(frame, {
+			Position = UDim2.new(0, 4, 0, 4),
+			Size = UDim2.new(0, PANEL_WIDTH - 90, 0, 22),
+			Text = item.label,
 			TextXAlignment = Enum.TextXAlignment.Left,
 		})
-		local toggle = makeButton(panel, {
-			Position = UDim2.new(0, PANEL_WIDTH - 82, 0, y + 2),
+		local toggle = makeButton(frame, {
+			Position = UDim2.new(0, PANEL_WIDTH - 80, 0, 3),
 			Size = UDim2.new(0, 70, 0, 26),
 		})
 		local function show()
 			local value = holder[key] == true
-			local on = if switch.invert then not value else value
+			local on = if item.invert then not value else value
 			toggle.Text = if on then "An" else "Aus"
 			toggle.BackgroundColor3 = if on then Color3.fromRGB(60, 150, 80) else Color3.fromRGB(150, 60, 60)
 		end
@@ -233,63 +231,53 @@ function DevPanel.init()
 		toggle.Activated:Connect(function()
 			holder[key] = not holder[key]
 			show()
-			if switch.server then
-				remote:FireServer(switch.path, holder[key])
+			if item.server then
+				remote:FireServer(item.path, holder[key])
 			end
 		end)
 	end
 
-	local function applyValue(row: Row, value: number)
-		setConfigValue(row, value)
-		refreshRow(row)
-		if row.entry.server then
-			remote:FireServer(row.entry.path, value)
-		end
-	end
-
-	for index, entry in entries do
-		local holder, key = resolvePath(entry.path)
-		if not holder or not key or type(holder[key]) ~= "number" then
-			warn(`[DevPanel] Unbekannter Config-Wert "{entry.path}" in Config.TuningPanel`)
-			continue
-		end
+	local function addSlider(parent: Instance, item: Item, holder: any, key: string)
 		local base = holder[key] :: number
 		-- Bereich: Mitte = Startwert; Standard 0 .. doppelter Wert. Eine untere Grenze (min)
 		-- verkleinert den Bereich symmetrisch, damit der Startwert in der Mitte bleibt.
-		local minBound = entry.min or 0
-		local span = entry.span or math.abs(base)
+		local minBound = item.min or 0
+		local span = item.span or math.abs(base)
 		span = math.min(span, base - minBound)
 		local low, high
 		if span > 0 then
 			low, high = base - span, base + span
 		else
 			-- Startwert 0 (bzw. = min): Mitte geht nicht, Bereich min .. min + span (Standard 1)
-			span = entry.span or 1
+			span = item.span or 1
 			low, high = minBound, minBound + span
 		end
 
-		local y = 44 + switchesHeight + (index - 1) * ROW_HEIGHT
-		makeText(panel, {
-			Position = UDim2.new(0, 12, 0, y),
+		local frame = Instance.new("Frame")
+		frame.BackgroundTransparency = 1
+		frame.Size = UDim2.new(0, PANEL_WIDTH, 0, SLIDER_HEIGHT)
+		frame.LayoutOrder = nextOrder()
+		frame.Parent = parent
+		makeText(frame, {
+			Position = UDim2.new(0, 4, 0, 2),
 			Size = UDim2.new(0, PANEL_WIDTH - 110, 0, 18),
-			Text = entry.label,
+			Text = item.label,
 			TextXAlignment = Enum.TextXAlignment.Left,
 		})
-		local valueLabel = makeText(panel, {
-			Position = UDim2.new(0, PANEL_WIDTH - 100, 0, y),
+		local valueLabel = makeText(frame, {
+			Position = UDim2.new(0, PANEL_WIDTH - 100, 0, 2),
 			Size = UDim2.new(0, 88, 0, 18),
 			Font = Enum.Font.Code,
 			Text = "",
 			TextXAlignment = Enum.TextXAlignment.Right,
 		})
-
 		local bar = Instance.new("Frame")
-		bar.Position = UDim2.new(0, 12, 0, y + 26)
-		bar.Size = UDim2.new(0, PANEL_WIDTH - 130, 0, 10)
+		bar.Position = UDim2.new(0, 4, 0, 28)
+		bar.Size = UDim2.new(0, PANEL_WIDTH - 124, 0, 10)
 		bar.BackgroundColor3 = Color3.fromRGB(70, 70, 85)
 		bar.BorderSizePixel = 0
 		bar.Active = true
-		bar.Parent = panel
+		bar.Parent = frame
 		local fill = Instance.new("Frame")
 		fill.BackgroundColor3 = Color3.fromRGB(90, 170, 255)
 		fill.BorderSizePixel = 0
@@ -303,10 +291,9 @@ function DevPanel.init()
 		middle.BorderSizePixel = 0
 		middle.ZIndex = 2
 		middle.Parent = bar
-
 		-- Eingabefeld fuer einen genauen Wert
 		local input = Instance.new("TextBox")
-		input.Position = UDim2.new(0, PANEL_WIDTH - 110, 0, y + 20)
+		input.Position = UDim2.new(0, PANEL_WIDTH - 110, 0, 22)
 		input.Size = UDim2.new(0, 64, 0, 22)
 		input.BackgroundColor3 = Color3.fromRGB(45, 45, 58)
 		input.TextColor3 = Color3.new(1, 1, 1)
@@ -316,18 +303,15 @@ function DevPanel.init()
 		input.TextSize = 14
 		input.Text = ""
 		input.ClearTextOnFocus = true
-		input.Parent = panel
-
-		-- Zuruecksetzen auf den Config-Wert
-		local reset = makeButton(panel, {
-			Position = UDim2.new(0, PANEL_WIDTH - 38, 0, y + 20),
+		input.Parent = frame
+		local reset = makeButton(frame, {
+			Position = UDim2.new(0, PANEL_WIDTH - 40, 0, 22),
 			Size = UDim2.new(0, 26, 0, 22),
 			BackgroundColor3 = Color3.fromRGB(90, 70, 70),
 			Text = "R",
 		})
-
-		local row: Row = {
-			entry = entry,
+		local slider: Slider = {
+			item = item,
 			holder = holder,
 			key = key,
 			base = base,
@@ -337,45 +321,93 @@ function DevPanel.init()
 			bar = bar,
 			fill = fill,
 			valueLabel = valueLabel,
-			input = input,
 		}
-		table.insert(rows, row)
-		refreshRow(row)
-
+		table.insert(sliders, slider)
+		refreshSlider(slider)
 		input.FocusLost:Connect(function()
 			-- Komma oder Punkt als Dezimaltrenner erlauben
 			local value = tonumber((string.gsub(input.Text, ",", ".")))
 			input.Text = ""
 			if value and value == value and math.abs(value) < 1e6 then
-				applyValue(row, value)
+				applyValue(slider, value)
 			end
 		end)
 		reset.Activated:Connect(function()
-			applyValue(row, row.base)
+			applyValue(slider, slider.base)
 		end)
+	end
+
+	-- Abschnitte: Titelzeile (Klick = ein-/ausklappen) und Inhalt
+	for _, section in sections do
+		local header = makeButton(panel, {
+			LayoutOrder = nextOrder(),
+			Size = UDim2.new(0, PANEL_WIDTH, 0, 28),
+			BackgroundColor3 = Color3.fromRGB(55, 60, 80),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextSize = 15,
+		})
+		local body = Instance.new("Frame")
+		body.BackgroundTransparency = 1
+		body.Size = UDim2.new(0, PANEL_WIDTH, 0, 0)
+		body.AutomaticSize = Enum.AutomaticSize.Y
+		body.LayoutOrder = nextOrder()
+		body.Visible = section.open == true
+		body.Parent = panel
+		local bodyLayout = Instance.new("UIListLayout")
+		bodyLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		bodyLayout.Padding = UDim.new(0, 2)
+		bodyLayout.Parent = body
+		local function showHeader()
+			header.Text = `  {if body.Visible then "▼" else "▶"}  {section.title}  ({#section.items})`
+		end
+		showHeader()
+		header.Activated:Connect(function()
+			body.Visible = not body.Visible
+			showHeader()
+		end)
+		for _, item in section.items do
+			local holder, key = resolvePath(item.path)
+			if not holder or not key then
+				warn(`[DevPanel] Unbekannter Config-Wert "{item.path}" in Config.TuningPanel`)
+				continue
+			end
+			if item.switch then
+				if type(holder[key]) ~= "boolean" then
+					warn(`[DevPanel] "{item.path}" ist kein true/false-Wert`)
+					continue
+				end
+				addSwitch(body, item, holder, key)
+			else
+				if type(holder[key]) ~= "number" then
+					warn(`[DevPanel] "{item.path}" ist keine Zahl`)
+					continue
+				end
+				addSlider(body, item, holder, key)
+			end
+		end
 	end
 
 	local copyButton = makeButton(panel, {
 		Name = "CopyValues",
-		Position = UDim2.new(0, 12, 0, contentHeight - 40),
-		Size = UDim2.new(0, PANEL_WIDTH - 24, 0, 30),
+		LayoutOrder = nextOrder(),
+		Size = UDim2.new(0, PANEL_WIDTH, 0, 30),
 		BackgroundColor3 = Color3.fromRGB(60, 130, 80),
 		Text = "Werte kopieren (nur Aenderungen, ins Output)",
 	})
 	copyButton.Activated:Connect(function()
-		printChanges(rows)
+		printChanges(sliders)
 	end)
 
 	gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 
 	-- Ziehen: Klick auf einen Balken startet, Mausbewegung aendert den Wert
-	local dragging: Row? = nil
+	local dragging: Slider? = nil
 
-	local function setFromScreenX(row: Row, x: number)
-		local alpha = math.clamp((x - row.bar.AbsolutePosition.X) / row.bar.AbsoluteSize.X, 0, 1)
-		local value = round(row.low + alpha * (row.high - row.low), row.decimals)
-		if value ~= getValue(row) then
-			applyValue(row, value)
+	local function setFromScreenX(slider: Slider, x: number)
+		local alpha = math.clamp((x - slider.bar.AbsolutePosition.X) / slider.bar.AbsoluteSize.X, 0, 1)
+		local value = round(slider.low + alpha * (slider.high - slider.low), slider.decimals)
+		if value ~= slider.holder[slider.key] then
+			applyValue(slider, value)
 		end
 	end
 
@@ -384,25 +416,25 @@ function DevPanel.init()
 			or input.UserInputType == Enum.UserInputType.Touch
 	end
 
-	for _, row in rows do
-		row.bar.InputBegan:Connect(function(input)
+	for _, slider in sliders do
+		slider.bar.InputBegan:Connect(function(input)
 			if isPress(input) then
-				dragging = row
-				setFromScreenX(row, input.Position.X)
+				dragging = slider
+				setFromScreenX(slider, input.Position.X)
 			end
 		end)
 	end
 
 	UserInputService.InputChanged:Connect(function(input)
-		local row = dragging
+		local slider = dragging
 		if
-			row
+			slider
 			and (
 				input.UserInputType == Enum.UserInputType.MouseMovement
 				or input.UserInputType == Enum.UserInputType.Touch
 			)
 		then
-			setFromScreenX(row, input.Position.X)
+			setFromScreenX(slider, input.Position.X)
 		end
 	end)
 
@@ -419,8 +451,8 @@ function DevPanel.init()
 		end
 		gui.Enabled = not gui.Enabled
 		if gui.Enabled then
-			for _, row in rows do
-				refreshRow(row)
+			for _, slider in sliders do
+				refreshSlider(slider)
 			end
 		end
 	end)

@@ -505,7 +505,17 @@ function CartController.step(
 		local lateralGrip = (D.LateralGrip + (DR.LateralGrip - D.LateralGrip) * drift) * gripScale
 		lateralGrip *= 1 + 2 * overLimit
 		local maxGrip = D.MaxGripAcceleration * gripScale
-		force += right * math.clamp(-lateralSpeed * lateralGrip, -maxGrip, maxGrip) * m
+		local gripForce = right * math.clamp(-lateralSpeed * lateralGrip, -maxGrip, maxGrip) * m
+		force += gripForce
+		-- Drift soll nur leicht bremsen: Der Seitenhalt nimmt beim Rutschen Tempo weg. Einen Teil
+		-- davon (1 - Drift.SpeedLoss) gibt es als Schub nach vorne zurueck.
+		if drift > 0 and speed > 5 then
+			local lost = -gripForce:Dot(velocity / speed) -- so viel Kraft bremst gerade das Tempo
+			local along = math.max(forward:Dot(velocity / speed), 0.3)
+			if lost > 0 then
+				force += forward * lost * (1 - math.clamp(DR.SpeedLoss, 0, 1)) * drift / along
+			end
+		end
 
 		-- Lenkung: Ziel-Drehgeschwindigkeit um die Hochachse, abhaengig vom Tempo.
 		-- Im Drift staerker: Die Front "zieht" den Wagen durch die Kurve.

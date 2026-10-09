@@ -93,7 +93,10 @@ Config.Drift = {
 	DriftByDefault = true,
 	EngageTime = 0.15, -- so schnell (s) greift die Handbremse
 	GripRecoverTime = 0.3, -- so schnell (s) kommt der volle Halt nach dem Loslassen zurueck
-	HandbrakeDeceleration = 4, -- leichtes Abbremsen, nur solange der Wagen wirklich rutscht
+	HandbrakeDeceleration = 1.5, -- leichtes Abbremsen, nur solange der Wagen rutscht (vorher 4)
+	-- Tempoverlust durch das seitliche Rutschen: 1 = voll (wie frueher), 0 = gar keiner.
+	-- Der Rest wird als Schub nach vorne zurueckgegeben, Driften bremst also nur leicht.
+	SpeedLoss = 0.3,
 	LateralGrip = 3.5, -- Seitenhalt im Drift (normal: Drive.LateralGrip = 8). Kleiner = weiter ausschwingen
 	SteerRate = 2.4, -- Drehgeschwindigkeit im Drift (Radiant/s) - staerker als normal
 	SteerResponseFactor = 0.6, -- wie direkt die Drehung folgt (Anteil von Drive.SteerResponse); kleiner = weicher
@@ -707,93 +710,174 @@ Config.GodMode = {
 	SpeedKmh = 60,
 }
 
--- Schalter im Tuning-Panel (F2, nur Studio). invert = "An" heisst Config-Wert false.
--- server = true: der Server bekommt den Wert auch (z. B. kein Lebensverlust).
-export type TuningSwitch = { label: string, path: string, invert: boolean?, server: boolean? }
-Config.TuningSwitches = {
-	{ label = "Crash durch harten Aufprall", path = "Debug.NoImpactCrash", invert = true },
-	{ label = "God Mode", path = "Debug.GodMode", server = true },
-	{ label = "Selbstaufrichtung", path = "Righting.Enabled" },
-} :: { TuningSwitch }
-
-Config.TuningPanel = {
-	{ label = "Motorkraft", path = "Drive.PushAcceleration" },
-	{ label = "Hoechsttempo (Motor)", path = "Drive.MaxPushSpeed" },
-	{ label = "Bremskraft (S)", path = "Drive.BrakeAcceleration" },
-	{ label = "Ausrollen", path = "Drive.RollingResistance" },
-	{ label = "Luftwiderstand", path = "Drive.AirDrag" },
-	{ label = "Lenkung", path = "Drive.SteerRate" },
-	{ label = "Seitenhalt", path = "Drive.LateralGrip" },
-	{ label = "Kipp-Ballast (Hoehe)", path = "Cart.BallastHeight", server = true },
-	{ label = "Drift-Seitenhalt", path = "Drift.LateralGrip" },
-	{ label = "Drift-Lenkung", path = "Drift.SteerRate" },
-	{ label = "Max. Driftwinkel (Grad)", path = "Drift.RecoverAngle", span = 25, min = 5 }, -- Winkel: 5 .. 55
-	{ label = "Rueckstell-Staerke", path = "Drift.RecoverStrength" },
-	{ label = "Heck-Pendeln", path = "Drift.TailWobble", span = 1 }, -- span: falls auf 0 gesetzt
-	{ label = "Hopp-Hoehe (Tempo)", path = "Hop.Speed" },
-	{ label = "Hopp-Drehung", path = "Hop.TurnRate" },
-	{ label = "Boost-Schwelle 1 (s)", path = "Drift.Level1Time" },
-	{ label = "Boost-Schwelle 2 (s)", path = "Drift.Level2Time" },
-	{ label = "Drift-Boost Stufe 1", path = "Drift.Level1Boost" }, -- Anteil vom Motor-Hoechsttempo
-	{ label = "Drift-Boost Stufe 2", path = "Drift.Level2Boost" },
-	{ label = "Drift-Boost Dauer (s)", path = "Drift.BoostDuration" },
-	{ label = "Drift-Ende (s gerade)", path = "Drift.ReleaseDelay" },
-	{ label = "Wackelrad (Drall)", path = "Drive.WobbleStrength", span = 0.5 }, -- span: falls auf 0 gesetzt
-	{ label = "Schlamm-Bremse", path = "Track.MudDrag" },
-	{ label = "Eis-Seitenhalt", path = "Track.IceGrip" },
-	{ label = "BoostPad-Staerke", path = "Track.BoostPadStrength" },
-	{ label = "JumpPad-Staerke", path = "Track.JumpPadStrength" },
-	{ label = "Leben pro Lauf", path = "Lives.PerRun", server = true }, -- gilt ab dem naechsten T
-	{ label = "Geist-Durchsicht", path = "Ghost.Transparency", span = 0.4 }, -- 0.2 .. 1, ab dem naechsten Start
-	{ label = "Kamera: Abstand", path = "Camera.Distance" },
-	{ label = "Kamera: Hoehe", path = "Camera.Height" },
-	{ label = "Kamera: Sichtfeld (FOV)", path = "Camera.BaseFov", span = 30 },
-	{ label = "Aufrichten: Staerke", path = "Righting.Strength" },
-	{ label = "Aufrichten: ab Winkel", path = "Righting.StartAngle", span = 20 },
-	{ label = "Federung: Haerte", path = "Suspension.Stiffness" },
-	{ label = "Federung: Daempfung", path = "Suspension.Damping" },
-	{ label = "Federung: Federweg", path = "Suspension.Travel" },
-	{ label = "God Mode: Tempo (km/h)", path = "GodMode.SpeedKmh" },
-	{ label = "Meter pro Muenze", path = "Meters.MetersPerCoin", server = true },
-	{ label = "Muenzen im Ziel (Grund)", path = "Coins.FinishBase", server = true },
-	{ label = "Kombo-Zeitfenster (s)", path = "Combo.Window", server = true },
-	{ label = "Kombo-Extra pro Stufe", path = "Combo.StepBonus", server = true },
-	{ label = "Trick-Drehtempo", path = "Tricks.SpinSpeed" },
-	{ label = "Trick: sauber bis (Grad)", path = "Tricks.CleanAngle", span = 25 },
-	{ label = "Trick: Crash ab (Grad)", path = "Tricks.CrashAngle", span = 25 },
-	{ label = "Trick-Muenzen pro 180", path = "Tricks.CoinsPerHalfSpin", server = true },
-	-- Fahrzeuge: Faktoren auf die Einkaufswagen-Werte (gelten sofort)
-	{ label = "Buerostuhl: Lenkung x", path = "Vehicles.OfficeChair.scale.Drive.SteerRate" },
-	{ label = "Buerostuhl: Seitenhalt x", path = "Vehicles.OfficeChair.scale.Drive.LateralGrip" },
-	{ label = "Schultisch: Tempo x", path = "Vehicles.SchoolDesk.scale.Drive.MaxPushSpeed" },
-	{ label = "Schultisch: Lenkung x", path = "Vehicles.SchoolDesk.scale.Drive.SteerRate" },
-	{ label = "Schleuderkraft", path = "Launch.Power", server = true },
-	{ label = "Schleuder-Drehung", path = "Launch.SpinPower", server = true },
-	{ label = "Himmel-Chance (0..1)", path = "Launch.SkyChance", server = true, span = 0.25 },
-	{ label = "Flug-Schwerkraft", path = "Launch.Gravity", server = true, min = 5 },
-	{ label = "Hit-Stop (s)", path = "Launch.HitStop" },
-	{ label = "Tempo nach Treffer", path = "Launch.HitSpeedKeep", span = 0.15 },
-	{ label = "Flug-Bonus pro Meter", path = "Launch.BonusPerMeter", server = true },
-	{ label = "Sprungfeder 1 (Tempo)", path = "Abilities.JumpSpeed1" },
-	{ label = "Sprungfeder 2 (Tempo)", path = "Abilities.JumpSpeed2" },
-	{ label = "Doppelsprung (Tempo)", path = "Abilities.DoubleJumpSpeed" },
-	{ label = "Helm-Ladungen Stufe 1", path = "Abilities.HelmetCharges1", server = true },
-	{ label = "Helm-Ladungen Stufe 2", path = "Abilities.HelmetCharges2", server = true },
-	{ label = "Helm-Ladungen Stufe 3", path = "Abilities.HelmetCharges3", server = true },
-	{ label = "Helm-Schutzzeit (s)", path = "Abilities.HelmetGrace" },
-	{ label = "Turbo-Schub", path = "Abilities.TurboGain" },
-	{ label = "Turbo-Dauer (s)", path = "Abilities.TurboDuration" },
-	{ label = "Turbo-Abklingzeit 1 (s)", path = "Abilities.TurboCooldown1" },
-	{ label = "Turbo-Abklingzeit 2 (s)", path = "Abilities.TurboCooldown2" },
-	{ label = "Turbo-Abklingzeit 3 (s)", path = "Abilities.TurboCooldown3" },
-	{ label = "Fallschirm: Falltempo", path = "Abilities.GlideFallSpeed" },
-	{ label = "Fallschirm: Bremsen", path = "Abilities.GlideResponse" },
-	{ label = "Fallschirm: Schub", path = "Abilities.GlideForwardAccel" },
-	{ label = "Fallschirm: Lenken", path = "Abilities.GlideSteerRate" },
-	{ label = "Ragdoll-Flug hoch", path = "Crash.RagdollUpSpeed" },
-	{ label = "Ragdoll-Flug vorne", path = "Crash.RagdollForwardBoost" },
-	{ label = "Ragdoll schwebt (0..1)", path = "Crash.RagdollFloat", span = 0.45 },
+-- Tuning-Panel (nur in Studio, Taste F2): Abschnitte mit Titel, einklappbar.
+-- Regler (path = Zahl in dieser Config): Jeder Regler startet in der MITTE, die Mitte ist der
+-- Wert beim Spielstart. Bereich: 0 bis doppelter Wert. Sonderfaelle:
+--   span = halbe Breite (Bereich = Wert - span .. Wert + span), z. B. fuer Winkel
+--   min  = untere Grenze
+-- Schalter (switch = true, path = true/false in dieser Config): An/Aus-Knopf.
+--   invert = true: "An" heisst Config-Wert false (z. B. Debug.NoImpactCrash)
+-- server = true: der Server bekommt den Wert auch (z. B. Ballast, kein Lebensverlust).
+export type TuningItem = {
+	label: string,
+	path: string,
+	span: number?,
+	min: number?,
+	server: boolean?,
+	switch: boolean?,
+	invert: boolean?,
 }
+export type TuningSection = { title: string, open: boolean?, items: { TuningItem } }
+Config.TuningPanel = {
+	{
+		title = "Fahren",
+		open = true,
+		items = {
+			{ label = "Motorkraft", path = "Drive.PushAcceleration" },
+			{ label = "Hoechsttempo (Motor)", path = "Drive.MaxPushSpeed" },
+			{ label = "Bremskraft (S)", path = "Drive.BrakeAcceleration" },
+			{ label = "Ausrollen", path = "Drive.RollingResistance" },
+			{ label = "Luftwiderstand", path = "Drive.AirDrag" },
+			{ label = "Lenkung", path = "Drive.SteerRate" },
+			{ label = "Seitenhalt", path = "Drive.LateralGrip" },
+			{ label = "Wackelrad (Drall)", path = "Drive.WobbleStrength", span = 0.5 },
+			{ label = "Kipp-Ballast (Hoehe)", path = "Cart.BallastHeight", server = true },
+			{ label = "Hopp-Hoehe (Tempo)", path = "Hop.Speed" },
+			{ label = "Hopp-Drehung", path = "Hop.TurnRate" },
+		},
+	},
+	{
+		title = "Drift",
+		items = {
+			{ label = "Drift-Bremse", path = "Drift.HandbrakeDeceleration" },
+			{ label = "Drift-Tempoverlust (0..1)", path = "Drift.SpeedLoss", span = 0.3 },
+			{ label = "Drift-Seitenhalt", path = "Drift.LateralGrip" },
+			{ label = "Drift-Lenkung", path = "Drift.SteerRate" },
+			{ label = "Max. Driftwinkel (Grad)", path = "Drift.RecoverAngle", span = 25, min = 5 },
+			{ label = "Rueckstell-Staerke", path = "Drift.RecoverStrength" },
+			{ label = "Heck-Pendeln", path = "Drift.TailWobble", span = 1 },
+			{ label = "Boost-Schwelle 1 (s)", path = "Drift.Level1Time" },
+			{ label = "Boost-Schwelle 2 (s)", path = "Drift.Level2Time" },
+			{ label = "Drift-Boost Stufe 1", path = "Drift.Level1Boost" },
+			{ label = "Drift-Boost Stufe 2", path = "Drift.Level2Boost" },
+			{ label = "Drift-Boost Dauer (s)", path = "Drift.BoostDuration" },
+			{ label = "Drift-Ende (s gerade)", path = "Drift.ReleaseDelay" },
+		},
+	},
+	{
+		title = "Federung und Aufrichten",
+		items = {
+			{ label = "Federung: Haerte", path = "Suspension.Stiffness" },
+			{ label = "Federung: Daempfung", path = "Suspension.Damping" },
+			{ label = "Federung: Federweg", path = "Suspension.Travel" },
+			{ label = "Selbstaufrichtung", path = "Righting.Enabled", switch = true },
+			{ label = "Aufrichten: Staerke", path = "Righting.Strength" },
+			{ label = "Aufrichten: ab Winkel", path = "Righting.StartAngle", span = 20 },
+		},
+	},
+	{
+		title = "Kamera",
+		items = {
+			{ label = "Kamera: Abstand", path = "Camera.Distance" },
+			{ label = "Kamera: Hoehe", path = "Camera.Height" },
+			{ label = "Kamera: Sichtfeld (FOV)", path = "Camera.BaseFov", span = 30 },
+		},
+	},
+	{
+		title = "Crash und Leben",
+		items = {
+			{ label = "Leben pro Lauf", path = "Lives.PerRun", server = true }, -- gilt ab dem naechsten T
+			{ label = "Ragdoll-Flug hoch", path = "Crash.RagdollUpSpeed" },
+			{ label = "Ragdoll-Flug vorne", path = "Crash.RagdollForwardBoost" },
+			{ label = "Ragdoll schwebt (0..1)", path = "Crash.RagdollFloat", span = 0.45 },
+			{ label = "Hit-Stop (s)", path = "Launch.HitStop" },
+			{ label = "Tempo nach Treffer", path = "Launch.HitSpeedKeep", span = 0.15 },
+		},
+	},
+	{
+		title = "Abilities",
+		items = {
+			{ label = "Sprungfeder 1 (Tempo)", path = "Abilities.JumpSpeed1" },
+			{ label = "Sprungfeder 2 (Tempo)", path = "Abilities.JumpSpeed2" },
+			{ label = "Doppelsprung (Tempo)", path = "Abilities.DoubleJumpSpeed" },
+			{ label = "Helm-Ladungen Stufe 1", path = "Abilities.HelmetCharges1", server = true },
+			{ label = "Helm-Ladungen Stufe 2", path = "Abilities.HelmetCharges2", server = true },
+			{ label = "Helm-Ladungen Stufe 3", path = "Abilities.HelmetCharges3", server = true },
+			{ label = "Helm-Schutzzeit (s)", path = "Abilities.HelmetGrace" },
+			{ label = "Turbo-Schub", path = "Abilities.TurboGain" },
+			{ label = "Turbo-Dauer (s)", path = "Abilities.TurboDuration" },
+			{ label = "Turbo-Abklingzeit 1 (s)", path = "Abilities.TurboCooldown1" },
+			{ label = "Turbo-Abklingzeit 2 (s)", path = "Abilities.TurboCooldown2" },
+			{ label = "Turbo-Abklingzeit 3 (s)", path = "Abilities.TurboCooldown3" },
+			{ label = "Fallschirm: Falltempo", path = "Abilities.GlideFallSpeed" },
+			{ label = "Fallschirm: Bremsen", path = "Abilities.GlideResponse" },
+			{ label = "Fallschirm: Schub", path = "Abilities.GlideForwardAccel" },
+			{ label = "Fallschirm: Lenken", path = "Abilities.GlideSteerRate" },
+			{ label = "Trick-Drehtempo", path = "Tricks.SpinSpeed" },
+			{ label = "Trick: sauber bis (Grad)", path = "Tricks.CleanAngle", span = 25 },
+			{ label = "Trick: Crash ab (Grad)", path = "Tricks.CrashAngle", span = 25 },
+		},
+	},
+	{
+		title = "Bausteine",
+		items = {
+			{ label = "Schlamm-Bremse", path = "Track.MudDrag" },
+			{ label = "Eis-Seitenhalt", path = "Track.IceGrip" },
+			{ label = "BoostPad-Staerke", path = "Track.BoostPadStrength" },
+			{ label = "JumpPad-Staerke", path = "Track.JumpPadStrength" },
+			{ label = "Schleuderkraft", path = "Launch.Power", server = true },
+			{ label = "Schleuder-Drehung", path = "Launch.SpinPower", server = true },
+			{ label = "Himmel-Chance (0..1)", path = "Launch.SkyChance", server = true, span = 0.25 },
+			{ label = "Flug-Schwerkraft", path = "Launch.Gravity", server = true, min = 5 },
+		},
+	},
+	{
+		title = "Muenzen und Belohnungen",
+		items = {
+			{ label = "Meter pro Muenze", path = "Meters.MetersPerCoin", server = true },
+			{ label = "Muenzen im Ziel (Grund)", path = "Coins.FinishBase", server = true },
+			{ label = "Flug-Bonus pro Meter", path = "Launch.BonusPerMeter", server = true },
+			{ label = "Kombo-Zeitfenster (s)", path = "Combo.Window", server = true },
+			{ label = "Kombo-Extra pro Stufe", path = "Combo.StepBonus", server = true },
+			{ label = "Trick-Muenzen pro 180", path = "Tricks.CoinsPerHalfSpin", server = true },
+		},
+	},
+	{
+		title = "Fahrzeuge",
+		items = {
+			-- Faktoren auf die Einkaufswagen-Werte (gelten sofort)
+			{ label = "Buerostuhl: Lenkung x", path = "Vehicles.OfficeChair.scale.Drive.SteerRate" },
+			{ label = "Buerostuhl: Seitenhalt x", path = "Vehicles.OfficeChair.scale.Drive.LateralGrip" },
+			{ label = "Schultisch: Tempo x", path = "Vehicles.SchoolDesk.scale.Drive.MaxPushSpeed" },
+			{ label = "Schultisch: Lenkung x", path = "Vehicles.SchoolDesk.scale.Drive.SteerRate" },
+			{ label = "Geist-Durchsicht", path = "Ghost.Transparency", span = 0.4 },
+		},
+	},
+	{
+		title = "Cheats / Test",
+		items = {
+			{ label = "God Mode", path = "Debug.GodMode", switch = true, server = true },
+			{ label = "God Mode: Tempo (km/h)", path = "GodMode.SpeedKmh" },
+			{
+				label = "Crash durch harten Aufprall",
+				path = "Debug.NoImpactCrash",
+				switch = true,
+				invert = true,
+			},
+			{
+				label = "Rueckspulen (Z / Steuerkreuz runter)",
+				path = "Debug.Rewind",
+				switch = true,
+				server = true,
+			},
+			{ label = "Alle Upgrades + Fahrzeuge", path = "Debug.AllUpgrades", switch = true, server = true },
+			{ label = "Gluecksrad beliebig oft", path = "Debug.FreeSpins", switch = true, server = true },
+			{ label = "F3 = naechster Tag", path = "Debug.DayTravel", switch = true, server = true },
+			{ label = "Bodenbausteine im Output", path = "Debug.TrackPieces", switch = true },
+			{ label = "Signale im Output", path = "Debug.Toolkit", switch = true },
+		},
+	},
+} :: { TuningSection }
 
 -- Studio-Plugin "Terrain-Import" (plugin_terrain/): baut Gelaende aus einer Hoehendatei von
 -- tools/swissalti_to_terrain.py. Die Werte hier sind die Vorgaben im Plugin-Fenster.
@@ -859,6 +943,7 @@ Config.Debug = {
 	-- Zum Erkunden der Map (Schalter im F2-Panel). Live immer aus, siehe Ende der Datei.
 	NoImpactCrash = false, -- true = harter Aufprall ist kein Crash
 	GodMode = false, -- true = jede Steigung hoch, mit W konstantes Tempo, kein Crash, kein Lebensverlust
+	Rewind = true, -- true = Rueckspulen (Z) in Studio an (live: Config.Rewind.EnabledLive)
 }
 
 -- Verfolgerkamera
