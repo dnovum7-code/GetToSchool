@@ -60,7 +60,9 @@ README „Launchables aus Spawnern, Physik-Tags, keine Tode testen“):
   Drehung (UprightFreeSpin), Achse per Attribut UprightAxis.
 - Debug.NoDeaths (Standard an, nur Studio, Schalter „Tode“ in Cheats / Test): kein Crash, kein
   Lebensverlust (RaceManager.applyHit), kein Game Over; Absturz = Checkpoint.
-- Test-Place Station 13: Kuh-Spawner (Vorlage KuhRutsch mit allen Tags).
+- Spawner-Attribut Strength (Faktor auf Speed, an Spawner oder Vorlage, Spawner gewinnt;
+  Standard Config.Spawner.Strength, Regler unter Bausteine).
+- Test-Place Station 13: Kuh-Spawner (Vorlage KuhRutsch mit allen Tags, Strength 2).
 Änderungen nach dem Map-Test (gebaut, noch nicht in Studio getestet; README „Nach dem
 Map-Test: Rückspulen, Drift, Panel testen“):
 - Entfernt: Crash durch Umkippen (Selbstaufrichtung übernimmt), tägliche Login-Belohnung

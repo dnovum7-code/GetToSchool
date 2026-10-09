@@ -367,6 +367,7 @@ nicht in Git. Fehlt eine Vorlage, spawnt eine graue Ersatz-Kugel und im Output s
 | `Interval` / `IntervalRandom` | Zahl (s) | 3 / 1 | Abstand im Dauerbetrieb, zufällig bis zu so viel später |
 | `Burst` | Zahl | 1 | Objekte pro Auslösung |
 | `Speed` / `SpeedRandom` | Zahl (Studs/s) | 30 / 5 | Schwung Richtung Vorderseite, ± zufällig |
+| `Strength` | Zahl (Faktor) | 1 | Schuss-Stärke: Schwung = Speed × Strength (2 = doppelt so kräftig herausgeschossen). Auch an der Vorlage möglich; der Wert am Spawner gewinnt. Standard im F2-Panel unter „Bausteine“ |
 | `SpreadAngle` | Zahl (Grad) | 10 | Streuung der Richtung |
 | `Spin` | Zahl (rad/s) | 0 | zufällige Drehung (Steine: 3–6) |
 | `ScaleRandom` | NumberRange oder Zahl | 1 | z. B. NumberRange 0.8 – 1.3 (oder Zahl 0.2 = 0.8 – 1.2) |
@@ -1091,6 +1092,7 @@ Im Test-Place: Station 13 (Kuh-Spawner „SpawnerKuehe“, Vorlage „KuhRutsch�
 | LowGravity + NoFriction | Kühe beobachten | Rutschen ohne zu bremsen die ganze Straße hinunter |
 | KeepUpright | Kühe beobachten, eine mit dem Wagen schubsen (Schalter Tode aus, damit nichts stört) | Bleiben aufrecht; nach einem Stoß drehen sie sich, richten sich danach wieder auf, liegen nie auf der Seite |
 | Werte | F2 → Bausteine → „LowGravity: Schwerkraft-Anteil“, „KeepUpright: Kraft/Reaktion/frei ab Drehung“ | Wirkt sofort auf die Kühe |
+| Schuss-Stärke | Attribut `Strength` (Number) am Spawner „SpawnerKuehe“ auf 3 stellen (Standard im Test-Place: 2) | Kühe schießen deutlich schneller aus dem Spawner; Pfeil der Bau-Hilfe wird länger. Ohne Attribut gilt der Regler „Spawner: Schuss-Stärke“ (F2 → Bausteine) für alle Spawner |
 | Keine Tode | F2 → Cheats / Test → „Tode (Crash, Leben, Game Over)“ ist **Aus** (Standard) | Kein Crash bei Aufprall, Hazard, schiefer Landung; Launchable-Treffer kosten kein Leben; kein Game Over; unter die Welt gefallen = zurück zum Checkpoint |
 | Tode wieder an | Schalter auf An | Crashs und Lebensverlust wie im echten Spiel |
 

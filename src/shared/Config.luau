@@ -570,6 +570,7 @@ Config.Spawner = {
 	IntervalRandom = 1, -- zufaellig bis zu so viel spaeter
 	Burst = 1, -- Anzahl Objekte pro Ausloesung
 	Speed = 30, -- Schwung (Studs/s) in Richtung der Vorderseite
+	Strength = 1, -- Schuss-Staerke: Faktor auf Speed (Attribut "Strength" an Spawner oder Vorlage)
 	SpeedRandom = 5, -- +/- so viel
 	SpreadAngle = 10, -- Streuung der Richtung (Grad)
 	Spin = 0, -- zufaellige Drehung (Radiant/s), z. B. 4 fuer Steine
@@ -838,6 +839,7 @@ Config.TuningPanel = {
 			{ label = "Schleuder-Drehung", path = "Launch.SpinPower", server = true },
 			{ label = "Himmel-Chance (0..1)", path = "Launch.SkyChance", server = true, span = 0.25 },
 			{ label = "Flug-Schwerkraft", path = "Launch.Gravity", server = true, min = 5 },
+			{ label = "Spawner: Schuss-Staerke (Faktor)", path = "Spawner.Strength" },
 			{ label = "LowGravity: Schwerkraft-Anteil", path = "ObjectPhysics.GravityScale", server = true },
 			{ label = "NoFriction: Reibung", path = "ObjectPhysics.Friction", server = true, span = 0.5 },
 			{ label = "KeepUpright: Kraft", path = "ObjectPhysics.UprightStrength", server = true },

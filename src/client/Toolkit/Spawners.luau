@@ -10,6 +10,7 @@
 -- Tag "Launchable" am Spawner oder an der Vorlage: Die Kopien sind wegschleuderbar (wie eine
 -- Kuh in der Welt; der Server prueft den Treffer ueber Spawner + Objekt-Nummer).
 -- Tags LowGravity / NoFriction / KeepUpright an Spawner oder Vorlage: siehe shared/ObjectPhysics.
+-- Attribut "Strength" (Zahl, Faktor auf Speed) an Spawner oder Vorlage: Schuss-Staerke.
 -- Unity-Vergleich: Object Pool + Instantiate mit Rigidbody.velocity.
 
 local CollectionService = game:GetService("CollectionService")
@@ -231,7 +232,13 @@ local function spawnOne(spawner: Spawner, index: number, now: number)
 	end
 	object.Parent = LocalClone.folder("LocalToolkit")
 
-	local velocity = direction * speed
+	-- Schuss-Staerke (Attribut "Strength" am Spawner, sonst an der Vorlage): Faktor auf den
+	-- Schwung, damit Objekte richtig herausgeschossen werden (2 = doppelt so schnell)
+	local strengthSource: Instance = if part:GetAttribute("Strength") == nil and template
+		then template
+		else part
+	local strength = math.max(Pieces.number(strengthSource, "Strength", S.Strength), 0)
+	local velocity = direction * speed * strength
 	if not kinematic then
 		local angular = if spin > 0
 			then Vector3.new(r(12) - 0.5, r(13) - 0.5, r(14) - 0.5).Unit * spin

@@ -503,6 +503,7 @@ station(13, "Launchable: Kuh, Muelltonne (ins All), Kuh-Spawner (Kuehe rutschen 
 		Tags = { "Spawner" },
 		Attributes = {
 			Template = "KuhRutsch",
+			Strength = 2,
 			Interval = 4,
 			IntervalRandom = 1,
 			Speed = 15,

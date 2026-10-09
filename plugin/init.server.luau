@@ -252,6 +252,7 @@ local function draw()
 			local cf = instance.CFrame
 			box(cf, instance.Size, COLORS.Spawner, 0.7)
 			local speed = numberAttr(instance, "Speed", default("Spawner", "Speed", 30))
+				* numberAttr(instance, "Strength", default("Spawner", "Strength", 1))
 			local length = math.clamp(speed * 0.3, 6, 30)
 			arrow(cf.Position, cf.LookVector * length, COLORS.Spawner)
 			local spread =
