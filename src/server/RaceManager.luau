@@ -587,7 +587,15 @@ function RaceManager.requestEnter(player: Player)
 	CartManager.enter(player)
 end
 
-local CRASH_REASONS = { Impact = true, Fell = true, Hazard = true, HitHazard = true, BadLanding = true }
+local CRASH_REASONS = {
+	Impact = true,
+	Fell = true,
+	Hazard = true,
+	HitHazard = true,
+	BadLanding = true,
+	Caught = true, -- Verfolger (Pursuer) hat dich erwischt: Leben weg, aber keine Ragdoll
+	CaughtGameOver = true, -- ... mit Attribut GameOverOnCatch: sofort Game Over
+}
 
 -- Crash (vom Client gemeldet, mit Grund). Der Server prueft, ob der Spieler wirklich faehrt.
 -- Kostet ein Leben, ausser der Helm faengt ihn ab ("Shielded": keine Ragdoll). Sonst fliegt
@@ -599,6 +607,25 @@ function RaceManager.reportCrash(player: Player, reason: unknown)
 	end
 	if Config.Debug.GodMode or Config.Debug.NoDeaths then
 		return -- God Mode / keine Tode (nur Studio): kein Crash, kein Lebensverlust
+	end
+	if reason == "Caught" or reason == "CaughtGameOver" then
+		-- Verfolger: der Client schleudert den Wagen selbst weg, hier nur das Leben
+		local race = getRace(player)
+		if reason == "CaughtGameOver" and (race.phase == "Ready" or race.phase == "Running") then
+			race.life.lives = 0
+			race.life.shield = 0
+			sendLives(player, race)
+			gameOver(player, race)
+		else
+			local outcome = RaceManager.applyHit(player)
+			if outcome == "Shielded" then
+				runState:FireClient(player, "Shielded", reason, race.life.shield)
+			end
+		end
+		if race.phase == "GameOver" and CartManager.crash(player) then
+			runState:FireClient(player, "Ragdoll")
+		end
+		return
 	end
 	local outcome = RaceManager.applyHit(player)
 	if outcome == "Shielded" then

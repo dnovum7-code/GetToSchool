@@ -17,6 +17,7 @@ local ForceZones = require(script:WaitForChild("ForceZones"))
 local Gates = require(script:WaitForChild("Gates"))
 local PathMovers = require(script:WaitForChild("PathMovers"))
 local Props = require(script:WaitForChild("Props"))
+local Pursuers = require(script:WaitForChild("Pursuers"))
 local Spawners = require(script:WaitForChild("Spawners"))
 local ToolkitTypes = require(script:WaitForChild("ToolkitTypes"))
 local TextTriggers = require(script:WaitForChild("TextTriggers"))
@@ -36,6 +37,7 @@ local MODULES: { ToolkitTypes.Piece } = {
 	ForceZones,
 	Chasers,
 	UpgradeDoors,
+	Pursuers :: any,
 }
 
 function Toolkit.init()

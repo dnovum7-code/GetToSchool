@@ -25,6 +25,7 @@ local TOOLKIT_TAGS = {
 	"ForceZone",
 	"Chaser",
 	"UpgradeDoor",
+	"Pursuer",
 }
 
 local function forEachPart(instance: Instance, callback: (BasePart) -> ())
@@ -90,7 +91,7 @@ function TrackPieces.init()
 
 	-- Bewegte Hindernisse: verankert, die Bewegung rechnet jeder Client selbst
 	-- (siehe src/client/Obstacles.luau und src/client/Toolkit)
-	for _, tag in { "Mover", "Spinner", "Pendulum", "PathMover", "Gate", "Chaser" } do
+	for _, tag in { "Mover", "Spinner", "Pendulum", "PathMover", "Gate", "Chaser", "Pursuer" } do
 		TagList.watch(tag, function(instance)
 			forEachPart(instance, function(part)
 				part.Anchored = true
@@ -150,19 +151,21 @@ function TrackPieces.init()
 		end)
 	end)
 
-	-- Wegpunkte eines PathMovers: im Spiel unsichtbar und ohne Wirkung
-	TagList.watch("PathMover", function(instance)
-		local waypoints = instance:FindFirstChild("Waypoints")
-		if waypoints then
-			forEachPart(waypoints, function(part)
-				part.Anchored = true
-				part.CanCollide = false
-				part.CanQuery = false
-				part.CanTouch = false
-				part.Transparency = 1
-			end)
-		end
-	end)
+	-- Wegpunkte eines PathMovers / Verfolgers: im Spiel unsichtbar und ohne Wirkung
+	for _, tag in { "PathMover", "Pursuer" } do
+		TagList.watch(tag, function(instance)
+			local waypoints = instance:FindFirstChild("Waypoints")
+			if waypoints then
+				forEachPart(waypoints, function(part)
+					part.Anchored = true
+					part.CanCollide = false
+					part.CanQuery = false
+					part.CanTouch = false
+					part.Transparency = 1
+				end)
+			end
+		end)
+	end
 
 	-- Unsichtbare Bereiche (TriggerZone, Spawner): nur Messbereich, im Spiel unsichtbar
 	for _, tag in { "TriggerZone", "TextTrigger", "Spawner" } do

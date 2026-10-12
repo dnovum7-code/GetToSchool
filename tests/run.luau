@@ -26,6 +26,7 @@ local SPECS = {
 	"./TerrainImportSpec",
 	"./SpawnedHitSpec",
 	"./HornSpec",
+	"./PursuerSpec",
 }
 
 for _, path in SPECS do

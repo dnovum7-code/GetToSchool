@@ -32,6 +32,7 @@ local SpinUI = require(script.Parent:WaitForChild("SpinUI"))
 local LaunchablesClient = require(script.Parent:WaitForChild("LaunchablesClient"))
 local FlyMode = require(script.Parent:WaitForChild("FlyMode"))
 local Horn = require(script.Parent:WaitForChild("Horn"))
+local Pursuers = require(script.Parent:WaitForChild("Toolkit"):WaitForChild("Pursuers"))
 local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 local ProgressClient = require(script.Parent:WaitForChild("ProgressClient"))
 local ProgressUI = require(script.Parent:WaitForChild("ProgressUI"))
@@ -231,6 +232,27 @@ end)
 Tricks.init() -- Lufttricks (Anzeige)
 Rewind.init() -- Rueckspulen (Zeitleiste)
 Horn.init() -- Hupen aller Spieler abspielen
+-- Verfolger (Pursuer) hat uns erwischt: Leben weg (Server) und kurz wegschleudern
+Pursuers.onCaught(function(gameOverOnCatch: boolean, push: Vector3, name: string)
+	local current = controller
+	if not current or crashed then
+		return
+	end
+	local P = Config.Pursuer
+	crashDetector:relaxImpact(math.huge, 2) -- der Flug ist kein Crash
+	local fling = push * P.FlingForward + Vector3.new(0, P.FlingUp, 0)
+	for _, part in current.cart:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.AssemblyLinearVelocity += fling
+		end
+	end
+	current.base.AssemblyAngularVelocity += Vector3.new(math.random() - 0.5, 0, math.random() - 0.5) * 6
+	ChaseCamera.addShake(3)
+	RaceUI.showMessage("ERWISCHT!", Color3.fromRGB(255, 80, 60), `{name} hat dich!`, 1.5)
+	if not Config.Debug.GodMode then
+		reportCrash:FireServer(if gameOverOnCatch then "CaughtGameOver" else "Caught")
+	end
+end)
 VisualFX.init() -- Speed-Linien, Konfetti ...
 ComboUI.init() -- Kuh-Kombo-Anzeige
 MeterUI.init() -- Meterzaehler und x2-Anzeige
@@ -711,6 +733,7 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 	elseif kind == "LaunchRejected" then
 		LaunchablesClient.onRejected(...)
 	elseif kind == "GameOver" then
+		Pursuers.runEvent("GameOver")
 		onGameOver(...)
 	elseif kind == "Shielded" then
 		-- Server bestaetigt die Helm-Rettung; Ladungen kommen mit "Lives"
@@ -740,9 +763,11 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		runPhase = "Running"
 		ShopUI.close() -- Lauf beginnt: Menue zu
 		runStartedAt = os.clock()
+		Pursuers.runEvent("Started") -- Verfolger starten nach ihrer StartDelay
 	elseif kind == "Finished" then
 		local result: RunResult = ...
 		runPhase = "Finished"
+		Pursuers.runEvent("Finished") -- Verfolger kracht in den Zaun
 		StatReporter.flush()
 		finishedTime = result.time
 		RaceUI.setBest(result.bestTime)

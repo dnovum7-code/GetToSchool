@@ -564,6 +564,27 @@ Config.Toolkit = {
 
 -- Spawner (Tag "Spawner", Part): Objekte erscheinen an zufaelligen Stellen innerhalb des
 -- Parts und bekommen Schwung in Richtung seiner Vorderseite. Standardwerte der Attribute:
+-- Verfolger (Tag "Pursuer", Modell wie Schulbus/Hauswart, Ordner "Waypoints" mit Parts
+-- "1", "2", ...). Startet StartDelay s nach dem Losfahren hinter dir und faehrt die Wegpunkte
+-- ab. Gummiband: holt auf, wenn du langsam bist, faellt zurueck (hoechstens MaxGap), wenn du
+-- gut faehrst. Erwischt er dich: ein Leben weg und du fliegst. Alles auch als Attribut.
+Config.Pursuer = {
+	StartDelay = 3, -- Sekunden nach dem Losfahren
+	BaseSpeed = 45, -- Studs/s Grundtempo
+	CatchUpSpeed = 60, -- so viel schneller, wenn er weit zurueck ist (ab MaxGap voll)
+	MinGap = 35, -- Abstand nach R / nach dem Erwischen (Studs entlang der Strecke)
+	MaxGap = 140, -- weiter zurueck faellt er nie
+	CatchRadius = 9, -- so nah (Studs) = erwischt
+	WarnGap = 70, -- ab hier werden die Bildschirmraender rot, Warnton
+	CatchCooldown = 3, -- nach dem Erwischen so lange Ruhe (s)
+	FlingUp = 70, -- du fliegst: so viel nach oben (Studs/s) ...
+	FlingForward = 60, -- ... und nach vorne
+	GameOverOnCatch = false, -- Attribut "GameOverOnCatch": erwischt = sofort Game Over
+	TurnSpeed = 6, -- wie schnell er sich in Fahrtrichtung dreht
+	CrashTilt = 35, -- im Ziel: kracht in den Zaun und kippt um so viel Grad
+	DisplayName = "Verfolger", -- Attribut "DisplayName" (z. B. "Schulbus") fuer die Anzeige
+}
+
 -- TextTrigger (Tag "TextTrigger", Part): Text auf dem Bildschirm beim Hineinfahren.
 -- Attribute Text, SubText, Color, Duration, Once, Cooldown (siehe client/Toolkit/TextTriggers)
 Config.TextTrigger = {
@@ -730,6 +751,9 @@ Config.Sounds = {
 	HornBike = { Id = "", Volume = 0.9 }, -- Fahrrad-Troete
 	HornMoo = { Id = "", Volume = 0.9 }, -- Kuh-Muh
 	HornTrain = { Id = "", Volume = 0.9 }, -- Zug-Horn
+	PursuerWarn = { Id = "", Volume = 0.8 }, -- Verfolger ist nah (Hupe/Schrei; Attribut "Sound")
+	PursuerCatch = { Id = "", Volume = 0.9 }, -- Verfolger hat dich erwischt
+	PursuerCrash = { Id = "", Volume = 0.9 }, -- Verfolger kracht im Ziel in den Zaun
 }
 
 -- Hupe (Taste H, Gamepad: linken Stick druecken, Touch: Button "Hupe"). Alle in der Naehe
@@ -922,6 +946,11 @@ Config.TuningPanel = {
 		items = {
 			{ label = "Hupe: Abklingzeit (s)", path = "Horn.Cooldown", server = true },
 			{ label = "Hupe: Hopser", path = "Horn.HopSpeed" },
+			{ label = "Verfolger: Grundtempo", path = "Pursuer.BaseSpeed" },
+			{ label = "Verfolger: Aufholen", path = "Pursuer.CatchUpSpeed" },
+			{ label = "Verfolger: MinGap", path = "Pursuer.MinGap" },
+			{ label = "Verfolger: MaxGap", path = "Pursuer.MaxGap" },
+			{ label = "Verfolger: Startverzoegerung", path = "Pursuer.StartDelay" },
 		},
 	},
 	{
