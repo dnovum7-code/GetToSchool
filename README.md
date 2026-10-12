@@ -76,6 +76,7 @@ Hinweise:
 | 16 | Auto-Strom | Zwischen den Autos durch | Autos fahren gleichmäßig quer, schubsen nur (kein Crash) |
 | 17 | PathMover | Am Lieferwagen vorbei | Fährt im Rechteck, dreht sich in Fahrtrichtung, wartet kurz an den Ecken |
 | 18 | Gate | Schranke | Hebt und senkt sich im Takt |
+| 19 | Schulbus (Verfolger) | Durchfahren | „DER SCHULBUS KOMMT!“; ab hier jagt dich ein gelber Bus bis vor die Schule (Abstand oben, rote Ränder). Er kracht am Ende in den Schulzaun |
 | 19 | Abkürzungs-Tür | Linke Spur | Ohne Sprungfeder: Schild „nur mit Trampolin-Sprungfeder“, Tür fest. Mit (Shop oder Debug): Tür fährt weg, Bonus-Münzen dahinter |
 | 20 | Collapse | Über die Holzbrücke | Bretter wackeln und fallen nacheinander; wer zu langsam ist, fällt in die Grube (Crash). R: Brücke wieder da |
 | 21 | Props | Kisten und Pylonen umfahren | Fliegen weg, kein Crash; im Ergebnis „Chaos: X“ |
@@ -84,6 +85,7 @@ Hinweise:
 | 24 | Checkpoint 3 | Durchfahren | Hinweis „Checkpoint“ |
 | 25 | Ziel | Durchs Ziel | Ergebnis mit Zeit, Note (Grenzen 50/65/80/100/130 s), Münzen, Leben, Treffer, Chaos; Münzen der Strecke sind wieder da |
 | 26 | Schule | Auf die Schulwand schauen | Zwei Tafeln: Bestenliste „Der Schulweg“ und „Weitester Kuh-Wurf“ mit Top 10 und „Du: Platz …“ (nach dem ersten Lauf/Wurf) |
+| – | Party-Arenen | B → Party → Anmelden | Neben der Strecke (x = 700): „Kuh-Bowling“ und „Letzter Wagen“; in Studio startet eine Runde schon mit dir allein (`Debug.PartySolo`) |
 | – | Testfläche | B → Strecken → Testfläche | Flacher Platz: Slalom (Pylonen = Props), Drift-Kreis rechts; A/D = Drift, Shift halten = normal |
 
 ## Arbeiten mit Studio
@@ -201,6 +203,13 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/server/Leaderstats.luau` | Server | Spielerliste oben rechts: Meter und Münzen |
 | `src/server/DayClock.luau` | Server | Gemeinsamer UTC-Tag für alles Tägliche; Debug-Tageswechsel (F3) |
 | `src/client/Rewind.luau` | Client | Rückspulen: Ringpuffer der letzten Sekunden, Taste Z, Zeitleiste |
+| `src/client/Horn.luau` / `src/server/Horn.luau` | beide | Hupe (H): Server prüft Abklingzeit, alle Clients spielen den 3D-Sound am Wagen, Hup-Symbol |
+| `src/shared/Progression/HornRules.luau` | beiden | Hupen-Logik (getestet): Abklingzeit, gewählte/gekaufte Hupe |
+| `src/client/Toolkit/Pursuers.luau` | Client | Baustein `Pursuer` (Verfolger mit Gummiband, Anzeige, rote Ränder) |
+| `src/shared/Toolkit/PursuerLogic.luau` | beiden | Gummiband-Rechnung des Verfolgers (getestet) |
+| `src/server/Party.luau` | Server | Party-Modi: Anmeldung, Countdown, Arena, Runde, Rangliste, Belohnung |
+| `src/client/PartyUI.luau` / `src/client/PartyState.luau` | Client | Reiter „Party“, Anzeige in der Runde, Zuschauen, Ergebnis |
+| `src/shared/Progression/PartyRules.luau` | beiden | Rangliste, Belohnung, Rundenende, Eskalation (getestet) |
 | `src/server/Rewind.luau` | Server | Nimmt die Rückspul-Meldung an (nur wenn erlaubt), Meter pausieren, Lauf nicht für die Bestenliste |
 | `src/client/VisualFX.luau` | Client | Visuelle Extras: Speed-Linien, Landestaub, Boost-Flammen, Konfetti |
 | `src/client/ComboUI.luau` | Client | Große Anzeige „3x KOMBO!“ mit ablaufendem Zeitbalken |
@@ -266,6 +275,8 @@ geschrieben wie in der Tabelle). Mehrere Tags pro Part sind erlaubt (z. B. `Move
 | `Collapse` | Brücke/Boden: wackelt nach dem Befahren und stürzt ab, steht bei R/T wieder | `Delay` (s) – 0.8; `Shake` (Studs) – 0.25; `FallSpin` – 1.5; `ListenSignal` (dann nur per Signal) |
 | `Prop` | Loser Gegenstand (Kiste, Pylone, Stand): fliegt weg, kein Crash. Zählt als „Chaos“. Zurück nur bei T | `Density` (Zahl) – 0.4 |
 | `ForceZone` | Bereich drückt den Wagen Richtung Vorderseite (Wind, Rasensprenger, Förderband) | `Strength` (Studs/s²) – 60; `Pulse` (s, 0 = immer) – 0; `PulseOn` (0–1) – 0.5; `Phase` – 0; `ListenSignal`; `ActiveTime` (s) – 3 |
+| `Pursuer` | Verfolgungsjagd (Schulbus, Hauswart …): Modell mit Ordner `Waypoints` (Parts `1`, `2` …) entlang der Strecke. Startet nach `StartDelay` hinter dir, sobald du nah an seiner Strecke bist; holt auf, wenn du langsam bist, fällt zurück (höchstens `MaxGap`), wenn du gut fährst. Erwischt = ein Leben weg und du fliegst. Im Ziel kracht er am letzten Wegpunkt in den Zaun | `StartDelay` – 3; `ActivateDistance` – 60; `BaseSpeed` – 45; `CatchUpSpeed` – 60; `MinGap` – 35; `MaxGap` – 140; `CatchRadius` – 9; `WarnGap` – 70; `GameOverOnCatch` (Bool) – false; `DisplayName` – „Verfolger“; `Sound` (Warnton) |
+| `PartyArena` | Arena für Party-Modi: Model mit Attribut `Mode` („CowBowling“ / „LastCart“), darin Parts `Spawn1`, `Spawn2` … (Wagen schaut in Blickrichtung des Parts), optional Part `Spectate` (Zuschauerplatz) | `Mode` – nötig |
 | `Chaser` | Verfolger (z. B. Hund): rennt dir nach, gibt auf, läuft heim | `Radius` – 40; `MaxSpeed` – 32; `Acceleration` – 50; `GiveUpTime` (s) – 6; `ReturnSpeed` – 14; `Cooldown` (s) – 3; `Hazard` (Bool) – false; `Message`; `ListenSignal` |
 | `UpgradeDoor` | Abkürzungs-Tür: geht nur für Spieler mit dem Upgrade auf (fährt nach unten weg), sonst Schild „nur mit …“ | `RequiredUpgrade` (Text: Upgrade-Id aus `Config.Upgrades`, z. B. `Spring`, `Helmet`, `Turbo`, `Glider`) – nötig; `RequiredLevel` (Zahl) – 1 |
 | `Coin` | Münze: dreht sich, Durchfahren sammelt sie ein (bleibt dir auch nach Crash). Erscheint erst wieder, wenn du das Ziel dieser Strecke erreichst (nicht bei T, gegen „Farmen“) | `Value` (Zahl) – 1 |
@@ -449,6 +460,20 @@ sonst verschwinden sie vorher. Bei `Kinematic = true` wirken die Physik-Tags nic
   offen; der Server prüft sie nicht – sie öffnet nur einen Weg, verteilt keine Belohnung.)
 - **Hund**: Hunde-Modell (Pivot vorne = Schnauze), Tag `Chaser`, `Radius` = 35, `MaxSpeed` = 30.
   Mit `ListenSignal` startet er nur per Signal (der Radius zählt dann nicht).
+
+### Party-Arena bauen
+
+1. Model anlegen, Tag `PartyArena`, Attribut `Mode` = `CowBowling` oder `LastCart`.
+2. Darin Parts `Spawn1`, `Spawn2`, … (so viele Spieler wie Spawns; Vorderseite = Blickrichtung).
+3. Optional Part `Spectate` (Zuschauerplatz für Ausgeschiedene bei „Letzter Wagen“).
+4. **Kuh-Bowling:** Spawner mit Tag `Launchable` (oder Vorlage mit Tag) in der Arena.
+5. **Letzter Wagen:** `Hazard`-Teile (Lava, Wasser) kosten ein Leben, Runterfallen auch. Für
+   die Eskalation schickt der Server Signale an deine Bausteine: `ArenaDanger` bei jeder
+   Stufe (ab 60 s, dann alle 30 s) und zusätzlich `ArenaDanger1`, `ArenaDanger2` … für eine
+   bestimmte Stufe. Also z. B. `Collapse` mit `ListenSignal` = `ArenaDanger1` als Rand, der
+   wegbricht, und einen `Spawner` mit `ListenSignal` = `ArenaDanger` und `Hazard` = true als
+   Steinschlag. Werte: `Config.Party`.
+6. Mehrere Arenen pro Modus gehen; jede Runde nimmt eine freie.
 
 ## Bau-Hilfe (Studio-Plugin)
 
@@ -1076,6 +1101,36 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Boost-Flammen | Drift-Boost, Turbo-Pausenbrot oder Start-Turbo | Orange Flammen hinten am Wagen, solange der Schub läuft |
 | Konfetti | Ins Ziel fahren | Konfetti fällt von oben; bei neuer Bestzeit doppelt so viel |
 | Effekte aus | Einstellungen → „Extra-Effekte“ aus | Nichts davon mehr zu sehen |
+
+## Hupe, Verfolgungsjagd, Party-Modi testen
+
+Im Test-Place: Schulbus ab Station 19, Arenen neben der Strecke (B → Party). Sounds sind
+Platzhalter (`Config.Sounds.HornSqueak`, `PursuerWarn` … mit leerer Id = still).
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| Hupe | Im Wagen H drücken (Gamepad: linken Stick drücken, Touch: „Hupe“) | „♪ HUP! ♪“ steigt über dem Wagen auf, Wagen hopst kurz; mit Sound-Id in `Config.Sounds.HornSqueak` hört man es am Wagen (3D) |
+| Abklingzeit | H dauernd drücken | Höchstens alle 1,5 s (`Config.Horn.Cooldown`) |
+| Andere hören | 2 Spieler (Test → Server mit 2 Spielern), einer hupt | Der andere sieht das Symbol und hört die Hupe, wenn er in der Nähe ist |
+| Stummschalten | B → Einstellungen → „Hupen anderer Spieler stumm“ | Fremde Hupen still (Symbol bleibt), die eigene hört man weiter |
+| Verfolger startet | Station 19 durchfahren | „DER SCHULBUS KOMMT!“, kurz danach erscheint der Bus hinter dir; oben „Schulbus: … m“ |
+| Gummiband | Langsam fahren bzw. Vollgas | Langsam: Abstand schrumpft, Ränder werden rot, Warnton. Schnell: Bus fällt zurück, aber nie weiter als `MaxGap` |
+| Erwischt | Anhalten | „ERWISCHT!“, Wagen fliegt; ein Leben weg (nur mit Schalter „Tode“ an), Bus fällt auf `MinGap` zurück |
+| R / T | Während der Jagd R, später T | R: Bus startet `MinGap` hinter dir neu. T: Bus weg, startet beim nächsten Lauf wieder |
+| Ziel | Mit Bus im Nacken ins Ziel | Bus fährt bis vor die Schule und kracht in den Schulzaun („KRACH!“, kippt, bleibt stecken) |
+| Game Over beim Erwischen | Attribut `GameOverOnCatch` = true am Schulbus, Schalter „Tode“ an | Erwischt = sofort Game Over |
+| Party-Reiter | B → Party | Zwei Modi mit Beschreibung, „Angemeldet: 0 / 1“ (Studio, `Debug.PartySolo`), Knopf „Anmelden“ |
+| Countdown | Kuh-Bowling anmelden, Menü zu | Oben „Kuh-Bowling startet in 10 s“; Abmelden bricht ab |
+| Kuh-Bowling | Countdown abwarten | Wagen steht in der Arena, „LOS!“, oben Restzeit 1:00, rechts Live-Rangliste; Kühe kommen von links/rechts; getroffene Kühe zählen Meter, kein Lebensverlust |
+| Würfe der anderen | Mit 2 Spielern | Trifft der andere eine Kuh, fliegt sie auch bei dir (mit Name) |
+| Ergebnis | 60 s abwarten | Ergebnis-Screen: Platz, Meter, Münzen (60/35/20, sonst 10); danach zurück am Start der Strecke |
+| Party verlassen | Knopf „Party verlassen“ während der Runde | Sofort zurück am Start, keine Belohnung |
+| Letzter Wagen | Anmelden, Countdown | Arena ohne Bande, „Leben: ♥♥♥“; Lava und Runterfallen kosten ein Leben (zählt auch mit Schalter „Tode“ aus) |
+| Gefahr | 60 s überleben | „ACHTUNG!“: Rand bricht weg, Steinschlag; alle 30 s wieder Steine |
+| Ausgeschieden | Alle Leben verlieren | „AUSGESCHIEDEN“, Wagen auf dem Zuschauerplatz, Kamera zeigt einen anderen Spieler, Knopf „Nächster Spieler“; allein in Studio endet die Runde sofort |
+| Rundenende | 2 Spieler, einer bleibt übrig (oder 3 min) | Ergebnis: Überlebender Platz 1; bei Zeitablauf nach Leben, gleich viele = gleicher Platz |
+| Beitreten / Verlassen | Während einer Runde einen Spieler dazu bzw. einen Spieler das Spiel verlassen lassen | Neuer Spieler sieht „Runde läuft“ und kann sich für die nächste anmelden; wer geht, verschwindet aus der Rangliste, die Runde läuft weiter |
+| Ohne Arena | Arena löschen, Party-Reiter | „Keine Arena: Model mit Tag „PartyArena“ …“, kein Countdown |
 
 ## Launchables aus Spawnern, Physik-Tags, keine Tode testen
 

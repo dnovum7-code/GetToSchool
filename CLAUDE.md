@@ -43,6 +43,29 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
   Config.TuningPanel. Fehlersuche bei Bodenbausteinen: Config.Debug.TrackPieces.
 
 ## Aktueller Meilenstein
+Hupe, Verfolgungsjagd, Party-Modi (gebaut, noch nicht in Studio getestet; README „Hupe,
+Verfolgungsjagd, Party-Modi testen“):
+- Hupe: client/Horn + server/Horn (Remote "Horn"), H / Gamepad L3 / Touch „Hupe“, Server prüft
+  Abklingzeit (Config.Horn.Cooldown) und schickt an alle; jeder Client spielt 3D-Sound am Wagen
+  (Config.Sounds.Horn*, Platzhalter), Symbol „HUP!“, eigener Wagen hopst. Einstellung
+  MuteHorns. Kosmetik vorbereitet: Config.Horn.Horns (price), Spielstand cosmetics.horns /
+  cosmetics.horn, Progression/HornRules (Shop dafür fehlt noch).
+- Verfolger: Tag Pursuer (client/Toolkit/Pursuers, Logik Toolkit/PursuerLogic, Config.Pursuer):
+  Waypoints, startet nach StartDelay wenn nah an seiner Strecke (ActivateDistance), Gummiband
+  BaseSpeed + CatchUpSpeed, MinGap/MaxGap; erwischt = Crash-Grund "Caught" (Leben, keine
+  Ragdoll) bzw. "CaughtGameOver" (Attribut GameOverOnCatch), Wagen fliegt (CartClient
+  Pursuers.onCaught). UI Abstand + rote Ränder + Warnton. R = MinGap hinter dir, T = Anfang,
+  Ziel = kracht am letzten Wegpunkt.
+- Party: server/Party (Remote "Party"), RaceManager-Phase "Party" mit Hooks (respawn, crash,
+  launch, canEnter), Logik Progression/PartyRules, Client PartyUI (Reiter „Party“, HUD,
+  Ergebnis) + PartyState. Arena = Tag PartyArena, Attribut Mode, Spawn1.., Spectate.
+  Config.Party; Debug.PartySolo (Studio: Runde mit 1 Spieler). Kuh-Bowling: Punkte = Meter,
+  Würfe der anderen fliegen bei allen (gleicher Kopien-Schlüssel). Letzter Wagen: Leben
+  (Hazard/HitHazard/Fell, auch mit NoDeaths), Zuschauen per ChaseCamera.watch, Gefahr per
+  Signal ArenaDanger / ArenaDanger<n>, max. Dauer mit Gleichstand-Regel.
+- OFFEN: Rammen bei „Letzter Wagen“ (Wagen kollidieren noch nicht) - Vorschlag gemacht,
+  wartet auf OK.
+- Test-Place: Schulbus ab Station 19 (Schulzaun vor der Schule), Arenen bei x = 700.
 Launchables aus Spawnern, Physik-Tags, keine Tode (gebaut, noch nicht in Studio getestet;
 README „Launchables aus Spawnern, Physik-Tags, keine Tode testen“):
 - Feste Launchables (Tag am Model/Part im Workspace) gingen schon; Spawner-Kopien nicht (Kopien
@@ -219,8 +242,8 @@ Checkpoints, Hindernisse, Zufallsereignisse, Sound; drei Feedback-Runden: Drift 
 Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 
 ## Später
-- Noch offen: nichts geplant. Nächster Schritt ist das Testen in Studio (Testlisten im
-  README: Nach dem Map-Test, M2.5/M3, M4, M5, Meter/Glücksrad, Terrain/Streaming) und Feedback einarbeiten.
+- Noch offen: Rammen bei „Letzter Wagen“ (wartet auf OK), Hupen-Shop. Nächster Schritt ist das
+  Testen in Studio (Testlisten im README: Hupe/Verfolger/Party, Nach dem Map-Test, M2.5/M3, M4, M5, Meter/Glücksrad, Terrain/Streaming) und Feedback einarbeiten.
 
 ## Steuerung
 | Aktion | Tastatur | Gamepad | Touch |
@@ -237,6 +260,7 @@ Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 | Fallschirm (Upgrade): in der Luft halten | Leertaste halten | A halten | Button „Hopp“ halten |
 | Turbo-Pausenbrot (Upgrade) | F | RB | Button „Turbo“ |
 | Lufttrick: in der Luft drehen (sauber landen = Münzen, schief = Crash) | Q / E (E nur in der Luft, am Boden Aussteigen) | LB (Richtung vom Stick) | Button „Trick“ |
+| Hupe | H | Linken Stick drücken | Button „Hupe“ |
 | Flugmodus (nur Studio, Schalter im F2-Panel): hoch / runter | Leertaste / Shift | A / B | Hopp / Normal |
 | Rückspulen (nur Studio bzw. Config.Rewind.EnabledLive): halten | Z | Steuerkreuz runter | Button „Zurueck“ |
 | Menü „Pausen-Kiosk“ (Shop, Strecken, Rekorde, Bestenliste, Hausaufgaben, Garage, Lackiererei, Erfolge, Einstellungen; nur außerhalb eines Laufs) | B | Select | Button „Shop“ |
