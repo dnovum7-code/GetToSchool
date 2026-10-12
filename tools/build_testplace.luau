@@ -986,6 +986,278 @@ car(templates, CFrame.new(10, 10, 0), "Auto", Color3.fromRGB(220, 40, 40))
 -- Kuh fuer den Kuh-Spawner: wegschleuderbar, rutscht den ganzen Hang hinunter, bleibt stehen
 cow(templates, CFrame.new(20, 10, 0), "KuhRutsch", { "Launchable", "LowGravity", "NoFriction", "KeepUpright" })
 
+-- Kuh fuer die Kuh-Bowling-Arena: wegschleuderbar und bleibt aufrecht
+cow(templates, CFrame.new(30, 10, 0), "KuhArena", { "Launchable", "KeepUpright" })
+
+------------------------------------------------------------------------------------------
+-- Verfolger: Schulbus ab Station 19 bis vor die Schule (kracht dort in den Schulzaun)
+------------------------------------------------------------------------------------------
+do
+	local busStart = stationStart(19)
+	local bus = model("Schulbus", track, { "Pursuer" }, { DisplayName = "Schulbus", StartDelay = 1 })
+	local first = frame(busStart, 0, 0)
+	local body = part({
+		Name = "Body",
+		Size = Vector3.new(9, 8, 22),
+		CFrame = first * CFrame.new(0, 5, 0),
+		Color = Color3.fromRGB(255, 200, 30),
+		Parent = bus,
+	})
+	part({
+		Name = "Windschutz",
+		Size = Vector3.new(8, 3, 0.4),
+		CFrame = first * CFrame.new(0, 6.5, -11.1),
+		Color = Color3.fromRGB(120, 180, 220),
+		Material = Enum.Material.Glass,
+		Parent = bus,
+	})
+	part({
+		Name = "Schild",
+		Size = Vector3.new(6, 1.4, 0.3),
+		CFrame = first * CFrame.new(0, 8.4, -11.2),
+		Color = Color3.fromRGB(30, 30, 30),
+		Parent = bus,
+	})
+	for _, xz in { { -4.6, -7 }, { 4.6, -7 }, { -4.6, 7 }, { 4.6, 7 } } do
+		part({
+			Name = "Rad",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(1.2, 3.4, 3.4),
+			CFrame = first * CFrame.new(xz[1], 1.7, xz[2]),
+			Color = Color3.fromRGB(30, 30, 30),
+			Parent = bus,
+		})
+	end
+	bus.PrimaryPart = body
+	local waypoints = Instance.new("Folder")
+	waypoints.Name = "Waypoints"
+	waypoints.Parent = bus
+	local finishRoad = stationStart(26)
+	local index = 0
+	local distance = busStart
+	while distance < finishRoad + 92 do
+		index += 1
+		part({
+			Name = tostring(index),
+			Size = Vector3.new(1, 1, 1),
+			CFrame = frame(distance, 0, 5),
+			Color = Color3.fromRGB(255, 200, 30),
+			Transparency = 0.5,
+			CanCollide = false,
+			Parent = waypoints,
+		})
+		distance = math.min(distance + STATION_LENGTH, finishRoad + 92)
+		if distance == finishRoad + 92 then
+			index += 1
+			part({
+				Name = tostring(index),
+				Size = Vector3.new(1, 1, 1),
+				CFrame = frame(distance, 0, 5),
+				Color = Color3.fromRGB(255, 200, 30),
+				Transparency = 0.5,
+				CanCollide = false,
+				Parent = waypoints,
+			})
+			break
+		end
+	end
+	-- Schulzaun vor der Schule (hier bleibt der Bus stecken)
+	part({
+		Name = "Schulzaun",
+		Size = Vector3.new(ROAD_WIDTH + 10, 4, 1),
+		CFrame = frame(finishRoad + 97, 0, 2),
+		Color = Color3.fromRGB(230, 230, 235),
+		Parent = track,
+	})
+	-- Text am Anfang: der Bus kommt
+	zone(
+		track,
+		"TextSchulbus",
+		frame(busStart + 6, 0, 5),
+		Vector3.new(ROAD_WIDTH, 10, 4),
+		Color3.fromRGB(240, 240, 240),
+		{ "TextTrigger" },
+		{ Text = "DER SCHULBUS KOMMT!", SubText = "Nicht erwischen lassen", Color = Color3.fromRGB(255, 200, 30) }
+	)
+end
+
+------------------------------------------------------------------------------------------
+-- Party-Arenen (Tag "PartyArena", Attribut Mode, Spawn1..4, Spectate)
+------------------------------------------------------------------------------------------
+local arenas = Instance.new("Folder")
+arenas.Name = "PartyArenen"
+
+local function arenaBase(name: string, mode: string, center: any, size: number, walls: boolean): any
+	local arena = model(name, arenas, { "PartyArena" }, { Mode = mode })
+	local floor = part({
+		Name = "Boden",
+		Size = Vector3.new(size, 4, size),
+		CFrame = center * CFrame.new(0, -2, 0),
+		Color = COLORS.ground,
+		Material = Enum.Material.Grass,
+		Parent = arena,
+	})
+	arena.PrimaryPart = floor
+	if walls then
+		for _, spec in {
+			{ 0, -size / 2, size, 2 },
+			{ 0, size / 2, size, 2 },
+			{ -size / 2, 0, 2, size },
+			{ size / 2, 0, 2, size },
+		} do
+			part({
+				Name = "Bande",
+				Size = Vector3.new(spec[3], 4, spec[4]),
+				CFrame = center * CFrame.new(spec[1], 2, spec[2]),
+				Color = Color3.fromRGB(200, 60, 60),
+				Parent = arena,
+			})
+		end
+	end
+	-- vier Spawnpunkte an den Ecken, Blick zur Mitte
+	local offset = size / 2 - 18
+	for index, xz in { { -offset, -offset }, { offset, offset }, { offset, -offset }, { -offset, offset } } do
+		local position = (center * CFrame.new(xz[1], 0.5, xz[2])).Position
+		part({
+			Name = "Spawn" .. index,
+			Size = Vector3.new(8, 1, 8),
+			CFrame = CFrame.lookAt(position, center.Position + Vector3.new(0, 0.5, 0)),
+			Color = Color3.fromRGB(120, 255, 140),
+			Transparency = 0.5,
+			CanCollide = false,
+			Parent = arena,
+		})
+	end
+	-- Schild mit dem Modus
+	local board = part({
+		Name = "Schild",
+		Size = Vector3.new(40, 10, 1),
+		CFrame = center * CFrame.new(0, 14, -size / 2 - 2),
+		Color = COLORS.sign,
+		Parent = arena,
+	})
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Back
+	gui.Parent = board
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.TextScaled = true
+	label.FontFace = roblox.Font.fromEnum(Enum.Font.LuckiestGuy)
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.Text = name
+	label.Parent = gui
+	return arena
+end
+
+-- Kuh-Bowling: Spielfeld mit Bande, Kuehe kommen von zwei Seiten
+do
+	local center = CFrame.new(700, 120, 0)
+	local arena = arenaBase("Kuh-Bowling", "CowBowling", center, 180, true)
+	for index, side in { -1, 1 } do
+		part({
+			Name = "SpawnerKuh" .. index,
+			Size = Vector3.new(120, 2, 6),
+			-- an der Bande links/rechts, Blick zur Mitte
+			CFrame = CFrame.lookAt((center * CFrame.new(side * 82, 4, 0)).Position, center.Position + Vector3.new(0, 4, 0)),
+			Color = Color3.fromRGB(255, 150, 40),
+			Transparency = 0.6,
+			CanCollide = false,
+			Tags = { "Spawner" },
+			Attributes = {
+				Template = "KuhArena",
+				Interval = 1.6,
+				IntervalRandom = 0.6,
+				Speed = 14,
+				SpeedRandom = 4,
+				SpreadAngle = 20,
+				Lifetime = 25,
+				MaxActive = 10,
+				ActiveRadius = 300,
+			},
+			Parent = arena,
+		})
+	end
+	part({
+		Name = "BoostPad",
+		Size = Vector3.new(14, 0.2, 14),
+		CFrame = center * CFrame.new(0, 0.05, 0),
+		Color = Color3.fromRGB(60, 255, 120),
+		Material = Enum.Material.Neon,
+		Tags = { "BoostPad" },
+		Parent = arena,
+	})
+end
+
+-- Letzter Wagen: Plattform ohne Bande, Lava-Streifen, Rand bricht weg, Steinschlag
+do
+	local center = CFrame.new(700, 120, 400)
+	local size = 150
+	local arena = arenaBase("Letzter Wagen", "LastCart", center, size, false)
+	for _, x in { -30, 30 } do
+		part({
+			Name = "Lava",
+			Size = Vector3.new(8, 0.6, 70),
+			CFrame = center * CFrame.new(x, 0.3, 0),
+			Color = Color3.fromRGB(255, 90, 20),
+			Material = Enum.Material.Neon,
+			CanCollide = false,
+			Tags = { "Hazard" },
+			Attributes = { Message = "Lava!" },
+			Parent = arena,
+		})
+	end
+	-- Rand: bricht bei der ersten Gefahrenstufe weg (Signal "ArenaDanger1")
+	local ring = 20
+	for _, spec in {
+		{ 0, -(size / 2 + ring / 2), size + 2 * ring, ring },
+		{ 0, size / 2 + ring / 2, size + 2 * ring, ring },
+		{ -(size / 2 + ring / 2), 0, ring, size },
+		{ size / 2 + ring / 2, 0, ring, size },
+	} do
+		part({
+			Name = "Rand",
+			Size = Vector3.new(spec[3], 4, spec[4]),
+			CFrame = center * CFrame.new(spec[1], -2, spec[2]),
+			Color = Color3.fromRGB(150, 120, 90),
+			Material = Enum.Material.Cobblestone,
+			Tags = { "Collapse" },
+			Attributes = { ListenSignal = "ArenaDanger1", Delay = 1 },
+			Parent = arena,
+		})
+	end
+	-- Steinschlag bei jeder Gefahrenstufe (Signal "ArenaDanger")
+	part({
+		Name = "SpawnerSteine",
+		Size = Vector3.new(size - 20, 2, size - 20),
+		CFrame = center * CFrame.new(0, 60, 0) * CFrame.Angles(math.rad(-90), 0, 0),
+		Color = Color3.fromRGB(255, 150, 40),
+		Transparency = 0.8,
+		CanCollide = false,
+		Tags = { "Spawner" },
+		Attributes = {
+			Template = "Stein1, Stein2",
+			ListenSignal = "ArenaDanger",
+			Burst = 10,
+			Speed = 5,
+			Spin = 4,
+			Hazard = true,
+			Message = "Steinschlag!",
+			Lifetime = 10,
+			MaxActive = 20,
+		},
+		Parent = arena,
+	})
+	-- Zuschauerplatz neben der Arena
+	part({
+		Name = "Spectate",
+		Size = Vector3.new(24, 2, 24),
+		CFrame = center * CFrame.new(size / 2 + 60, 30, 0) * CFrame.Angles(0, math.rad(90), 0),
+		Color = Color3.fromRGB(180, 180, 200),
+		Parent = arena,
+	})
+end
+
 -- SpawnLocation neben dem Start
 local spawnLocation = Instance.new("SpawnLocation")
 spawnLocation.Name = "SpawnLocation"
@@ -1001,6 +1273,7 @@ fs.writeFile("test/TestTrack.rbxm", roblox.serializeModel({ track }))
 fs.writeFile("test/Testflaeche.rbxm", roblox.serializeModel({ flat }))
 fs.writeFile("test/Templates.rbxm", roblox.serializeModel({ templates }))
 fs.writeFile("test/SpawnLocation.rbxm", roblox.serializeModel({ spawnLocation }))
+fs.writeFile("test/PartyArenen.rbxm", roblox.serializeModel({ arenas }))
 
 -- test.project.json = default.project.json + Teststrecke + Vorlagen
 local project = serde.decode("json", fs.readFile("default.project.json"))
@@ -1013,6 +1286,7 @@ tree.Workspace = {
 	TestTrack = { ["$path"] = "test/TestTrack.rbxm" },
 	Testflaeche = { ["$path"] = "test/Testflaeche.rbxm" },
 	SpawnLocation = { ["$path"] = "test/SpawnLocation.rbxm" },
+	PartyArenen = { ["$path"] = "test/PartyArenen.rbxm" },
 }
 fs.writeFile("test.project.json", serde.encode("json", project, true) .. "\n")
 

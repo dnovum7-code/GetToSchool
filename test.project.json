@@ -77,6 +77,9 @@
     "Workspace": {
       "$className": "Workspace",
       "$ignoreUnknownInstances": true,
+      "PartyArenen": {
+        "$path": "test/PartyArenen.rbxm"
+      },
       "SpawnLocation": {
         "$path": "test/SpawnLocation.rbxm"
       },

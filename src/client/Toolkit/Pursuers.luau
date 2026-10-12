@@ -10,7 +10,7 @@
 --     oder Attribut "Sound").
 --   * R: startet MinGap hinter dir neu, T: wieder am Anfang (nach StartDelay).
 --   * Im Ziel: faehrt bis zum letzten Wegpunkt und kracht dort in den Zaun (bleibt stecken).
--- Attribute: StartDelay, BaseSpeed, CatchUpSpeed, MinGap, MaxGap, CatchRadius, WarnGap,
+-- Attribute: StartDelay, ActivateDistance, BaseSpeed, CatchUpSpeed, MinGap, MaxGap, CatchRadius, WarnGap,
 -- GameOverOnCatch, DisplayName, Sound. Laeuft nur bei dir (jeder Spieler hat seinen eigenen).
 
 local CollectionService = game:GetService("CollectionService")
@@ -311,12 +311,19 @@ local piece: ToolkitTypes.Piece = {
 				pursuers[instance] = nil
 				continue
 			end
+			-- Start: nach StartDelay, sobald du in der Naehe seiner Strecke bist (ein Verfolger
+			-- auf einer anderen Strecke oder weiter hinten wartet so, bis du dort ankommst)
 			if p.state == "Waiting" and base and now >= p.startAt then
-				p.state = "Chasing"
-				p.s = PursuerLogic.behind(project(p, base.Position), attr(p, "MaxGap"))
-				p.snap = true
-				setVisible(p, true)
-				Signals.debugLog(`Pursuer "{instance.Name}" startet`)
+				local playerS = project(p, base.Position)
+				local i, alpha = PursuerLogic.locate(p.cum, playerS)
+				local onPath = p.points[i]:Lerp(p.points[math.min(i + 1, #p.points)], alpha)
+				if (onPath - base.Position).Magnitude <= attr(p, "ActivateDistance") then
+					p.state = "Chasing"
+					p.s = PursuerLogic.behind(playerS, attr(p, "MaxGap"))
+					p.snap = true
+					setVisible(p, true)
+					Signals.debugLog(`Pursuer "{instance.Name}" startet`)
+				end
 			end
 			if p.state == "Chasing" then
 				if not base then

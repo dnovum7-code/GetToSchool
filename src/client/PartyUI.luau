@@ -42,6 +42,8 @@ local myQueue: string? = nil
 local roundEndsAt = 0
 local scores: { Score } = {}
 local myLives = 0
+local dangerLevel = 0
+local dangerSignal: string? = nil
 local watchIndex = 0
 
 -- HUD
@@ -373,6 +375,7 @@ local function onEvent(kind: string, ...: any)
 		PartyState.active = true
 		PartyState.mode = data.mode
 		PartyState.eliminated = false
+		dangerLevel = 0
 		myLives = data.lives
 		roundEndsAt = data.endsAt
 		myQueue = nil
@@ -400,6 +403,8 @@ local function onEvent(kind: string, ...: any)
 		end)
 	elseif kind == "Danger" then
 		local level, signal = ...
+		dangerLevel = if type(level) == "number" then level else dangerLevel
+		dangerSignal = if type(signal) == "string" then signal else dangerSignal
 		if type(signal) == "string" then
 			Signals.fire(signal, "Party")
 			Signals.fire(signal .. tostring(level), "Party")
@@ -425,6 +430,20 @@ local function onEvent(kind: string, ...: any)
 		ChaseCamera.watch(nil)
 		roundUi(false)
 	end
+end
+
+-- Nach einem Respawn in der Arena (R / Crash) stehen eingestuerzte Teile bei uns wieder
+-- (Baukasten-Reset). Die bisherigen Gefahrenstufen deshalb nochmal ausloesen.
+function PartyUI.onRespawn()
+	local signal = dangerSignal
+	if not PartyState.active or not signal or dangerLevel <= 0 then
+		return
+	end
+	task.defer(function()
+		for level = 1, dangerLevel do
+			Signals.fire(signal .. tostring(level), "Party (Respawn)")
+		end
+	end)
 end
 
 function PartyUI.init()

@@ -708,6 +708,7 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		if keepRunning then
 			Abilities.reset("Checkpoint")
 			Toolkit.reset("Checkpoint")
+			PartyUI.onRespawn() -- Party: eingestuerzte Arena-Teile wieder einstuerzen
 		end
 		onReset(spawnCFrame)
 	elseif kind == "Events" then

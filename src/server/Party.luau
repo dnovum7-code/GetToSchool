@@ -226,10 +226,25 @@ local function broadcastQueue()
 	end
 end
 
+-- Mit StreamingEnabled die Gegend erst laden lassen (sonst faellt der Wagen durch den
+-- noch nicht geladenen Boden der Arena), dann hinsetzen
+local function teleportStreamed(player: Player, cframe: CFrame)
+	task.spawn(function()
+		if workspace.StreamingEnabled then
+			pcall(function()
+				player:RequestStreamAroundAsync(cframe.Position, 3)
+			end)
+		end
+		if player.Parent then
+			RaceManager.teleport(player, cframe)
+		end
+	end)
+end
+
 local function spawnPlayer(round: Round, player: Player)
 	local spawns = round.spawns
 	round.nextSpawn = round.nextSpawn % #spawns + 1
-	RaceManager.teleport(player, spawns[round.nextSpawn])
+	teleportStreamed(player, spawns[round.nextSpawn])
 end
 
 local function startRound(mode: string)
@@ -342,7 +357,7 @@ local function eliminate(round: Round, player: Player)
 	sendToRound(round, "Scores", scoreList(round))
 	task.delay(Config.Party.LastCart.EliminatedDelay, function()
 		if roundOf[player] == round and not round.ended and player.Parent then
-			RaceManager.teleport(player, spectateCFrame(round.arena))
+			teleportStreamed(player, spectateCFrame(round.arena))
 		end
 	end)
 end
@@ -440,7 +455,7 @@ local function respawn(player: Player)
 	end
 	local entry = round.entries[player]
 	if entry and not entry.alive then
-		RaceManager.teleport(player, spectateCFrame(round.arena))
+		teleportStreamed(player, spectateCFrame(round.arena))
 		return
 	end
 	spawnPlayer(round, player)

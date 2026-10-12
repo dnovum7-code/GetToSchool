@@ -602,6 +602,7 @@ Config.Party = {
 -- gut faehrst. Erwischt er dich: ein Leben weg und du fliegst. Alles auch als Attribut.
 Config.Pursuer = {
 	StartDelay = 3, -- Sekunden nach dem Losfahren
+	ActivateDistance = 60, -- ... und erst, wenn du so nah (Studs) an seiner Strecke bist
 	BaseSpeed = 45, -- Studs/s Grundtempo
 	CatchUpSpeed = 60, -- so viel schneller, wenn er weit zurueck ist (ab MaxGap voll)
 	MinGap = 35, -- Abstand nach R / nach dem Erwischen (Studs entlang der Strecke)
