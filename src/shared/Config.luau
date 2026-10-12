@@ -564,6 +564,38 @@ Config.Toolkit = {
 
 -- Spawner (Tag "Spawner", Part): Objekte erscheinen an zufaelligen Stellen innerhalb des
 -- Parts und bekommen Schwung in Richtung seiner Vorderseite. Standardwerte der Attribute:
+-- Party-Modi (Menue-Reiter "Party"): anmelden, ab MinPlayers Countdown, dann alle in die
+-- Arena (Model mit Tag "PartyArena", Attribut Mode = "CowBowling" oder "LastCart", darin
+-- Parts "Spawn1", "Spawn2" ...; optional ein Part "Spectate" als Zuschauerplatz).
+Config.Party = {
+	MinPlayers = 2, -- ab so vielen Angemeldeten startet der Countdown (Studio: Debug.PartySolo)
+	Countdown = 10, -- Sekunden bis zum Start
+	ResultTime = 8, -- so lange steht der Ergebnis-Screen, dann zurueck ins normale Spiel
+	Rewards = { 60, 35, 20 }, -- Muenzen fuer Platz 1, 2, 3
+	Participation = 10, -- Muenzen fuer alle anderen
+	SpawnLift = 2, -- Wagen so viel ueber dem Spawn-Part absetzen (Studs)
+	ScoreInterval = 0.5, -- so oft geht die Live-Rangliste an alle (s)
+	ModeOrder = { "CowBowling", "LastCart" },
+	Names = { CowBowling = "Kuh-Bowling", LastCart = "Letzter Wagen" },
+	Descriptions = {
+		CowBowling = "60 Sekunden, alle gleichzeitig: Kuehe umfahren! Punkte = Summe der Flugweiten.",
+		LastCart = "3 Leben. Hazards kosten Leben. Wer zuletzt noch faehrt, gewinnt. Die Arena wird mit der Zeit gefaehrlicher.",
+	},
+	CowBowling = {
+		Duration = 60, -- Sekunden
+	},
+	LastCart = {
+		Lives = 3,
+		MaxDuration = 180, -- danach Schluss: Rangliste nach Leben (gleich viele = Gleichstand)
+		DangerAfter = 60, -- ab hier wird die Arena gefaehrlicher ...
+		DangerInterval = 30, -- ... und alle so viele Sekunden noch mehr
+		-- Signal an die Arena (Baukasten: ListenSignal = DangerSignal, z. B. Collapse am Rand,
+		-- Spawner mit Hazards, ForceZone). Mit Stufe: "ArenaDanger1", "ArenaDanger2" ...
+		DangerSignal = "ArenaDanger",
+		EliminatedDelay = 2, -- Sekunden nach dem letzten Leben bis zum Zuschauerplatz
+	},
+}
+
 -- Verfolger (Tag "Pursuer", Modell wie Schulbus/Hauswart, Ordner "Waypoints" mit Parts
 -- "1", "2", ...). Startet StartDelay s nach dem Losfahren hinter dir und faehrt die Wegpunkte
 -- ab. Gummiband: holt auf, wenn du langsam bist, faellt zurueck (hoechstens MaxGap), wenn du
@@ -951,6 +983,11 @@ Config.TuningPanel = {
 			{ label = "Verfolger: MinGap", path = "Pursuer.MinGap" },
 			{ label = "Verfolger: MaxGap", path = "Pursuer.MaxGap" },
 			{ label = "Verfolger: Startverzoegerung", path = "Pursuer.StartDelay" },
+			{ label = "Party: Countdown (s)", path = "Party.Countdown", server = true },
+			{ label = "Kuh-Bowling: Dauer (s)", path = "Party.CowBowling.Duration", server = true },
+			{ label = "Letzter Wagen: Leben", path = "Party.LastCart.Lives", server = true },
+			{ label = "Letzter Wagen: max. Dauer (s)", path = "Party.LastCart.MaxDuration", server = true },
+			{ label = "Letzter Wagen: Gefahr ab (s)", path = "Party.LastCart.DangerAfter", server = true },
 		},
 	},
 	{
@@ -984,6 +1021,7 @@ Config.TuningPanel = {
 			{ label = "Alle Upgrades + Fahrzeuge", path = "Debug.AllUpgrades", switch = true, server = true },
 			{ label = "Gluecksrad beliebig oft", path = "Debug.FreeSpins", switch = true, server = true },
 			{ label = "F3 = naechster Tag", path = "Debug.DayTravel", switch = true, server = true },
+			{ label = "Party mit 1 Spieler", path = "Debug.PartySolo", switch = true, server = true },
 			{ label = "Bodenbausteine im Output", path = "Debug.TrackPieces", switch = true },
 			{
 				label = "Baukasten + Launchables im Output",
@@ -1065,6 +1103,7 @@ Config.Debug = {
 	-- (auch nicht durch Launchables), kein Game Over; abgestuerzt = zurueck zum Checkpoint
 	NoDeaths = true,
 	FlyMode = false, -- true = fliegen wie in Minecraft (nur ueber das F2-Panel, Config.FlyMode)
+	PartySolo = true, -- true = Party-Runde startet in Studio schon mit 1 Spieler (zum Testen)
 	Rewind = true, -- true = Rueckspulen (Z) in Studio an (live: Config.Rewind.EnabledLive)
 }
 

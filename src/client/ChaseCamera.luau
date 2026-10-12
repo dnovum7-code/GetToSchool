@@ -105,9 +105,11 @@ local function flatLook(part: BasePart): Vector3?
 	return look.Unit
 end
 
+local watched: BasePart? = nil -- Zuschauen (Party): anderen Wagen statt den eigenen zeigen
+
 local function update(dt: number)
 	local camera = workspace.CurrentCamera
-	local part = target
+	local part = if watched and watched.Parent then watched else target
 	if not camera or not part or not part.Parent then
 		return
 	end
@@ -202,6 +204,15 @@ function ChaseCamera.start(part: BasePart, ignore: { Instance })
 	RunService:UnbindFromRenderStep(BIND_NAME)
 	RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 1, update)
 	connectInput()
+end
+
+-- Zuschauen: Kamera folgt diesem Teil (z. B. Wagen eines anderen Spielers), nil = wieder
+-- der eigene Wagen
+function ChaseCamera.watch(part: BasePart?)
+	if watched ~= part then
+		watched = part
+		position = nil
+	end
 end
 
 -- Ohne Glaettung direkt hinter den Wagen springen (z. B. nach einem Neustart).

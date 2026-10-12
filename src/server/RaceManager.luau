@@ -43,7 +43,17 @@ local runState = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("RunStat
 
 local RaceManager = {}
 
-type Phase = "Ready" | "Running" | "Finished" | "Aborted" | "GameOver"
+type Phase = "Ready" | "Running" | "Finished" | "Aborted" | "GameOver" | "Party"
+
+-- Party-Modi (server/Party): waehrend einer Runde ist der Spieler in der Phase "Party".
+-- Neustart, Crash, Treffer und Einsteigen entscheidet dann das Party-Modul.
+export type PartyHooks = {
+	respawn: (player: Player) -> (), -- R, T, nach Crash: zurueck an einen Spawnpunkt
+	crash: (player: Player, reason: string) -> (), -- Crash gemeldet (Leben im Modus "Letzter Wagen")
+	launch: (player: Player, object: unknown, spawn: unknown, info: any) -> (), -- Kuh getroffen
+	canEnter: (player: Player) -> boolean, -- darf wieder einsteigen?
+}
+local partyHooks: PartyHooks? = nil
 
 type Checkpoint = {
 	part: BasePart,
@@ -167,6 +177,11 @@ end
 -- Kompletter Neustart (Taste T): Wagen an den Start, neuer Lauf, Zeit wieder auf 0.
 function RaceManager.restart(player: Player)
 	local race = getRace(player)
+	local hooks = partyHooks
+	if race.phase == "Party" and hooks then
+		hooks.respawn(player) -- in einer Party-Runde: zurueck an einen Spawnpunkt der Arena
+		return
+	end
 	-- Gewaehlte Strecke gibt es nicht (mehr)? Dann die Standard-Strecke
 	if not Track.exists(race.trackId) then
 		race.trackId = Track.defaultTrackId()
@@ -210,6 +225,11 @@ end
 -- trotzdem weiter). Nach dem Ziel oder Abbruch: kompletter Neustart (neuer Lauf).
 function RaceManager.restartAtCheckpoint(player: Player)
 	local race = getRace(player)
+	local hooks = partyHooks
+	if race.phase == "Party" and hooks then
+		hooks.respawn(player)
+		return
+	end
 	if race.phase == "GameOver" then
 		return -- der Game-Over-Screen laeuft; danach startet der Server selbst neu
 	end
@@ -271,6 +291,7 @@ end
 -- zieht ein Leben ab (der Wagen faehrt aber weiter) und schickt dem Client den Flug.
 -- `spawn` gesetzt: Kopie aus einem Spawner (object = der Spawner), siehe Launchables.
 function RaceManager.hitLaunchable(player: Player, object: unknown, spawn: unknown)
+	local partyRace = getRace(player)
 	local info, reason
 	if spawn ~= nil then
 		info, reason = Launchables.tryLaunchSpawned(player, object, spawn)
@@ -289,7 +310,14 @@ function RaceManager.hitLaunchable(player: Player, object: unknown, spawn: unkno
 		runState:FireClient(player, "LaunchRejected", object, key, reason)
 		return
 	end
-	local race = getRace(player)
+	local race = partyRace
+	local hooks = partyHooks
+	if race.phase == "Party" and hooks then
+		-- Party (Kuh-Bowling): kein Lebensverlust, Punkte und Anzeige fuer alle macht Party
+		runState:FireClient(player, "Launch", object, info)
+		hooks.launch(player, object, spawn, info)
+		return
+	end
 	race.hits += 1
 	local best = race.bestFlight
 	if not best or info.meters > best.meters then
@@ -325,6 +353,60 @@ end
 
 -- Ist der Spieler gerade ausserhalb eines Laufs (Shop, Track-Wahl erlaubt)?
 -- Erlaubt: am Start vor dem Losfahren, nach dem Ziel, nach einem Abbruch.
+-- Party-Modi --------------------------------------------------------------------------
+
+function RaceManager.setPartyHooks(hooks: PartyHooks)
+	partyHooks = hooks
+end
+
+function RaceManager.isInParty(player: Player): boolean
+	return getRace(player).phase == "Party"
+end
+
+-- Spieler kommt in eine Party-Runde: Lauf beendet (zaehlt nicht), Phase "Party"
+function RaceManager.enterParty(player: Player)
+	local race = getRace(player)
+	Ghosts.cancel(player)
+	race.phase = "Party"
+	race.runId += 1
+	race.checkpoint = nil
+	race.lastMeterPos = nil
+	race.rewinding = false
+	race.lastRestart = os.clock()
+	runState:FireClient(player, "PartyMode", true)
+end
+
+-- Runde vorbei oder verlassen: zurueck ins normale Spiel (kompletter Neustart am Start)
+function RaceManager.leaveParty(player: Player)
+	local race = getRace(player)
+	if race.phase ~= "Party" then
+		return
+	end
+	race.phase = "Ready"
+	runState:FireClient(player, "PartyMode", false)
+	RaceManager.restart(player)
+end
+
+-- Wagen samt Fahrer an einen Ort setzen (Arena-Spawn, Zuschauerplatz)
+function RaceManager.teleport(player: Player, cframe: CFrame): boolean
+	local placed = CartManager.reset(player, cframe)
+	if not placed then
+		return false
+	end
+	local race = getRace(player)
+	race.lastRestart = os.clock()
+	race.lastMeterPos = nil
+	runState:FireClient(player, "Reset", placed, true)
+	return true
+end
+
+-- Crash mit Ragdoll (z. B. Leben verloren im Modus "Letzter Wagen")
+function RaceManager.ragdoll(player: Player)
+	if CartManager.crash(player) then
+		runState:FireClient(player, "Ragdoll")
+	end
+end
+
 function RaceManager.isOutsideRun(player: Player): boolean
 	local phase = getRace(player).phase
 	return phase == "Ready" or phase == "Finished" or phase == "Aborted"
@@ -584,6 +666,10 @@ function RaceManager.requestExit(player: Player)
 end
 
 function RaceManager.requestEnter(player: Player)
+	local hooks = partyHooks
+	if getRace(player).phase == "Party" and hooks and not hooks.canEnter(player) then
+		return -- ausgeschieden (Letzter Wagen): nur zuschauen
+	end
 	CartManager.enter(player)
 end
 
@@ -603,6 +689,11 @@ local CRASH_REASONS = {
 -- (Dem Client beim Crash zu glauben ist unbedenklich: er schadet damit nur sich selbst.)
 function RaceManager.reportCrash(player: Player, reason: unknown)
 	if type(reason) ~= "string" or not CRASH_REASONS[reason] or not CartManager.isSeated(player) then
+		return
+	end
+	local hooks = partyHooks
+	if getRace(player).phase == "Party" and hooks then
+		hooks.crash(player, reason) -- Party-Modus entscheidet (Leben, Ragdoll)
 		return
 	end
 	if Config.Debug.GodMode or Config.Debug.NoDeaths then
@@ -688,6 +779,22 @@ end
 local function updatePlayer(player: Player, race: RaceState)
 	if race.phase == "GameOver" then
 		return -- nach dem Game-Over-Screen startet der Server selbst neu
+	end
+	if race.phase == "Party" then
+		-- Party-Runde: keine Zeit, keine Meter. Nur das Sicherheitsnetz (Ragdoll, Wagen weg).
+		local hooks = partyHooks
+		local ragdoll = CartManager.getRagdollTime(player)
+		local cart = CartManager.getCart(player)
+		local lost = cart == nil or not cart:IsDescendantOf(workspace)
+		if
+			hooks
+			and os.clock() - race.lastRestart > 2
+			and (lost or (ragdoll and ragdoll > Config.Crash.ServerRestartTimeout))
+		then
+			race.lastRestart = os.clock()
+			hooks.respawn(player)
+		end
+		return
 	end
 	-- Sicherheitsnetz: Liegt die Figur zu lange als Ragdoll herum (z. B. Neustart-Anfrage
 	-- des Clients verloren), startet der Server selbst neu.

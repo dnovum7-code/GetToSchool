@@ -351,6 +351,24 @@ function LaunchablesClient.update(cart: Model, base: BasePart, onHit: () -> ())
 	playHitShow(spawned, ghost, base, onHit)
 end
 
+-- Kopie auf die geplante Flugbahn schicken
+local function startFlight(model: PVInstance, home: CFrame, info: LaunchInfo): Flying
+	model.Parent = getEffectsFolder()
+	addTrail(model)
+	local axis = Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5)
+	local flight: Flying = {
+		model = model,
+		parts = allParts(model),
+		home = home,
+		info = info,
+		spinAxis = if axis.Magnitude > 0.01 then axis.Unit else Vector3.xAxis,
+		t = 0,
+		landed = false,
+	}
+	table.insert(flying, flight)
+	return flight
+end
+
 -- Server hat den Flug geplant: Kopie fliegen lassen
 function LaunchablesClient.onLaunch(object: Instance?, info: LaunchInfo)
 	local key = info.key
@@ -366,23 +384,40 @@ function LaunchablesClient.onLaunch(object: Instance?, info: LaunchInfo)
 	if not entry then
 		return
 	end
-	local model = entry.ghost
-	model.Parent = getEffectsFolder()
-	addTrail(model)
-	local axis = Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5)
-	local flight: Flying = {
-		model = model,
-		parts = allParts(model),
-		home = entry.home,
-		info = info,
-		spinAxis = if axis.Magnitude > 0.01 then axis.Unit else Vector3.xAxis,
-		t = 0,
-		landed = false,
-	}
-	table.insert(flying, flight)
+	local flight = startFlight(entry.ghost, entry.home, info)
 	labelFlight = flight
 	setLabel(`{info.name}: 0 m`)
 	ComboUI.show(info.combo or 1, info.multiplier or 1, info.bonus) -- "3x KOMBO!"
+end
+
+-- Party (Kuh-Bowling): ein anderer Spieler hat eine Kuh getroffen. Unsere Kopie derselben
+-- Kuh fliegt auf derselben Bahn (vom Server geplant), ohne Flugweiten-Anzeige.
+function LaunchablesClient.onRemoteLaunch(object: Instance?, key: string?, info: LaunchInfo, byName: string?)
+	local source: Instance? = nil
+	local id: string? = nil
+	if key then
+		source = SpawnedLaunchables.findByKey(key)
+		id = key
+	elseif object and object:HasTag("Launchable") then
+		source = object
+		local launchId = object:GetAttribute("LaunchId")
+		id = if type(launchId) == "string" then launchId else nil
+	end
+	if not source or not id or hitIds[id] then
+		return
+	end
+	hitIds[id] = true -- diese Kuh koennen wir nicht mehr treffen
+	local ghost = makeGhost(source)
+	if key then
+		source.Parent = nil -- Kopie aus dem Spawner: zurueck in den Pool
+	else
+		LocalHide.set(source, "Launched", true)
+	end
+	if ghost then
+		local home = getCFrame(ghost)
+		startFlight(ghost, home, info)
+		showComicText(home.Position + Vector3.new(0, 4, 0), `{byName or "?"}: {info.name}!`)
+	end
 end
 
 -- Server hat den Treffer nicht anerkannt: Objekt wieder zeigen (gespawnte Kopien sind

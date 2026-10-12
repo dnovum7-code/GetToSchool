@@ -25,4 +25,15 @@ function SpawnedLaunchables.get(object: Instance): Info?
 	return byObject[object]
 end
 
+-- Kopie mit diesem Schluessel (z. B. Kuh, die ein anderer Spieler getroffen hat). Alle
+-- Clients haben dieselben Kopien (gleicher Zeitplan und Zufall), also auch denselben Schluessel.
+function SpawnedLaunchables.findByKey(key: string): Instance?
+	for object, info in byObject do
+		if info.key == key and object.Parent ~= nil then
+			return object
+		end
+	end
+	return nil
+end
+
 return SpawnedLaunchables

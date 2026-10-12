@@ -14,6 +14,7 @@ local DevTuning = require(script.Parent:WaitForChild("DevTuning"))
 local Garage = require(script.Parent:WaitForChild("Garage"))
 local Homework = require(script.Parent:WaitForChild("Homework"))
 local Horn = require(script.Parent:WaitForChild("Horn"))
+local Party = require(script.Parent:WaitForChild("Party"))
 local Launchables = require(script.Parent:WaitForChild("Launchables"))
 local ObjectPhysics = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObjectPhysics"))
 local Leaderboards = require(script.Parent:WaitForChild("Leaderboards"))
@@ -72,6 +73,7 @@ Leaderstats.init() -- Spielerliste oben rechts: Meter und Muenzen
 PlayerEvents.init() -- Ereignisse (Ziel, Wurf, Drift ...) fuer Hausaufgaben und Erfolge
 Homework.init() -- Hausaufgaben (taegliche Aufgaben)
 Horn.init() -- Hupe (H): Abklingzeit pruefen, an alle verteilen
+Party.init() -- Party-Modi: Anmeldung, Countdown, Arena, Runde, Ergebnis
 StreamAhead.init() -- StreamingEnabled: Gelaende in Fahrtrichtung vorausladen
 DevTuning.init(cartsFolder) -- Tuning-Panel (nur in Studio aktiv)
 

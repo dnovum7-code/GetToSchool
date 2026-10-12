@@ -32,6 +32,8 @@ local SpinUI = require(script.Parent:WaitForChild("SpinUI"))
 local LaunchablesClient = require(script.Parent:WaitForChild("LaunchablesClient"))
 local FlyMode = require(script.Parent:WaitForChild("FlyMode"))
 local Horn = require(script.Parent:WaitForChild("Horn"))
+local PartyState = require(script.Parent:WaitForChild("PartyState"))
+local PartyUI = require(script.Parent:WaitForChild("PartyUI"))
 local Pursuers = require(script.Parent:WaitForChild("Toolkit"):WaitForChild("Pursuers"))
 local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 local ProgressClient = require(script.Parent:WaitForChild("ProgressClient"))
@@ -199,7 +201,7 @@ Toolkit.init() -- erweiterter Baukasten (Trigger, Spawner, Tore ...)
 GhostClient.init() -- Geist vom besten Lauf
 -- Shop (Taste B): nur ausserhalb eines Laufs (der Server prueft das auch)
 ShopUI.init(function()
-	return runPhase == "Ready" or runPhase == "Finished" or runPhase == "Aborted"
+	return not PartyState.active and (runPhase == "Ready" or runPhase == "Finished" or runPhase == "Aborted")
 end)
 LeaderboardClient.init() -- Bestenlisten (Reiter im Menue, Bretter in der Welt)
 HomeworkUI.init() -- Hausaufgaben (Reiter im Menue)
@@ -208,6 +210,7 @@ PaintShopUI.init() -- Farben und Spur (Reiter im Menue)
 AchievementUI.init() -- Erfolge (Reiter im Menue, Popup)
 SpinUI.init() -- taegliches Gluecksrad (Reiter im Menue)
 SettingsUI.init() -- Einstellungen und Steuerung (Reiter im Menue)
+PartyUI.init() -- Party-Modi (Reiter im Menue, Anzeige in der Runde)
 -- Powerups aus dem Gluecksrad wirken beim Losfahren (Leben/Helm zaehlt der Server)
 remotes:WaitForChild("Progress").OnClientEvent:Connect(function(kind: string, used: unknown)
 	if kind ~= "Powerups" or type(used) ~= "table" then
@@ -501,8 +504,9 @@ end
 -- `text`: eigener Untertitel (z. B. Attribut "Message" eines Hazards)
 local function onCrash(reason: string, base: BasePart, text: string?)
 	-- God Mode / keine Tode (F2, nur Studio): kein Crash, kein Lebensverlust;
-	-- abgestuerzt = zum Checkpoint
-	if Config.Debug.GodMode or Config.Debug.NoDeaths then
+	-- abgestuerzt = zum Checkpoint. Party "Letzter Wagen": Leben zaehlen immer (Spielregel).
+	local lastCart = PartyState.active and PartyState.mode == "LastCart"
+	if (Config.Debug.GodMode or Config.Debug.NoDeaths) and not lastCart then
 		if reason == "Fell" then
 			requestRestartNow("Checkpoint")
 		end
@@ -752,6 +756,20 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 				RaceUI.hideMessage()
 			end
 		end
+	elseif kind == "PartyMode" then
+		local on: boolean = ...
+		PartyState.active = on
+		if on then
+			-- Party-Runde: ein laufender Lauf zaehlt nicht mehr
+			runPhase = "Ready"
+			GhostClient.stopRun()
+			Tricks.cancel()
+			RaceUI.hideResult()
+			Pursuers.runEvent("GameOver") -- Verfolger weg
+		else
+			PartyState.reset()
+			ChaseCamera.watch(nil)
+		end
 	elseif kind == "Exited" then
 		onExited(...)
 	elseif kind == "Aborted" then
@@ -873,6 +891,10 @@ end
 local function readInput(): (number, number)
 	-- Beim Tippen im Chat nicht fahren
 	if UserInputService:GetFocusedTextBox() then
+		return 0, 0
+	end
+	-- Party "Letzter Wagen": ausgeschieden = nur zuschauen
+	if PartyState.eliminated then
 		return 0, 0
 	end
 	local throttle = 0
