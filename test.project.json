@@ -18,7 +18,13 @@
         "HitLaunchable": {
           "$className": "RemoteEvent"
         },
+        "Horn": {
+          "$className": "RemoteEvent"
+        },
         "Leaderboard": {
+          "$className": "RemoteEvent"
+        },
+        "Party": {
           "$className": "RemoteEvent"
         },
         "Progress": {

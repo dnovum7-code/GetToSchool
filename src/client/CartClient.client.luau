@@ -31,6 +31,7 @@ local SettingsUI = require(script.Parent:WaitForChild("SettingsUI"))
 local SpinUI = require(script.Parent:WaitForChild("SpinUI"))
 local LaunchablesClient = require(script.Parent:WaitForChild("LaunchablesClient"))
 local FlyMode = require(script.Parent:WaitForChild("FlyMode"))
+local Horn = require(script.Parent:WaitForChild("Horn"))
 local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 local ProgressClient = require(script.Parent:WaitForChild("ProgressClient"))
 local ProgressUI = require(script.Parent:WaitForChild("ProgressUI"))
@@ -229,6 +230,7 @@ remotes:WaitForChild("Progress").OnClientEvent:Connect(function(kind: string, us
 end)
 Tricks.init() -- Lufttricks (Anzeige)
 Rewind.init() -- Rueckspulen (Zeitleiste)
+Horn.init() -- Hupen aller Spieler abspielen
 VisualFX.init() -- Speed-Linien, Konfetti ...
 ComboUI.init() -- Kuh-Kombo-Anzeige
 MeterUI.init() -- Meterzaehler und x2-Anzeige
@@ -288,6 +290,7 @@ local function deactivate()
 	Abilities.deactivate()
 	Tricks.deactivate()
 	Rewind.deactivate()
+	Horn.deactivate()
 	VisualFX.detach()
 	DriftEffects.detach()
 	SoundSystem.detach()
@@ -359,6 +362,7 @@ local function activate(seat: BasePart, humanoid: Humanoid)
 	ContextActionService:SetTitle(HOP_ACTION, "Hopp")
 	Abilities.activate() -- Ability-Tasten (z. B. Turbo F)
 	Rewind.activate() -- Rueckspulen (Z, nur Studio bzw. Config.Rewind.EnabledLive)
+	Horn.activate() -- Hupe (H, Gamepad linker Stick, Touch "Hupe")
 	Tricks.activate(function() -- Lufttricks (Q/E, Gamepad LB, Touch "Trick")
 		return lastSteer
 	end)

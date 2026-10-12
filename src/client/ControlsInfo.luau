@@ -19,6 +19,7 @@ ControlsInfo.ROWS = {
 	{ "Zurueck zum Checkpoint", "R", "Y", "R" },
 	{ "Kompletter Neustart", "T", "Steuerkreuz hoch", "Start" },
 	{ "Aus- / Einsteigen", "E", "X", "Raus" },
+	{ "Hupe", "H", "Linken Stick druecken", "Hupe" },
 	{ "Menue (Shop, Garage ...)", "B", "Select", "Shop" },
 }
 

@@ -725,6 +725,30 @@ Config.Sounds = {
 	Combo = { Id = "", Volume = 0.8 }, -- Kombo (2x, 3x ...)
 	SpinTick = { Id = "", Volume = 0.4 }, -- Gluecksrad klickt
 	SpinWin = { Id = "", Volume = 0.8 }, -- Gluecksrad: Gewinn
+	-- Hupen (Platzhalter; welche Hupe welchen Sound nimmt: Config.Horn.Horns)
+	HornSqueak = { Id = "", Volume = 0.9 }, -- Quietsch-Ente
+	HornBike = { Id = "", Volume = 0.9 }, -- Fahrrad-Troete
+	HornMoo = { Id = "", Volume = 0.9 }, -- Kuh-Muh
+	HornTrain = { Id = "", Volume = 0.9 }, -- Zug-Horn
+}
+
+-- Hupe (Taste H, Gamepad: linken Stick druecken, Touch: Button "Hupe"). Alle in der Naehe
+-- hoeren sie (3D-Sound am Wagen), anderen Spielern laesst sie sich in den Einstellungen
+-- stummschalten. Weitere Hupen sind als Kosmetik vorbereitet (price > 0, Spielstand
+-- cosmetics.horns / cosmetics.horn), ein Shop dafuer fehlt noch.
+Config.Horn = {
+	Cooldown = 1.5, -- Sekunden zwischen zwei Hupern (Spam-Schutz, Server prueft)
+	HearDistance = 250, -- bis so weit (Studs) hoeren andere die Hupe
+	HopSpeed = 10, -- der eigene Wagen hopst kurz (Studs/s nach oben, 0 = aus)
+	SymbolRise = 6, -- Hup-Symbol steigt so hoch (Studs) ...
+	SymbolTime = 1.2, -- ... in so vielen Sekunden
+	Default = "Squeak",
+	Horns = {
+		{ id = "Squeak", name = "Quietsch-Ente", sound = "HornSqueak", price = 0 },
+		{ id = "Bike", name = "Fahrrad-Troete", sound = "HornBike", price = 150 },
+		{ id = "Moo", name = "Kuh-Hupe", sound = "HornMoo", price = 300 },
+		{ id = "Train", name = "Zug-Horn", sound = "HornTrain", price = 500 },
+	} :: { HornDef },
 }
 
 -- Flugmodus (Debug.FlyMode, nur Studio, Schalter im F2-Panel): W/S vor/zurueck, A/D drehen,
@@ -750,6 +774,7 @@ Config.GodMode = {
 -- Schalter (switch = true, path = true/false in dieser Config): An/Aus-Knopf.
 --   invert = true: "An" heisst Config-Wert false (z. B. Debug.NoImpactCrash)
 -- server = true: der Server bekommt den Wert auch (z. B. Ballast, kein Lebensverlust).
+export type HornDef = { id: string, name: string, sound: string, price: number }
 export type TuningItem = {
 	label: string,
 	path: string,
@@ -890,6 +915,13 @@ Config.TuningPanel = {
 			{ label = "Schultisch: Tempo x", path = "Vehicles.SchoolDesk.scale.Drive.MaxPushSpeed" },
 			{ label = "Schultisch: Lenkung x", path = "Vehicles.SchoolDesk.scale.Drive.SteerRate" },
 			{ label = "Geist-Durchsicht", path = "Ghost.Transparency", span = 0.4 },
+		},
+	},
+	{
+		title = "Hupe, Verfolger, Party",
+		items = {
+			{ label = "Hupe: Abklingzeit (s)", path = "Horn.Cooldown", server = true },
+			{ label = "Hupe: Hopser", path = "Horn.HopSpeed" },
 		},
 	},
 	{

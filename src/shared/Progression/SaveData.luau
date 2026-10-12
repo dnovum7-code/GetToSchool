@@ -55,6 +55,8 @@ export type Cosmetics = {
 	trails: { [string]: boolean }, -- gekaufte Spuren
 	vehicleColors: { [string]: string }, -- Fahrzeug-Id -> Farb-Id
 	trail: string, -- gewaehlte Spur ("" = keine)
+	horns: { [string]: boolean }, -- gekaufte Hupen (kostenlose stehen nicht drin)
+	horn: string, -- gewaehlte Hupe ("" = Standard, Config.Horn.Default)
 }
 
 -- Einstellungen des Spielers (Menue B -> Einstellungen)
@@ -64,6 +66,7 @@ export type Settings = {
 	VisualEffects: boolean, -- Extra-Effekte (Speed-Linien, Staub, Flammen, Konfetti)
 	MusicVolume: number, -- 0..1
 	EffectsVolume: number, -- 0..1
+	MuteHorns: boolean, -- Hupen anderer Spieler stummschalten
 }
 
 -- Standardwerte; nur diese Schluessel gibt es (der Client darf nichts anderes setzen)
@@ -73,6 +76,7 @@ SaveData.SETTINGS_DEFAULTS = {
 	VisualEffects = true,
 	MusicVolume = 0.5,
 	EffectsVolume = 1,
+	MuteHorns = false,
 } :: Settings
 
 export type Data = {
@@ -116,7 +120,7 @@ function SaveData.new(): Data
 			totalMeters = 0,
 		},
 		homework = SaveData.newHomework(),
-		cosmetics = { colors = {}, trails = {}, vehicleColors = {}, trail = "" },
+		cosmetics = { colors = {}, trails = {}, vehicleColors = {}, trail = "", horns = {}, horn = "" },
 		achievements = {},
 		settings = table.clone(SaveData.SETTINGS_DEFAULTS),
 		spinDay = -1,
@@ -290,6 +294,8 @@ function SaveData.sanitize(raw: { [any]: any }): Data
 		trails = sanitizeFlags(cosmetics.trails),
 		vehicleColors = vehicleColors,
 		trail = if type(cosmetics.trail) == "string" then cosmetics.trail else "",
+		horns = sanitizeFlags(cosmetics.horns),
+		horn = if type(cosmetics.horn) == "string" then cosmetics.horn else "",
 	}
 	return data
 end
@@ -406,6 +412,12 @@ function SaveData.merge(stored: Data, session: Data): Data
 	end
 	if session.cosmetics.trail ~= "" then
 		result.cosmetics.trail = session.cosmetics.trail
+	end
+	for id in session.cosmetics.horns do
+		result.cosmetics.horns[id] = true
+	end
+	if session.cosmetics.horn ~= "" then
+		result.cosmetics.horn = session.cosmetics.horn
 	end
 	-- Hausaufgaben: der neuere Tag gewinnt, am selben Tag zaehlt der groessere Fortschritt
 	local kept, fresh = result.homework, session.homework

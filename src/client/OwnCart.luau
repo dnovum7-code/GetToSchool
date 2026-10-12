@@ -21,6 +21,20 @@ function OwnCart.find(): Model?
 	return nil
 end
 
+-- Wagen eines beliebigen Spielers (fuer Hupe, Party-Zuschauer ...)
+function OwnCart.findFor(userId: number): Model?
+	local folder = workspace:FindFirstChild("Carts")
+	if not folder then
+		return nil
+	end
+	for _, cart in folder:GetChildren() do
+		if cart:IsA("Model") and cart:GetAttribute("OwnerUserId") == userId then
+			return cart
+		end
+	end
+	return nil
+end
+
 -- Alle Teile eines Modells anhalten. Wirkt nur bei Teilen, deren Physik dieser Client rechnet.
 function OwnCart.stopMotion(model: Instance)
 	for _, part in model:GetDescendants() do

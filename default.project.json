@@ -51,6 +51,12 @@
         },
         "Settings": {
           "$className": "RemoteEvent"
+        },
+        "Horn": {
+          "$className": "RemoteEvent"
+        },
+        "Party": {
+          "$className": "RemoteEvent"
         }
       }
     },
