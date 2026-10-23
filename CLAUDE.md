@@ -43,6 +43,26 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
   Config.TuningPanel. Fehlersuche bei Bodenbausteinen: Config.Debug.TrackPieces.
 
 ## Aktueller Meilenstein
+Atmosphäre (gebaut, noch nicht in Studio getestet; README „Atmosphäre testen“; Regler im
+F2-Abschnitt „Atmosphaere“; alle Sounds leere Platzhalter):
+- Tempogefühl: Config.Atmosphere (TopSpeed = Bezug). ChaseCamera Sichtfeld ab FovStart (70 %)
+  bis +FovExtra, Boost-Kick bleibt (Camera.BoostFovKick); Speed-Linien (VisualFX) ab
+  SpeedLinesStart und beim Boost; Tempo-Zittern (Einstellung SpeedShake); Fahrtwind
+  (SoundSystem, Config.Sounds.Wind); Radpartikel je Untergrund (client/WheelDust, Raycast
+  pro Rad, Material -> Grass/Dirt/Asphalt/Snow). Logik shared/Atmosphere/SpeedFeel.
+- Umgebungsleben (Toolkit, nur nah aktiv, Obergrenzen Config.Ambient, Helfer Toolkit/Nearby):
+  AmbientSound, AmbientParticles (GlobalWind via WindAffectsDrag), BirdFlock, Villager
+  (Dodge/Scold/Wave, WalkRadius), Spectator (Jubel bei Vorbeifahrt, Sprung, Kuh-Wurf über
+  Spectators.cheerAt). Logik shared/Atmosphere/AmbientLogic, Comic-Text client/ComicText.
+  Toolkit-Context hat jetzt telemetry.
+- Sound-Landschaft: client/Soundscape; SoundZone (Ambience -> Config.Soundscape.Ambiences
+  oder SoundId), kleinste Zone gilt, Überblendung; Musik pro Strecke (MusicId /
+  MusicIntenseId am Track-Model, Server sendet runState "Track"), zweite Spur mit Tempo/Boost,
+  Stille bei langer Flugzeit. Ohne MusicId: allgemeine Musik (SoundSystem.music()).
+- Near-Miss: client/NearMiss + server/NearMiss (ReportStat "NearMiss"), Logik
+  Progression/NearMissRules; Config.NearMiss (Distance, Coins, MaxPerRun ...).
+- Test-Place: Ambiente-Zonen, Klangquellen, Partikel, Vögel, Dorfbewohner, Zuschauer,
+  Untergrund-Streifen vor Station 1.
 Hupe, Verfolgungsjagd, Party-Modi (gebaut, noch nicht in Studio getestet; README „Hupe,
 Verfolgungsjagd, Party-Modi testen“):
 - Hupe: client/Horn + server/Horn (Remote "Horn"), H / Gamepad L3 / Touch „Hupe“, Server prüft
@@ -243,7 +263,7 @@ Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 
 ## Später
 - Noch offen: Rammen bei „Letzter Wagen“ (wartet auf OK), Hupen-Shop. Nächster Schritt ist das
-  Testen in Studio (Testlisten im README: Hupe/Verfolger/Party, Nach dem Map-Test, M2.5/M3, M4, M5, Meter/Glücksrad, Terrain/Streaming) und Feedback einarbeiten.
+  Testen in Studio (Testlisten im README: Atmosphäre, Hupe/Verfolger/Party, Nach dem Map-Test, M2.5/M3, M4, M5, Meter/Glücksrad, Terrain/Streaming) und Feedback einarbeiten.
 
 ## Steuerung
 | Aktion | Tastatur | Gamepad | Touch |

@@ -58,6 +58,7 @@ Hinweise:
 | Nr. | Station | Was tun | Was passieren sollte |
 |---|---|---|---|
 | – | Start | Play | Wagen in der Startzone, Blick bergab; Münzzähler, 5 Ranzen, Shop-Knopf sichtbar; keine roten Fehler |
+| – | Untergrund-Streifen | Vor Station 1 über Gras, Erde, Schnee fahren | Radpartikel grün, braun, weiß; schneller = mehr, Driften = viel mehr |
 | 1 | Münzen | Durch die Münzreihe fahren | Jede Münze „+1“, die große „+5“; Zähler steigt. T: Münzen bleiben weg (erst nach dem Ziel wieder da) |
 | 2 | BoostPad | Über das grüne Feld | Spürbarer Schub nach vorne |
 | 3 | JumpPad | Über das pinke Feld | Sprung nach oben (ca. 19 Studs), weiche Landung ohne Crash |
@@ -83,6 +84,7 @@ Hinweise:
 | 22 | ForceZone | Durch den Wind | Wagen wird im 2-s-Takt nach rechts gedrückt |
 | 23 | Chaser | Langsam am Hund vorbei | Hund rennt dir nach, bleibt knapp hinter dem Wagen, gibt nach ~6 s auf, läuft heim |
 | 24 | Checkpoint 3 | Durchfahren | Hinweis „Checkpoint“ |
+| 25 | Ziel (Zuschauer) | Schnell durchs Ziel | Zuschauer links und rechts hüpfen und jubeln („JUHU!“) |
 | 25 | Ziel | Durchs Ziel | Ergebnis mit Zeit, Note (Grenzen 50/65/80/100/130 s), Münzen, Leben, Treffer, Chaos; Münzen der Strecke sind wieder da |
 | 26 | Schule | Auf die Schulwand schauen | Zwei Tafeln: Bestenliste „Der Schulweg“ und „Weitester Kuh-Wurf“ mit Top 10 und „Du: Platz …“ (nach dem ersten Lauf/Wurf) |
 | – | Party-Arenen | B → Party → Anmelden | Neben der Strecke (x = 700): „Kuh-Bowling“ und „Letzter Wagen“; in Studio startet eine Runde schon mit dir allein (`Debug.PartySolo`) |
@@ -210,6 +212,13 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/server/Party.luau` | Server | Party-Modi: Anmeldung, Countdown, Arena, Runde, Rangliste, Belohnung |
 | `src/client/PartyUI.luau` / `src/client/PartyState.luau` | Client | Reiter „Party“, Anzeige in der Runde, Zuschauen, Ergebnis |
 | `src/shared/Progression/PartyRules.luau` | beiden | Rangliste, Belohnung, Rundenende, Eskalation (getestet) |
+| `src/shared/Atmosphere/SpeedFeel.luau` | beiden | Tempogefühl und Klang: Sichtfeld, Speed-Linien, Wind, Radpartikel, Musik-Intensität, Überblenden (getestet) |
+| `src/shared/Atmosphere/AmbientLogic.luau` | beiden | Umgebungsleben: Auswahl der Nächsten, Reaktionen, Hopser (getestet) |
+| `src/client/WheelDust.luau` | Client | Partikel an den Rädern je nach Untergrund |
+| `src/client/Soundscape.luau` | Client | Ambiente je Bereich (SoundZone), Strecken-Musik mit zweiter Spur, Stille bei Sprüngen |
+| `src/client/ComicText.luau` | Client | Comic-Text in der Welt, 3D-Einmal-Sound |
+| `src/client/Toolkit/AmbientSounds.luau`, `AmbientParticles.luau`, `BirdFlocks.luau`, `Villagers.luau`, `Spectators.luau`, `Nearby.luau` | Client | Umgebungsleben-Bausteine (nur in deiner Nähe aktiv) |
+| `src/client/NearMiss.luau` / `src/server/NearMiss.luau` | beide | Near-Miss „KNAPP!“: Client erkennt, Server zahlt mit Grenzen (Logik `Progression/NearMissRules`) |
 | `src/server/Rewind.luau` | Server | Nimmt die Rückspul-Meldung an (nur wenn erlaubt), Meter pausieren, Lauf nicht für die Bestenliste |
 | `src/client/VisualFX.luau` | Client | Visuelle Extras: Speed-Linien, Landestaub, Boost-Flammen, Konfetti |
 | `src/client/ComboUI.luau` | Client | Große Anzeige „3x KOMBO!“ mit ablaufendem Zeitbalken |
@@ -275,6 +284,13 @@ geschrieben wie in der Tabelle). Mehrere Tags pro Part sind erlaubt (z. B. `Move
 | `Collapse` | Brücke/Boden: wackelt nach dem Befahren und stürzt ab, steht bei R/T wieder | `Delay` (s) – 0.8; `Shake` (Studs) – 0.25; `FallSpin` – 1.5; `ListenSignal` (dann nur per Signal) |
 | `Prop` | Loser Gegenstand (Kiste, Pylone, Stand): fliegt weg, kein Crash. Zählt als „Chaos“. Zurück nur bei T | `Density` (Zahl) – 0.4 |
 | `ForceZone` | Bereich drückt den Wagen Richtung Vorderseite (Wind, Rasensprenger, Förderband) | `Strength` (Studs/s²) – 60; `Pulse` (s, 0 = immer) – 0; `PulseOn` (0–1) – 0.5; `Phase` – 0; `ListenSignal`; `ActiveTime` (s) – 3 |
+| `AmbientSound` | Part als Klangquelle mit Schleife (Kuhglocken, Bach, Kirche). Nur die nächsten 8 in Hörweite spielen | `SoundId` – nötig; `Volume` – 0.5; `Range` (Studs) – 80; `Pitch` – 1 |
+| `AmbientParticles` | Bereich (Part, unsichtbar) mit Blättern, Pollen oder Staub; folgen dem `GlobalWind` (Workspace) | `Kind` („Leaves“, „Pollen“, „Dust“) – Leaves; `Rate` – je nach Kind; `Color` (Color3) |
+| `BirdFlock` | Vögel sitzen auf dem Part (unsichtbar) und fliegen auf, wenn du näher kommst; später sitzen sie wieder da | `Count` – 6; `TriggerRadius` – 35; `SoundId` – sonst `Config.Sounds.BirdsFly` |
+| `Villager` | Dorfbewohner (Model): steht/läuft herum; fährst du schnell nah vorbei, springt er zur Seite, schimpft oder winkt | `Reaction` („Dodge“, „Scold“, „Wave“, „Random“) – Random; `WalkRadius` – 0; `ReactRadius` – 14; `SoundId` |
+| `Spectator` | Zuschauer (Model) am Ziel und an Set-Pieces: jubeln bei schneller Vorbeifahrt, Sprüngen und Kuh-Würfen in der Nähe | `SoundId` – sonst `Config.Sounds.Cheer` |
+| `SoundZone` | Bereich (Part, unsichtbar) mit eigenem Ambiente; ineinander liegende: die kleinste gilt; weiche Überblendung | `Ambience` („Meadow“, „Forest“, „Village“, „Stream“, siehe `Config.Soundscape.Ambiences`) oder eigene `SoundId` |
+| Track-Model | Musik pro Strecke: Attribute am Model mit `TrackId` | `MusicId` (Grundspur); `MusicIntenseId` (zweite Spur, lauter mit Tempo und Boost) |
 | `Pursuer` | Verfolgungsjagd (Schulbus, Hauswart …): Modell mit Ordner `Waypoints` (Parts `1`, `2` …) entlang der Strecke. Startet nach `StartDelay` hinter dir, sobald du nah an seiner Strecke bist; holt auf, wenn du langsam bist, fällt zurück (höchstens `MaxGap`), wenn du gut fährst. Erwischt = ein Leben weg und du fliegst. Im Ziel kracht er am letzten Wegpunkt in den Zaun | `StartDelay` – 3; `ActivateDistance` – 60; `BaseSpeed` – 45; `CatchUpSpeed` – 60; `MinGap` – 35; `MaxGap` – 140; `CatchRadius` – 9; `WarnGap` – 70; `GameOverOnCatch` (Bool) – false; `DisplayName` – „Verfolger“; `Sound` (Warnton) |
 | `PartyArena` | Arena für Party-Modi: Model mit Attribut `Mode` („CowBowling“ / „LastCart“), darin Parts `Spawn1`, `Spawn2` … (Wagen schaut in Blickrichtung des Parts), optional Part `Spectate` (Zuschauerplatz) | `Mode` – nötig |
 | `Chaser` | Verfolger (z. B. Hund): rennt dir nach, gibt auf, läuft heim | `Radius` – 40; `MaxSpeed` – 32; `Acceleration` – 50; `GiveUpTime` (s) – 6; `ReturnSpeed` – 14; `Cooldown` (s) – 3; `Hazard` (Bool) – false; `Message`; `ListenSignal` |
@@ -1101,6 +1117,31 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Boost-Flammen | Drift-Boost, Turbo-Pausenbrot oder Start-Turbo | Orange Flammen hinten am Wagen, solange der Schub läuft |
 | Konfetti | Ins Ziel fahren | Konfetti fällt von oben; bei neuer Bestzeit doppelt so viel |
 | Effekte aus | Einstellungen → „Extra-Effekte“ aus | Nichts davon mehr zu sehen |
+
+## Atmosphäre testen (Tempogefühl, Umgebungsleben, Sound-Landschaft, Near-Miss)
+
+Alle Sounds sind leere Platzhalter (`Config.Sounds.Wind`, `Ambience*`, `BirdsFly`, `VillagerScold`,
+`VillagerWave`, `Cheer`, `NearMiss`; Attribute `SoundId`, `MusicId`, `MusicIntenseId`) – ohne Id
+bleibt es still, alles andere funktioniert. Regler: F2 → „Atmosphaere“.
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| Sichtfeld | Bergab Vollgas, Tacho beobachten | Bis ca. 70 % von `TopSpeed` (140 Studs/s) normal, darüber wird das Bild weiter (bis +10°), weich |
+| Boost | Drift-Boost oder BoostPad | Sichtfeld kurz noch weiter, Speed-Linien am Rand auch bei wenig Tempo |
+| Speed-Linien | Sehr schnell fahren | Ab ca. 80 % Linien am Bildschirmrand |
+| Tempo-Zittern | Sehr schnell fahren; dann B → Einstellungen → „Tempo-Zittern der Kamera“ aus | Leichtes Zittern ab ca. 75 %; aus = ruhig (Landungs-Wackeln bleibt) |
+| Fahrtwind | Id in `Config.Sounds.Wind`, schnell fahren | Rauschen wird lauter und höher |
+| Radpartikel | Vor Station 1 über Gras, Erde, Schnee; normal und driftend | Grüne Fetzen, brauner Staub, weiße Wolken; Asphalt: wenig grauer Staub; Drift: viel mehr |
+| Ambiente | Ids in `Config.Sounds.AmbienceMeadow/Forest/Village`, die Strecke runter | Bei Station 9 und 17 blendet das Ambiente weich über (Wiese → Wald → Dorf) |
+| Strecken-Musik | `MusicId` und `MusicIntenseId` am Model „TestTrack“ | Musik der Strecke statt der allgemeinen; zweite Spur kommt mit dem Tempo/Boost dazu |
+| Stille-Moment | JumpPad (Station 3) | Musik wird in der Luft fast still, bei der Landung wieder da |
+| AmbientSound | `SoundId` an „Kuhglocken“ (Station 13, links), „Bach“ (Station 7), „Kirchenglocke“ (Schule) | Hörbar nur in der Nähe, wird mit Abstand leiser |
+| AmbientParticles | Station 2 (Pollen), 10 (Blätter), 16 (Staub); Workspace → GlobalWind z. B. (10, 0, 0) | Teilchen schweben im Bereich und ziehen mit dem Wind |
+| Vögel | Station 4 (rechts) und 21 (links) | Vögel sitzen und hopsen; nah dran fliegen sie flatternd auf und weg; nach 20 s wieder da |
+| Dorfbewohner | Schnell vorbei an Station 17 (läuft herum), 18 (schimpft), 22 (auf der Straße: springt weg), 24 (winkt) | Comic-Text („HEY!“, „HUCH!“, „HALLO!“), Hopser zur Seite; anfahren ist kein Crash |
+| Zuschauer | Schnell durchs Ziel; JumpPad (Station 3) mit Zuschauern rechts; Kuh in der Nähe treffen | Sie hüpfen und jubeln |
+| Near-Miss | Knapp an Kuh, Mover, Spinner, Tor, Lieferwagen, Autos (Station 16) vorbei, ohne zu berühren | „KNAPP! +2“, Münzen +2 (nur während eines Laufs, höchstens 30 pro Lauf); berührt = nichts |
+| Leistung | Debug: Explorer → Workspace → LocalBirds / LocalComicText | Nur Objekte in der Nähe sind aktiv (`Config.Ambient`: Reichweiten und Obergrenzen) |
 
 ## Hupe, Verfolgungsjagd, Party-Modi testen
 
