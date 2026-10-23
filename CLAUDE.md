@@ -43,6 +43,29 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
   Config.TuningPanel. Fehlersuche bei Bodenbausteinen: Config.Debug.TrackPieces.
 
 ## Aktueller Meilenstein
+Duo- und Chaos-Wagen, Tomaten (gebaut, noch nicht in Studio getestet; README „Duo- und
+Chaos-Wagen testen“, Test → Server mit 2 bzw. 4 Spielern):
+- Wagen-Typ: Reiter „Wagen“ (client/CrewClient, server/Crew): Solo/Duo/Chaos; CartBuilder baut
+  Zusatzsitze CrewSeat2..4 (Platzhalter), Attribut CrewKind. Einladen (Popup, Config.Crew.
+  InviteTime) oder zu Fuß E am Wagen mit freiem Platz (Schild „Duo: 1 Platz frei“, Attribute
+  CrewFree / CrewHostName). Mitfahrer: CartManager-Modus "Passenger" (eigener Wagen weg),
+  RaceManager-Phase "Crew" (Nachrichten des Gastgebers werden gespiegelt, R/T gehen an den
+  Gastgeber), Münzen geteilt (Profiles.setCoinShare), Bestenlisten trackId@Duo / @Chaos
+  (Eintrag pro Mitglied, nur mit Mitfahrer), kein Geist, keine Solo-Bestzeit.
+- Physik beim Gastgeber. Chaos: Steuerelemente (CrewRules.CONTROLS) verteilt per Seed, alle
+  ShuffleInterval s neu mit Countdown; Mitfahrer schicken Bits (UnreliableRemoteEvent
+  "CrewInput"), Einmal-Aktionen mit laufender Nummer (Remote "Crew", "Action"); Server filtert
+  (allowedBits) und leitet weiter; Gastgeber mischt (CrewClient.drive, Timeout InputTimeout =
+  losgelassen, optional HostInputDelay). Boost = Turbo des Fahrers oder kleiner Schub
+  (Config.Crew.Chaos.Boost*). Anzeige „DEINE STEUERUNG“ (Touch: Felder halten).
+- Übergabe: Gastgeber geht/stirbt -> erster Mitfahrer übernimmt (CartManager.transferCart,
+  RaceManager.transferRace, HandoverFreeze). Mitfahrer geht -> Felder neu verteilt.
+- Tomaten (server/Tomato, client/TomatoClient, Logik Crew/TomatoMath): Duo-Schütze zielt mit
+  Maus/Bildmitte, Linksklick/RT; Chaos „Items“ (G/LB) nach vorne. Munition pro Werfer, Regen,
+  Abklingzeit; Server rechnet Treffer mit HitRadius; Matsch + Schubs, kein Lebensverlust.
+  Solo-Läufe geschützt (Tomato.ProtectSolo), Einstellung TomatoOptIn = bewerfbar. Tag ItemBox
+  füllt auf. Config.Crew, Config.Tomato.
+- Test-Place: ItemBoxen an Station 24, Schild neben dem Spawn.
 Barrieren und Stabil-Zone (gebaut, noch nicht in Studio getestet; README „Barrieren und
 Stabil-Zone testen“, Kombinations-Tabelle unter „Barrieren: welche Kombination wann?“):
 - NoDamage (Tag): Beruehrung = nie Crash durch Aufprall (client/Guides -> relaxImpact).
@@ -54,7 +77,6 @@ Stabil-Zone testen“, Kombinations-Tabelle unter „Barrieren: welche Kombinati
   Kippen/Nicken gedaempft, NoCrash; Ein-/Ausblenden ueber BlendTime. Config.StableZone.
 - Logik Toolkit/GuideMath (getestet). Teststrecke: Station 11 (Elektrozaun + unsichtbare Wand),
   21 (Strohballen), 22 (gelbe Barriere im Wind), 23 (Huegel-Kuhfeld mit Stabil-Zone).
-- Duo-Wagen und Chaos-Wagen: Technik-Vorschlag gemacht, warten auf OK (nichts gebaut).
 Atmosphäre (gebaut, noch nicht in Studio getestet; README „Atmosphäre testen“; Regler im
 F2-Abschnitt „Atmosphaere“; alle Sounds leere Platzhalter):
 - Tempogefühl: Config.Atmosphere (TopSpeed = Bezug). ChaseCamera Sichtfeld ab FovStart (70 %)
@@ -274,9 +296,9 @@ Checkpoints, Hindernisse, Zufallsereignisse, Sound; drei Feedback-Runden: Drift 
 Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 
 ## Später
-- Noch offen: Duo-/Chaos-Wagen (Vorschlag, wartet auf OK), Rammen bei „Letzter Wagen“ (wartet
-  auf OK), Hupen-Shop. Nächster Schritt ist das
-  Testen in Studio (Testlisten im README: Barrieren/Stabil-Zone, Atmosphäre, Hupe/Verfolger/Party, Nach dem Map-Test, M2.5/M3, M4, M5, Meter/Glücksrad, Terrain/Streaming) und Feedback einarbeiten.
+- Noch offen: Rammen bei „Letzter Wagen“ (wartet auf OK), Hupen-Shop, echte Modelle für Duo-/
+  Chaos-Wagen. Nächster Schritt ist das
+  Testen in Studio (Testlisten im README: Duo/Chaos, Barrieren/Stabil-Zone, Atmosphäre, Hupe/Verfolger/Party, Nach dem Map-Test, M2.5/M3, M4, M5, Meter/Glücksrad, Terrain/Streaming) und Feedback einarbeiten.
 
 ## Steuerung
 | Aktion | Tastatur | Gamepad | Touch |
@@ -294,6 +316,9 @@ Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 | Turbo-Pausenbrot (Upgrade) | F | RB | Button „Turbo“ |
 | Lufttrick: in der Luft drehen (sauber landen = Münzen, schief = Crash) | Q / E (E nur in der Luft, am Boden Aussteigen) | LB (Richtung vom Stick) | Button „Trick“ |
 | Hupe | H | Linken Stick drücken | Button „Hupe“ |
+| Mitfahren (am fremden Duo-/Chaos-Wagen) / Aussteigen als Mitfahrer | E | X | Hinweis antippen / Button „Raus“ |
+| Tomate werfen (Duo-Schütze hinten, zielt mit der Maus) | Linksklick | RT (Kamera = Ziel) | Button „Tomate“ |
+| Chaos: nur die eigenen Felder aus „DEINE STEUERUNG“ (gewohnte Tasten), Tomate = G | W/S/A/D, Leertaste, Shift, F, G | RT/LT, Steuerkreuz, A, B, RB, LB | Felder gedrückt halten |
 | Flugmodus (nur Studio, Schalter im F2-Panel): hoch / runter | Leertaste / Shift | A / B | Hopp / Normal |
 | Rückspulen (nur Studio bzw. Config.Rewind.EnabledLive): halten | Z | Steuerkreuz runter | Button „Zurueck“ |
-| Menü „Pausen-Kiosk“ (Shop, Strecken, Rekorde, Bestenliste, Hausaufgaben, Garage, Lackiererei, Erfolge, Einstellungen; nur außerhalb eines Laufs) | B | Select | Button „Shop“ |
+| Menü „Pausen-Kiosk“ (Shop, Strecken, Rekorde, Bestenliste, Hausaufgaben, Garage, Lackiererei, Erfolge, Einstellungen, Wagen; nur außerhalb eines Laufs) | B | Select | Button „Shop“ |

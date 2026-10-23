@@ -87,6 +87,8 @@ Hinweise:
 | 23 | Chaser | Langsam am Hund vorbei | Hund rennt dir nach, bleibt knapp hinter dem Wagen, gibt nach ~6 s auf, läuft heim |
 | 23 | Stabil-Zone (Hügel-Kuhfeld) | Schnell und schief über die Buckel | Wagen hüpft wild, kippt aber nicht um (dreht sich weich zurück), harter Aufprall = kein Crash; Kühe kosten weiter ein Leben |
 | 24 | Checkpoint 3 | Durchfahren | Hinweis „Checkpoint“ |
+| 24 | ItemBoxen (blaue Würfel) | Mit Duo-/Chaos-Wagen durchfahren | Würfel drehen sich; Crew bekommt Tomaten („Tomaten aufgefüllt!“), Würfel kurz blass. Solo: nichts |
+| – | Schild links neben dem Spawn | Lesen | Kurzanleitung Duo/Chaos (B → Reiter „Wagen“) |
 | 25 | Ziel (Zuschauer) | Schnell durchs Ziel | Zuschauer links und rechts hüpfen und jubeln („JUHU!“) |
 | 25 | Ziel | Durchs Ziel | Ergebnis mit Zeit, Note (Grenzen 50/65/80/100/130 s), Münzen, Leben, Treffer, Chaos; Münzen der Strecke sind wieder da |
 | 26 | Schule | Auf die Schulwand schauen | Zwei Tafeln: Bestenliste „Der Schulweg“ und „Weitester Kuh-Wurf“ mit Top 10 und „Du: Platz …“ (nach dem ersten Lauf/Wurf) |
@@ -222,6 +224,9 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/client/ComicText.luau` | Client | Comic-Text in der Welt, 3D-Einmal-Sound |
 | `src/client/Toolkit/AmbientSounds.luau`, `AmbientParticles.luau`, `BirdFlocks.luau`, `Villagers.luau`, `Spectators.luau`, `Nearby.luau` | Client | Umgebungsleben-Bausteine (nur in deiner Nähe aktiv) |
 | `src/client/Guides.luau` | Client | Barrieren (entlanggleiten, lenken), NoDamage, Stabil-Zone (Logik `Toolkit/GuideMath`, getestet) |
+| `src/server/Crew.luau` / `src/client/CrewClient.luau` | beide | Duo-/Chaos-Wagen: Typ wählen (Reiter „Wagen“), Einladen, Mitfahren mit E, Eingaben weiterleiten (Chaos), Neu-Mischen, Übergabe, Anzeige „DEINE STEUERUNG“ |
+| `src/shared/Crew/CrewRules.luau` / `TomatoMath.luau` | beiden | Crew-Logik (Bits, Verteilen, Mischen, Timeout, laufende Nummern, Munition, Tomaten-Schutz) und Wurfbahn/Treffer (getestet) |
+| `src/server/Tomato.luau` / `src/client/TomatoClient.luau` | beide | Tomaten: Server prüft Munition und Treffer, alle sehen den Flug, Matsch und Schubs beim Getroffenen; ItemBox |
 | `src/client/NearMiss.luau` / `src/server/NearMiss.luau` | beide | Near-Miss „KNAPP!“: Client erkennt, Server zahlt mit Grenzen (Logik `Progression/NearMissRules`) |
 | `src/server/Rewind.luau` | Server | Nimmt die Rückspul-Meldung an (nur wenn erlaubt), Meter pausieren, Lauf nicht für die Bestenliste |
 | `src/client/VisualFX.luau` | Client | Visuelle Extras: Speed-Linien, Landestaub, Boost-Flammen, Konfetti |
@@ -290,6 +295,7 @@ geschrieben wie in der Tabelle). Mehrere Tags pro Part sind erlaubt (z. B. `Move
 | `ForceZone` | Bereich drückt den Wagen Richtung Vorderseite (Wind, Rasensprenger, Förderband) | `Strength` (Studs/s²) – 60; `Pulse` (s, 0 = immer) – 0; `PulseOn` (0–1) – 0.5; `Phase` – 0; `ListenSignal`; `ActiveTime` (s) – 3 |
 | `NoDamage` | Part oder Model: Zusammenstoß ist nie ein Crash (auch nicht bei hartem Aufprall), kein Lebensverlust | – |
 | `Barrier` | Wand/Leitplanke, die lenkt: Der Wagen gleitet daran entlang und wird sanft in Fahrtrichtung zurückgedreht statt zu stoppen oder abzuprallen (glatt, ohne Reibung). Standardmäßig NoDamage; mit zusätzlichem Tag `Hazard` = gefährliche Barriere (Crash bei Berührung) | `Invisible` (Bool) – false (unsichtbare Begrenzung); `Bounce` (Studs/s) – 4 (wie stark sie zurückdrückt) |
+| `ItemBox` | Sichtbarer Würfel (Part, keine Kollision): Duo-/Chaos-Wagen fahren hindurch und füllen die Tomaten aller Mitfahrer auf (`Config.Tomato.ItemBoxRefill`), danach ist er für diese Crew `ItemBoxCooldown` s leer (blass). Dreht sich | – |
 | `StableZone` | Unsichtbarer Bereich (Part, keine Kollision): Darin kippt der Wagen nicht um – ab `MaxTilt` dreht er sich weich zurück (nur die Drehung, Tempo bleibt) – und harter Aufprall ist kein Crash. Hazard und Launchable wirken weiter. Weicher Übergang beim Rein-/Rausfahren | `MaxTilt` (Grad) – 25; `RightingSpeed` (rad/s) – 3; `NoCrash` (Bool) – true |
 | `AmbientSound` | Part als Klangquelle mit Schleife (Kuhglocken, Bach, Kirche). Nur die nächsten 8 in Hörweite spielen | `SoundId` – nötig; `Volume` – 0.5; `Range` (Studs) – 80; `Pitch` – 1 |
 | `AmbientParticles` | Bereich (Part, unsichtbar) mit Blättern, Pollen oder Staub; folgen dem `GlobalWind` (Workspace) | `Kind` („Leaves“, „Pollen“, „Dust“) – Leaves; `Rate` – je nach Kind; `Color` (Color3) |
@@ -1153,6 +1159,53 @@ Regler: F2 → Bausteine („Barriere: …“, „Stabil-Zone: …“). Für den
 | Kühe in der Zone | Station 23: eine Kuh treffen | Kuh fliegt, Leben weg (Launchable wirkt weiter) |
 | Raus aus der Zone | Station 23 verlassen, dann an einem normalen Hindernis hart aufprallen | Kurzer weicher Übergang, danach wieder normale Physik und Crashs |
 | MaxTilt | Attribut `MaxTilt` an „StabilZone“ auf 10 | Richtet schon bei kleiner Neigung auf |
+
+## Duo- und Chaos-Wagen testen
+
+So startest du mehrere Spieler in Studio: Reiter **Test** → bei „Clients and Servers“ **2** (Duo)
+bzw. **4** (Chaos) Spieler wählen → **Start**. Es öffnen sich ein Server-Fenster und ein Fenster
+pro Spieler (Player1, Player2 ...). Zwischen den Fenstern wechselst du in der Taskleiste.
+Zum Beenden im Server-Fenster **Cleanup** drücken. Alle Sounds sind leere Platzhalter
+(`Config.Sounds.TomatoThrow`, `TomatoSplat`, `ItemBox`, `ChaosShuffle`).
+
+**Duo (2 Spieler):**
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| Wagen wählen | Player1: B → Reiter „Wagen“ → „Duo“ | Wagen wird neu gebaut, hinten ein Sitz mit Lehne; über dem Wagen „Duo: 1 Platz frei“ (auch bei Player2 sichtbar) |
+| Einladen | Player1: im Reiter „Wagen“ bei Player2 „Einladen“ | Player2 bekommt ein Fenster „… lädt dich in den Duo-Wagen ein“; „Annehmen“ setzt ihn hinten hinein, der eigene Wagen von Player2 verschwindet |
+| Mitfahren mit E | Statt Einladung: Player2 läuft zu Fuß zum Wagen | Hinweis „Mitfahren – Player1s Duo-Wagen“, E setzt ihn auf den freien Platz |
+| Gemeinsamer Lauf | Beim Einsteigen | Lauf startet neu (Zeit 0); beide sehen dieselbe Zeit, Leben, Checkpoints, Ergebnis |
+| Kamera | Player2 im Wagen | Kamera folgt dem Wagen, Fahrer lenkt; W/A/S/D bei Player2 bewegen nichts, Leertaste wirft ihn nicht raus |
+| Zielen | Player2: Maus bewegen | Rotes Fadenkreuz folgt der Maus, unten rechts „Tomaten: 5 / 5“ |
+| Werfen | Player2: Linksklick (Gamepad RT, Touch „Tomate“) | Rote Kugel fliegt im Bogen, Zähler sinkt; leer = „Keine Tomaten mehr …“; lädt alle 6 s eine nach |
+| Treffer | Player3 (3 Spieler starten) läuft zu Fuß oder fährt **ohne Lauf**; Player2 wirft auf ihn | Player3: roter Matsch auf dem Bildschirm (4 s), Schubs, „Tomate von …“; Player2: „Treffer: …“. Kein Leben weg |
+| Solo-Schutz | Player3 fährt einen Lauf (Startzone durchfahren), Player2 wirft | Kein Treffer (Tomate fliegt durch). Player3: B → Einstellungen → „Im Solo-Lauf mit Tomaten bewerfbar“ an → jetzt trifft es |
+| ItemBox | Duo-Wagen fährt durch Station 24 | „Tomaten aufgefüllt!“, Würfel blass für 10 s |
+| Münzen | Player1 sammelt Münzen / fährt ins Ziel | Beide bekommen die Münzen und die Zielbelohnung |
+| Bestenliste | Ziel erreichen, B → Bestenliste | Zeit steht unter „…@Duo“ (eigene Liste), nicht in der Solo-Liste; kein Geist |
+| R / T | Player2 drückt R oder T | Wirkt wie beim Fahrer (Checkpoint bzw. Neustart für beide) |
+| Crash | Player1 crasht (Schalter „Tode“ im F2-Panel an) | Beide fliegen als Ragdoll; nach dem Neustart sitzen beide wieder |
+| Aussteigen | Player2: E (oder B → Wagen → „Aussteigen“) | Player2 bekommt seinen eigenen Wagen zurück, Schild wieder „1 Platz frei“ |
+| Fahrer geht | Player1-Fenster schließen (oder Figur zurücksetzen: Esc → Reset) | Kurz Stillstand (~0,2 s), dann fährt Player2 den Wagen weiter (Lauf, Zeit, Leben bleiben), Hinweis „Player2 fährt jetzt den Wagen“ |
+| Zurück zu Solo | Player1: B → Wagen → „Solo“ | Mitfahrer steigen aus, normaler Einkaufswagen |
+
+**Chaos (4 Spieler):**
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| Wagen wählen | Player1: B → Wagen → „Chaos“ | Breiter Wagen mit Bänken links/rechts und vorne, Schild „Chaos: 3 Plätze frei“ |
+| Allein | Player1 fährt ohne Mitfahrer | Normale Steuerung (alles bei Player1), keine Anzeige |
+| Einsteigen | Player2–4 einladen oder mit E einsteigen | „CHAOS-WAGEN“; jeder sieht unten groß „DEINE STEUERUNG“ mit seinen Feldern, z. B. „GAS [W]“, „TOMATE [G]“ |
+| Verteilt fahren | Jeder drückt nur seine Tasten | Wagen reagiert auf alle zusammen; wer z. B. „LINKS“ hat, lenkt links. Tasten, die man nicht hat, tun nichts |
+| Loslassen-Timeout | Fenster eines Mitfahrers, der „GAS“ hält, wegklicken (Taste bleibt nicht gedrückt) | Spätestens nach 0,5 s gilt „GAS“ als losgelassen |
+| Sprung / Boost | Wer „SPRUNG“ hat: Leertaste; wer „BOOST“ hat: F | Hopp bzw. Turbo-Pausenbrot (Upgrade des Fahrers) oder ohne Pausenbrot ein kleiner Schub (4 s Abklingzeit) |
+| Tomate | Wer „TOMATE“ hat: G | Tomate fliegt nach vorne; Munition gehört diesem Spieler |
+| Neu mischen | 30 s warten | „Neue Steuerung in 3 … 2 … 1 …“, dann „NEUE STEUERUNG!“ und neue Felder |
+| Mitfahrer geht | Player3 steigt aus (E) | Felder werden auf die übrigen verteilt |
+| Unter 2 Spielern | Alle Mitfahrer steigen aus | Player1 hat wieder alles; Lauf zählt nicht für die Chaos-Bestenliste |
+| Touch | Mitfahrer am Handy (Studio: Gerät-Emulator) | Die Felder in „DEINE STEUERUNG“ gedrückt halten = Taste |
+| Verzögerung | `Config.Crew.HostInputDelay = 0.15` setzen | Fahrer reagiert so verzögert wie die Mitfahrer (fairer); Standard 0 = aus |
 
 ## Atmosphäre testen (Tempogefühl, Umgebungsleben, Sound-Landschaft, Near-Miss)
 

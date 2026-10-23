@@ -862,7 +862,20 @@ station(23, "Chaser: der Hund rennt dir nach; Huegel-Kuhfeld = Stabil-Zone", fal
 	})
 end)
 
-station(24, "Checkpoint 3", true, function(s)
+station(24, "Checkpoint 3 + ItemBoxen (Tomaten auffuellen, nur Duo/Chaos)", true, function(s)
+	for _, x in { -8, 8 } do
+		part({
+			Name = "ItemBox",
+			Size = Vector3.new(4, 4, 4),
+			CFrame = frame(s - 6, x, 3) * CFrame.Angles(math.rad(45), 0, math.rad(45)),
+			Color = Color3.fromRGB(120, 200, 255),
+			Material = Enum.Material.Neon,
+			Transparency = 0.2,
+			CanCollide = false,
+			Tags = { "ItemBox" },
+			Parent = track,
+		})
+	end
 	zone(
 		track,
 		"Checkpoint3",
@@ -1500,6 +1513,9 @@ do
 		})
 	end
 end
+
+-- Hinweis fuer Duo/Chaos neben dem Spawn (Test -> Server mit 2 bzw. 4 Spielern)
+sign(track, 12, "Duo / Chaos: B -> Reiter Wagen, Typ waehlen, einladen oder mit E einsteigen", -40)
 
 -- SpawnLocation neben dem Start
 local spawnLocation = Instance.new("SpawnLocation")
