@@ -35,6 +35,7 @@ local oneShots: { [string]: Sound } = {}
 local engineSound: Sound? = nil
 local driftSound: Sound? = nil
 local windSound: Sound? = nil
+local globalMusic: Sound? = nil -- Config.Sounds.Music (siehe SoundSystem.music)
 
 -- 1234567, "1234567" oder "rbxassetid://1234567" -> "rbxassetid://1234567"; leer -> nil
 local function toSoundId(id: unknown): string?
@@ -85,6 +86,7 @@ function SoundSystem.init()
 	if music then
 		music:Play()
 	end
+	globalMusic = music
 	for name in Config.Sounds :: { [string]: any } do
 		-- Dauer-Sounds und Ambiente (macht Soundscape) sind keine Einmal-Sounds
 		if LOOPED[name] or string.sub(name, 1, 8) == "Ambience" then
@@ -95,6 +97,12 @@ function SoundSystem.init()
 			oneShots[name] = sound
 		end
 	end
+end
+
+-- Allgemeine Hintergrundmusik (Config.Sounds.Music), damit Soundscape sie leiser machen oder
+-- durch Strecken-Musik ersetzen kann. nil = keine Id eingetragen.
+function SoundSystem.music(): Sound?
+	return globalMusic
 end
 
 -- Einmal-Sound abspielen (von vorne). Ohne ID passiert nichts.

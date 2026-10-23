@@ -33,6 +33,7 @@ local LaunchablesClient = require(script.Parent:WaitForChild("LaunchablesClient"
 local FlyMode = require(script.Parent:WaitForChild("FlyMode"))
 local Horn = require(script.Parent:WaitForChild("Horn"))
 local WheelDust = require(script.Parent:WaitForChild("WheelDust"))
+local Soundscape = require(script.Parent:WaitForChild("Soundscape"))
 local PartyState = require(script.Parent:WaitForChild("PartyState"))
 local PartyUI = require(script.Parent:WaitForChild("PartyUI"))
 local Pursuers = require(script.Parent:WaitForChild("Toolkit"):WaitForChild("Pursuers"))
@@ -236,6 +237,7 @@ end)
 Tricks.init() -- Lufttricks (Anzeige)
 Rewind.init() -- Rueckspulen (Zeitleiste)
 Horn.init() -- Hupen aller Spieler abspielen
+Soundscape.init() -- Ambiente je Bereich, Strecken-Musik
 -- Verfolger (Pursuer) hat uns erwischt: Leben weg (Server) und kurz wegschleudern
 Pursuers.onCaught(function(gameOverOnCatch: boolean, push: Vector3, name: string)
 	local current = controller
@@ -714,6 +716,9 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 			PartyUI.onRespawn() -- Party: eingestuerzte Arena-Teile wieder einstuerzen
 		end
 		onReset(spawnCFrame)
+	elseif kind == "Track" then
+		local trackId: string = ...
+		Soundscape.setTrack(trackId)
 	elseif kind == "Events" then
 		-- neuer Lauf: Server hat gewuerfelt, welche Zufallsereignisse aktiv sind
 		RandomEventsClient.setSelection(...)
@@ -955,6 +960,7 @@ RunService.PreSimulation:Connect(function(dt)
 
 	local current = controller
 	if not current then
+		Soundscape.setTelemetry(nil)
 		DriftEffects.update(dt, nil) -- alte Reifenspuren verblassen trotzdem weiter
 		Toolkit.step({ dt = dt }) -- Baukasten laeuft weiter (z. B. Auto-Strom)
 		return
@@ -1055,6 +1061,7 @@ RunService.PreSimulation:Connect(function(dt)
 	end
 	DriftEffects.update(dt, telemetry)
 	WheelDust.update(dt, telemetry)
+	Soundscape.setTelemetry(telemetry) -- Musik-Intensitaet, Stille bei Spruengen
 	VisualFX.update(dt, telemetry) -- Speed-Linien, Boost-Flammen
 	StatReporter.step(dt, telemetry, runPhase == "Running") -- Driftzeit fuer die Hausaufgaben
 	SoundSystem.update(telemetry.speed, telemetry.grounded, telemetry.skidding)
