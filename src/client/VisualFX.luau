@@ -12,6 +12,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local SpeedFeel = require(
+	game:GetService("ReplicatedStorage")
+		:WaitForChild("Shared")
+		:WaitForChild("Atmosphere")
+		:WaitForChild("SpeedFeel")
+)
 local CartController = require(script.Parent:WaitForChild("CartController"))
 local Settings = require(script.Parent:WaitForChild("Settings"))
 
@@ -119,11 +125,15 @@ function VisualFX.update(dt: number, telemetry: CartController.Telemetry)
 	if current then
 		current.Enabled = on and telemetry.boosting
 	end
+	-- Speed-Linien am Rand: ab Atmosphere.SpeedLinesStart und waehrend eines Boosts
+	local A = Config.Atmosphere
 	local intensity = if on
-		then math.clamp(
-			(telemetry.speed - E.SpeedLinesStart) / math.max(E.SpeedLinesFull - E.SpeedLinesStart, 1),
-			0,
-			1
+		then SpeedFeel.speedLines(
+			telemetry.speed,
+			A.TopSpeed,
+			A.SpeedLinesStart,
+			telemetry.boosting,
+			A.BoostSpeedLines
 		)
 		else 0
 	for _, line in lines do

@@ -283,8 +283,6 @@ Config.Cosmetics = {
 -- Visuelle Extras (nur Optik, nur beim eigenen Spieler; in den Einstellungen abschaltbar):
 -- Speed-Linien am Bildrand, Staub bei harten Landungen, Flammen beim Boost, Konfetti im Ziel.
 Config.Effects = {
-	SpeedLinesStart = 90, -- ab diesem Tempo (Studs/s) erscheinen Speed-Linien ...
-	SpeedLinesFull = 180, -- ... und sind hier voll da
 	SpeedLineCount = 16,
 	SpeedLineTransparency = 0.55, -- 0 = deckend, 1 = unsichtbar (bei vollem Tempo)
 	DustMinFallSpeed = 30, -- ab dieser Fallgeschwindigkeit (Studs/s) staubt die Landung
@@ -784,6 +782,18 @@ Config.Sounds = {
 	HornBike = { Id = "", Volume = 0.9 }, -- Fahrrad-Troete
 	HornMoo = { Id = "", Volume = 0.9 }, -- Kuh-Muh
 	HornTrain = { Id = "", Volume = 0.9 }, -- Zug-Horn
+	-- Atmosphaere (Platzhalter, Ids selbst eintragen)
+	Wind = { Id = "", Volume = 0.6 }, -- Fahrtwind (Schleife), lauter und hoeher mit dem Tempo
+	AmbienceWind = { Id = "", Volume = 0.5 }, -- Grund-Ambiente (Wind)
+	AmbienceMeadow = { Id = "", Volume = 0.5 }, -- Wiese (Grillen, Voegel)
+	AmbienceForest = { Id = "", Volume = 0.5 }, -- Wald
+	AmbienceVillage = { Id = "", Volume = 0.5 }, -- Dorf
+	AmbienceStream = { Id = "", Volume = 0.5 }, -- Bach
+	BirdsFly = { Id = "", Volume = 0.7 }, -- Voegel fliegen auf
+	VillagerScold = { Id = "", Volume = 0.8 }, -- Dorfbewohner schimpft
+	VillagerWave = { Id = "", Volume = 0.6 }, -- Dorfbewohner gruesst
+	Cheer = { Id = "", Volume = 0.7 }, -- Zuschauer jubeln
+	NearMiss = { Id = "", Volume = 0.7 }, -- "KNAPP!"
 	PursuerWarn = { Id = "", Volume = 0.8 }, -- Verfolger ist nah (Hupe/Schrei; Attribut "Sound")
 	PursuerCatch = { Id = "", Volume = 0.9 }, -- Verfolger hat dich erwischt
 	PursuerCrash = { Id = "", Volume = 0.9 }, -- Verfolger kracht im Ziel in den Zaun
@@ -975,6 +985,29 @@ Config.TuningPanel = {
 		},
 	},
 	{
+		title = "Atmosphaere",
+		items = {
+			{ label = "Hoechsttempo fuer Effekte", path = "Atmosphere.TopSpeed" },
+			{ label = "Sichtfeld ab (Anteil)", path = "Atmosphere.FovStart" },
+			{ label = "Sichtfeld extra (Grad)", path = "Atmosphere.FovExtra" },
+			{ label = "Boost-Sichtfeld (Grad)", path = "Camera.BoostFovKick" },
+			{ label = "Speed-Linien ab (Anteil)", path = "Atmosphere.SpeedLinesStart" },
+			{ label = "Tempo-Zittern (Grad)", path = "Atmosphere.SpeedShake" },
+			{ label = "Fahrtwind Lautstaerke", path = "Atmosphere.WindVolume" },
+			{ label = "Radpartikel max.", path = "Atmosphere.WheelMaxRate" },
+			{ label = "Radpartikel beim Driften (x)", path = "Atmosphere.WheelDriftFactor" },
+			{ label = "Ambiente Ueberblenden (s)", path = "Soundscape.FadeTime" },
+			{ label = "Strecken-Musik Lautstaerke", path = "Soundscape.MusicVolume" },
+			{ label = "Musik: 2. Spur ab (Anteil)", path = "Soundscape.IntenseStart" },
+			{ label = "Stille ab Flugzeit (s)", path = "Soundscape.SilenceAirTime" },
+			{ label = "Voegel: Aufflug-Radius", path = "Ambient.Birds.TriggerRadius" },
+			{ label = "Dorfbewohner: Reaktions-Radius", path = "Ambient.Villager.ReactRadius" },
+			{ label = "Zuschauer: Jubel-Radius", path = "Ambient.Spectator.CheerRadius" },
+			{ label = "Near-Miss: Abstand", path = "NearMiss.Distance" },
+			{ label = "Near-Miss: Muenzen", path = "NearMiss.Coins", server = true },
+		},
+	},
+	{
 		title = "Hupe, Verfolger, Party",
 		items = {
 			{ label = "Hupe: Abklingzeit (s)", path = "Horn.Cooldown", server = true },
@@ -1108,6 +1141,135 @@ Config.Debug = {
 	Rewind = true, -- true = Rueckspulen (Z) in Studio an (live: Config.Rewind.EnabledLive)
 }
 
+-- Atmosphaere: Tempogefuehl (Sichtfeld, Speed-Linien, Zittern, Fahrtwind, Partikel an den
+-- Raedern). Alles haengt am Anteil von TopSpeed (0..1). Regler: F2 -> Atmosphaere.
+Config.Atmosphere = {
+	TopSpeed = 140, -- "Hoechsttempo" fuer die Effekte (Studs/s, etwa 140 km/h)
+	FovStart = 0.7, -- ab 70 % Hoechsttempo wird das Sichtfeld weiter ...
+	FovExtra = 10, -- ... um bis zu so viele Grad (Boost: zusaetzlich Camera.BoostFovKick)
+	FovSmoothing = 3, -- wie schnell das Sichtfeld folgt (weich)
+	SpeedLinesStart = 0.8, -- Speed-Linien am Rand ab 80 % Hoechsttempo ...
+	BoostSpeedLines = 0.7, -- ... und beim Boost mindestens so stark (0..1)
+	SpeedShakeStart = 0.75, -- leichtes Kamerazittern ab 75 % ...
+	SpeedShake = 0.5, -- ... bis so viele Grad (Einstellung "Tempo-Zittern" schaltet es ab)
+	WindStart = 0.15, -- Fahrtwind ab 15 % hoerbar (Sound: Config.Sounds.Wind)
+	WindVolume = 0.6,
+	WindMinPitch = 0.8,
+	WindMaxPitch = 1.5,
+	-- Partikel an den Raedern je nach Untergrund (Material unter dem Rad)
+	WheelMinSpeed = 8, -- darunter keine
+	WheelMaxRate = 40, -- hoechstens so viele pro Sekunde und Rad
+	WheelDriftFactor = 3, -- beim Driften so viel mehr
+	WheelCheckInterval = 0.1, -- so oft (s) wird der Untergrund geprueft
+	Surfaces = {
+		Grass = { Rate = 22, Color = Color3.fromRGB(90, 160, 60), Size = 0.5 },
+		Dirt = { Rate = 30, Color = Color3.fromRGB(140, 105, 70), Size = 0.8 },
+		Asphalt = { Rate = 6, Color = Color3.fromRGB(170, 170, 170), Size = 0.6 },
+		Snow = { Rate = 35, Color = Color3.fromRGB(245, 250, 255), Size = 0.7 },
+	},
+}
+
+-- Umgebungsleben: Bausteine per Tag (client-seitig, nur in deiner Naehe aktiv, mit Obergrenzen)
+-- AmbientSound, AmbientParticles, BirdFlock, Villager, Spectator (siehe README)
+Config.Ambient = {
+	CheckInterval = 0.5, -- so oft (s) wird geprueft, was in der Naehe ist
+	Sound = { Range = 80, Volume = 0.5, MaxActive = 8 },
+	Particles = {
+		Range = 200, -- nur so nah (Studs) aktiv
+		MaxActive = 6,
+		WindDrag = 1.5, -- wie stark sie dem GlobalWind folgen (0 = gar nicht)
+		Kinds = {
+			Leaves = { Rate = 6, Color = Color3.fromRGB(200, 130, 40), Size = 0.6, Lifetime = 6, Speed = 2 },
+			Pollen = {
+				Rate = 12,
+				Color = Color3.fromRGB(255, 240, 150),
+				Size = 0.15,
+				Lifetime = 8,
+				Speed = 0.5,
+			},
+			Dust = { Rate = 8, Color = Color3.fromRGB(200, 180, 150), Size = 0.4, Lifetime = 4, Speed = 1 },
+		},
+	},
+	Birds = {
+		Count = 6, -- Voegel pro Schwarm (Attribut "Count")
+		TriggerRadius = 35, -- so nah = sie fliegen auf (Attribut "TriggerRadius")
+		Range = 200, -- nur so nah aktiv
+		MaxActive = 6,
+		FlySpeed = 30,
+		FlyTime = 4, -- Sekunden, dann sind sie weg ...
+		RespawnTime = 20, -- ... und sitzen nach so vielen Sekunden wieder da (wenn du weg bist)
+	},
+	Villager = {
+		Range = 200,
+		MaxActive = 20,
+		ReactRadius = 14, -- so nah faehrt der Wagen vorbei = Reaktion (Attribut "ReactRadius")
+		ReactMinSpeed = 20, -- nur, wenn der Wagen so schnell ist
+		Cooldown = 4,
+		WalkSpeed = 4, -- Attribut "WalkRadius" > 0: laeuft herum
+		DodgeDistance = 7, -- springt so weit zur Seite
+		DodgeTime = 0.45,
+		ScoldTexts = { "HEY!", "PASS DOCH AUF!", "RASER!", "UNERHOERT!" },
+		WaveTexts = { "HALLO!", "GUTE FAHRT!", "HUHU!" },
+	},
+	Spectator = {
+		Range = 220,
+		MaxActive = 40,
+		CheerRadius = 45, -- Vorbeifahrt, Sprung oder Kuh-Wurf so nah = Jubel
+		CheerMinSpeed = 25,
+		Cooldown = 3,
+		JumpHeight = 2,
+		CheerTexts = { "JUHU!", "WOW!", "SUPER!", "YEAH!", "BRAVO!" },
+	},
+}
+
+-- Sound-Landschaft: Ambiente je Bereich (Tag "SoundZone", Attribut Ambience) mit weicher
+-- Ueberblendung, Musik pro Strecke (Attribute MusicId / MusicIntenseId am Track-Model),
+-- zweite Spur je nach Tempo/Boost, Stille bei grossen Spruengen.
+Config.Soundscape = {
+	CheckInterval = 0.25,
+	FadeTime = 2, -- Sekunden fuer das Ueberblenden des Ambientes
+	-- Ambience-Name -> Eintrag in Config.Sounds (Attribut "SoundId" an der Zone geht vor)
+	Ambiences = {
+		Default = "AmbienceWind",
+		Meadow = "AmbienceMeadow",
+		Forest = "AmbienceForest",
+		Village = "AmbienceVillage",
+		Stream = "AmbienceStream",
+	},
+	AmbienceVolume = 0.5,
+	MusicVolume = 0.5, -- Strecken-Musik (dazu die Einstellung "Musik")
+	IntenseStart = 0.6, -- zweite Spur ab 60 % Hoechsttempo, beim Boost voll
+	IntenseFade = 0.8,
+	SilenceAirTime = 0.7, -- so lange in der Luft = grosser Sprung: Musik fast still ...
+	SilenceVolume = 0.15, -- ... auf diesen Anteil
+	SilenceFade = 0.25,
+}
+
+-- Near-Miss: knapp an Hindernissen, Autos oder Kuehen vorbei = "KNAPP!" und Muenzen
+Config.NearMiss = {
+	Distance = 4, -- so nah (Studs zwischen den Umrissen) zaehlt als knapp ...
+	TouchPadding = 0.6, -- ... aber nicht beruehrt (sonst kein Bonus)
+	MinSpeed = 30, -- nur bei so viel Tempo
+	MinObjectSpeed = 3, -- Hazard/Schubs-Objekte zaehlen nur, wenn sie sich bewegen
+	Coins = 2, -- Muenzen pro Near-Miss (Server zahlt)
+	Cooldown = 1.5, -- dasselbe Objekt hoechstens so oft
+	MinInterval = 0.5, -- Server: hoechstens so oft ueberhaupt
+	MaxPerRun = 30, -- Server: hoechstens so viele pro Lauf
+	Texts = { "KNAPP!", "PUH!", "HAARSCHARF!", "UFF!" },
+	-- Diese Bausteine zaehlen immer (dazu bewegte Hazard/SoftHit-Objekte wie Autos, Steine)
+	Tags = {
+		"Launchable",
+		"LocalLaunchable",
+		"Mover",
+		"Spinner",
+		"Pendulum",
+		"PathMover",
+		"Gate",
+		"Chaser",
+		"Pursuer",
+	},
+}
+
 -- Verfolgerkamera
 Config.Camera = {
 	Distance = 17, -- Abstand hinter dem Wagen (vorher 14)
@@ -1116,14 +1278,10 @@ Config.Camera = {
 	LookHeight = 2,
 	PositionSmoothing = 12, -- groesser = Kamera folgt straffer
 	RotationSmoothing = 5,
-	BaseFov = 76, -- Sichtfeld (vorher 70)
-	MaxFov = 95,
-	FovFullSpeed = 100, -- bei diesem Tempo ist MaxFov erreicht
+	BaseFov = 76, -- Sichtfeld (vorher 70); mehr bei hohem Tempo: Config.Atmosphere
 	CollisionPadding = 0.5, -- Abstand zu Waenden, damit die Kamera nicht hindurchschaut
 
-	-- Kamera-Wackeln (Winkel in Grad)
-	ShakeSpeedStart = 60, -- ab diesem Tempo beginnt das Wackeln ...
-	ShakeAtFullSpeed = 0.6, -- ... und ist bei FovFullSpeed so stark
+	-- Kamera-Wackeln (Winkel in Grad); Zittern bei hohem Tempo: Config.Atmosphere
 	LandingShakeMinSpeed = 25, -- harte Landung: ab dieser Fallgeschwindigkeit (Studs/s) wackelt es
 	LandingShakePerSpeed = 0.06, -- Wackeln pro Studs/s ueber LandingShakeMinSpeed
 	ShakeMaxAngle = 3, -- Obergrenze, damit niemandem schlecht wird

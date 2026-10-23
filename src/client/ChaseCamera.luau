@@ -11,6 +11,12 @@ local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local Settings = require(script.Parent:WaitForChild("Settings"))
+local SpeedFeel = require(
+	game:GetService("ReplicatedStorage")
+		:WaitForChild("Shared")
+		:WaitForChild("Atmosphere")
+		:WaitForChild("SpeedFeel")
+)
 
 local ChaseCamera = {}
 
@@ -160,17 +166,19 @@ local function update(dt: number)
 	end
 	position = current
 
-	-- Mehr Sichtfeld bei hohem Tempo (Geschwindigkeitsgefuehl)
+	-- Mehr Sichtfeld ab ca. 70 % Hoechsttempo (Tempogefuehl, Config.Atmosphere), weich
+	local A = Config.Atmosphere
 	local speed = part.AssemblyLinearVelocity.Magnitude
-	local targetFov = C.BaseFov + (C.MaxFov - C.BaseFov) * math.clamp(speed / C.FovFullSpeed, 0, 1)
-	fov += (targetFov - fov) * smoothing(4, dt)
+	local targetFov = C.BaseFov + SpeedFeel.fovExtra(speed, A.TopSpeed, A.FovStart, A.FovExtra)
+	fov += (targetFov - fov) * smoothing(A.FovSmoothing, dt)
 	fovKick *= math.exp(-C.BoostFovDecay * dt)
 	camera.FieldOfView = fov + fovKick
 
-	-- Kamera-Wackeln: etwas bei hohem Tempo, mehr nach harten Landungen.
-	-- math.noise liefert weiches Rauschen (kein hektisches Zufalls-Zittern).
-	local speedShake = C.ShakeAtFullSpeed
-		* math.clamp((speed - C.ShakeSpeedStart) / math.max(C.FovFullSpeed - C.ShakeSpeedStart, 1), 0, 1)
+	-- Kamera-Wackeln: leicht bei hohem Tempo (Einstellung "Tempo-Zittern"), mehr nach harten
+	-- Landungen. math.noise liefert weiches Rauschen (kein hektisches Zufalls-Zittern).
+	local speedShake = if Settings.get("SpeedShake")
+		then A.SpeedShake * SpeedFeel.ramp(SpeedFeel.fraction(speed, A.TopSpeed), A.SpeedShakeStart)
+		else 0
 	landingShake *= math.exp(-C.ShakeDecay * dt)
 	local shake = math.min(speedShake + landingShake, C.ShakeMaxAngle)
 	if not Settings.get("CameraShake") then

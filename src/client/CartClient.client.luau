@@ -32,6 +32,7 @@ local SpinUI = require(script.Parent:WaitForChild("SpinUI"))
 local LaunchablesClient = require(script.Parent:WaitForChild("LaunchablesClient"))
 local FlyMode = require(script.Parent:WaitForChild("FlyMode"))
 local Horn = require(script.Parent:WaitForChild("Horn"))
+local WheelDust = require(script.Parent:WaitForChild("WheelDust"))
 local PartyState = require(script.Parent:WaitForChild("PartyState"))
 local PartyUI = require(script.Parent:WaitForChild("PartyUI"))
 local Pursuers = require(script.Parent:WaitForChild("Toolkit"):WaitForChild("Pursuers"))
@@ -318,6 +319,7 @@ local function deactivate()
 	Horn.deactivate()
 	VisualFX.detach()
 	DriftEffects.detach()
+	WheelDust.detach()
 	SoundSystem.detach()
 	local humanoid = activeHumanoid
 	if humanoid then
@@ -393,6 +395,7 @@ local function activate(seat: BasePart, humanoid: Humanoid)
 	end)
 
 	DriftEffects.attach(cart, character)
+	WheelDust.attach(cart, character) -- Partikel je nach Untergrund
 	VisualFX.attach(cart) -- Staub, Boost-Flammen
 	SoundSystem.attach(cart)
 end
@@ -1045,6 +1048,7 @@ RunService.PreSimulation:Connect(function(dt)
 		crashDetector:relaxImpact(Config.Track.JumpLandingTolerance, airTime)
 	end
 	DriftEffects.update(dt, telemetry)
+	WheelDust.update(dt, telemetry)
 	VisualFX.update(dt, telemetry) -- Speed-Linien, Boost-Flammen
 	StatReporter.step(dt, telemetry, runPhase == "Running") -- Driftzeit fuer die Hausaufgaben
 	SoundSystem.update(telemetry.speed, telemetry.grounded, telemetry.skidding)

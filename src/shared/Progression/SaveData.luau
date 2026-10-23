@@ -67,6 +67,7 @@ export type Settings = {
 	MusicVolume: number, -- 0..1
 	EffectsVolume: number, -- 0..1
 	MuteHorns: boolean, -- Hupen anderer Spieler stummschalten
+	SpeedShake: boolean, -- leichtes Kamerazittern bei hohem Tempo
 }
 
 -- Standardwerte; nur diese Schluessel gibt es (der Client darf nichts anderes setzen)
@@ -77,6 +78,7 @@ SaveData.SETTINGS_DEFAULTS = {
 	MusicVolume = 0.5,
 	EffectsVolume = 1,
 	MuteHorns = false,
+	SpeedShake = true,
 } :: Settings
 
 export type Data = {

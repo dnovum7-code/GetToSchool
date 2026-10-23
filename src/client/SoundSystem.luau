@@ -10,12 +10,18 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local SpeedFeel = require(
+	game:GetService("ReplicatedStorage")
+		:WaitForChild("Shared")
+		:WaitForChild("Atmosphere")
+		:WaitForChild("SpeedFeel")
+)
 local Settings = require(script.Parent:WaitForChild("Settings"))
 
 local SoundSystem = {}
 
 -- Dauer-Sounds; alle anderen Eintraege in Config.Sounds sind Einmal-Sounds
-local LOOPED = { Engine = true, Drift = true, Music = true }
+local LOOPED = { Engine = true, Drift = true, Music = true, Wind = true }
 
 -- Lautstaerke-Gruppen (Einstellungen: Musik / Effekte), wie Mixer-Gruppen in Unity
 local effectsGroup = Instance.new("SoundGroup")
@@ -28,6 +34,7 @@ musicGroup.Parent = SoundService
 local oneShots: { [string]: Sound } = {}
 local engineSound: Sound? = nil
 local driftSound: Sound? = nil
+local windSound: Sound? = nil
 
 -- 1234567, "1234567" oder "rbxassetid://1234567" -> "rbxassetid://1234567"; leer -> nil
 local function toSoundId(id: unknown): string?
@@ -79,7 +86,8 @@ function SoundSystem.init()
 		music:Play()
 	end
 	for name in Config.Sounds :: { [string]: any } do
-		if LOOPED[name] then
+		-- Dauer-Sounds und Ambiente (macht Soundscape) sind keine Einmal-Sounds
+		if LOOPED[name] or string.sub(name, 1, 8) == "Ambience" then
 			continue
 		end
 		local sound = makeSound(name, SoundService, false)
@@ -133,7 +141,8 @@ function SoundSystem.attach(cart: Model)
 	end
 	engineSound = makeSound("Engine", base, true)
 	driftSound = makeSound("Drift", base, true)
-	for _, sound in { engineSound, driftSound } do
+	windSound = makeSound("Wind", base, true) -- Fahrtwind (Config.Atmosphere)
+	for _, sound in { engineSound, driftSound, windSound } do
 		if sound then
 			sound.Volume = 0
 			sound:Play()
@@ -142,13 +151,14 @@ function SoundSystem.attach(cart: Model)
 end
 
 function SoundSystem.detach()
-	for _, sound in { engineSound, driftSound } do
+	for _, sound in { engineSound, driftSound, windSound } do
 		if sound then
 			sound:Destroy()
 		end
 	end
 	engineSound = nil
 	driftSound = nil
+	windSound = nil
 end
 
 -- Jeden Frame: Tonhoehe/Lautstaerke an Tempo und Drift anpassen
@@ -160,6 +170,15 @@ function SoundSystem.update(speed: number, grounded: boolean, drifting: boolean)
 		engine.PlaybackSpeed = E.MinPitch + (E.MaxPitch - E.MinPitch) * t
 		-- leise im Stand und in der Luft
 		engine.Volume = E.Volume * t * (if grounded then 1 else 0.3)
+	end
+	-- Fahrtwind: lauter und hoeher mit dem Tempo
+	local wind = windSound
+	if wind then
+		local A = Config.Atmosphere
+		local volume, pitch =
+			SpeedFeel.wind(speed, A.TopSpeed, A.WindStart, A.WindVolume, A.WindMinPitch, A.WindMaxPitch)
+		wind.Volume += (volume - wind.Volume) * 0.2
+		wind.PlaybackSpeed = pitch
 	end
 	local drift = driftSound
 	if drift then
