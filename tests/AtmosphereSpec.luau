@@ -1,5 +1,6 @@
 --!strict
 local TestLib = require("./TestLib")
+local AmbientLogic = require("../src/shared/Atmosphere/AmbientLogic")
 local SpeedFeel = require("../src/shared/Atmosphere/SpeedFeel")
 
 local describe, it, expect = TestLib.describe, TestLib.it, TestLib.expect
@@ -57,6 +58,33 @@ describe("SpeedFeel (Tempogefuehl)", function()
 		expect(SpeedFeel.approach(0, 1, 0.5, 2)).toBe(0.25)
 		expect(SpeedFeel.approach(0.9, 1, 0.5, 2)).toBe(1)
 		expect(SpeedFeel.approach(1, 0, 1, 2)).toBe(0.5)
+	end)
+end)
+
+describe("AmbientLogic (Umgebungsleben)", function()
+	it("nur die naechsten innerhalb der Reichweite, mit Obergrenze", function()
+		expect(AmbientLogic.pickActive({ 50, 10, 300, 20, 30 }, 100, 3)).toEqual({ 2, 4, 5 })
+		expect(AmbientLogic.pickActive({ 500, 600 }, 100, 3)).toEqual({})
+		expect(AmbientLogic.pickActive({ 1, 2 }, 100, 0)).toEqual({})
+	end)
+
+	it("Reaktion fest oder zufaellig", function()
+		expect(AmbientLogic.reaction("Wave", 0.1)).toBe("Wave")
+		expect(AmbientLogic.reaction(nil, 0)).toBe("Dodge")
+		expect(AmbientLogic.reaction("Random", 0.5)).toBe("Scold")
+		expect(AmbientLogic.reaction("Quatsch", 0.99)).toBe("Wave")
+	end)
+
+	it("springt auf seine Seite weg von der Fahrspur", function()
+		-- Wagen faehrt nach vorne (-Z); links ist -X
+		expect(AmbientLogic.dodgeSide(0, -1, -2, 0)).toBe(1) -- steht links: nach links
+		expect(AmbientLogic.dodgeSide(0, -1, 2, 0)).toBe(-1) -- steht rechts: nach rechts
+	end)
+
+	it("Hopser als Parabel", function()
+		expect(AmbientLogic.hop(0, 1, 2)).toBe(0)
+		expect(AmbientLogic.hop(0.5, 1, 2)).toBe(2)
+		expect(AmbientLogic.hop(1.2, 1, 2)).toBe(0)
 	end)
 end)
 

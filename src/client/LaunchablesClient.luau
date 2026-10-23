@@ -26,6 +26,7 @@ local LocalHide = require(script.Parent:WaitForChild("LocalHide"))
 local ComboUI = require(script.Parent:WaitForChild("ComboUI"))
 local SoundSystem = require(script.Parent:WaitForChild("SoundSystem"))
 local SpawnedLaunchables = require(script.Parent:WaitForChild("SpawnedLaunchables"))
+local Spectators = require(script.Parent:WaitForChild("Toolkit"):WaitForChild("Spectators"))
 local TrackSensors = require(script.Parent:WaitForChild("TrackSensors"))
 
 local hitRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("HitLaunchable") :: RemoteEvent
@@ -385,6 +386,7 @@ function LaunchablesClient.onLaunch(object: Instance?, info: LaunchInfo)
 		return
 	end
 	local flight = startFlight(entry.ghost, entry.home, info)
+	Spectators.cheerAt(entry.home.Position) -- Zuschauer in der Naehe jubeln
 	labelFlight = flight
 	setLabel(`{info.name}: 0 m`)
 	ComboUI.show(info.combo or 1, info.multiplier or 1, info.bonus) -- "3x KOMBO!"

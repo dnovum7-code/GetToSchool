@@ -7,6 +7,7 @@ export type Context = {
 	cart: Model?, -- eigener Wagen, solange man faehrt (sonst nil)
 	base: BasePart?, -- dessen Boden (Position, Tempo)
 	controller: any?, -- Fahrphysik (fuer ForceZone), nur waehrend der Fahrt
+	telemetry: any?, -- Fahrdaten dieses Frames (am Boden?, Tempo ...), nur waehrend der Fahrt
 }
 
 export type Piece = {

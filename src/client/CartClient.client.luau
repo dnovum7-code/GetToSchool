@@ -1020,7 +1020,13 @@ RunService.PreSimulation:Connect(function(dt)
 	if crashed then
 		Toolkit.step({ dt = dt })
 	else
-		Toolkit.step({ dt = dt, cart = current.cart, base = current.base, controller = current })
+		Toolkit.step({
+			dt = dt,
+			cart = current.cart,
+			base = current.base,
+			controller = current,
+			telemetry = telemetry,
+		})
 	end
 	if not crashed then
 		CoinsClient.update(current.base)

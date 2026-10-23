@@ -23,6 +23,15 @@ local function warnOnce(instance: Instance, name: string, message: string)
 	end
 end
 
+-- Hinweis im Output, nur in Studio mit Config.Debug.Toolkit (z. B. fehlende Sound-Id)
+function Pieces.debugWarn(instance: Instance, message: string)
+	local Config =
+		require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Config")) :: any
+	if Config.Debug.Toolkit and game:GetService("RunService"):IsStudio() then
+		warn(`[Baukasten] {instance:GetFullName()}: {message}`)
+	end
+end
+
 function Pieces.number(instance: Instance, name: string, default: number): number
 	return Attributes.number(instance, name, default)
 end

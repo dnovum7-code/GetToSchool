@@ -18,6 +18,11 @@ local Gates = require(script:WaitForChild("Gates"))
 local PathMovers = require(script:WaitForChild("PathMovers"))
 local Props = require(script:WaitForChild("Props"))
 local Pursuers = require(script:WaitForChild("Pursuers"))
+local AmbientParticles = require(script:WaitForChild("AmbientParticles"))
+local AmbientSounds = require(script:WaitForChild("AmbientSounds"))
+local BirdFlocks = require(script:WaitForChild("BirdFlocks"))
+local Spectators = require(script:WaitForChild("Spectators"))
+local Villagers = require(script:WaitForChild("Villagers"))
 local Spawners = require(script:WaitForChild("Spawners"))
 local ToolkitTypes = require(script:WaitForChild("ToolkitTypes"))
 local TextTriggers = require(script:WaitForChild("TextTriggers"))
@@ -38,6 +43,12 @@ local MODULES: { ToolkitTypes.Piece } = {
 	Chasers,
 	UpgradeDoors,
 	Pursuers :: any,
+	-- Umgebungsleben (nur in deiner Naehe aktiv, Config.Ambient)
+	AmbientSounds,
+	AmbientParticles,
+	BirdFlocks,
+	Villagers,
+	Spectators :: any,
 }
 
 function Toolkit.init()

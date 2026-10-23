@@ -26,6 +26,12 @@ local TOOLKIT_TAGS = {
 	"Chaser",
 	"UpgradeDoor",
 	"Pursuer",
+	"AmbientSound",
+	"AmbientParticles",
+	"BirdFlock",
+	"Villager",
+	"Spectator",
+	"SoundZone",
 }
 
 local function forEachPart(instance: Instance, callback: (BasePart) -> ())
@@ -91,7 +97,9 @@ function TrackPieces.init()
 
 	-- Bewegte Hindernisse: verankert, die Bewegung rechnet jeder Client selbst
 	-- (siehe src/client/Obstacles.luau und src/client/Toolkit)
-	for _, tag in { "Mover", "Spinner", "Pendulum", "PathMover", "Gate", "Chaser", "Pursuer" } do
+	for _, tag in
+		{ "Mover", "Spinner", "Pendulum", "PathMover", "Gate", "Chaser", "Pursuer", "Villager", "Spectator" }
+	do
 		TagList.watch(tag, function(instance)
 			forEachPart(instance, function(part)
 				part.Anchored = true
@@ -168,7 +176,17 @@ function TrackPieces.init()
 	end
 
 	-- Unsichtbare Bereiche (TriggerZone, Spawner): nur Messbereich, im Spiel unsichtbar
-	for _, tag in { "TriggerZone", "TextTrigger", "Spawner" } do
+	for _, tag in
+		{
+			"TriggerZone",
+			"TextTrigger",
+			"Spawner",
+			"AmbientSound",
+			"AmbientParticles",
+			"BirdFlock",
+			"SoundZone",
+		}
+	do
 		TagList.watch(tag, function(instance)
 			forEachPart(instance, function(part)
 				part.Anchored = true
