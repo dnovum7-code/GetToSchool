@@ -460,7 +460,28 @@ station(10, "Spinner: drehender Balken", true, function(s)
 	})
 end)
 
-station(11, "Pendulum: schwingender Block", true, function(s)
+station(11, "Pendulum: schwingender Block (links Elektrozaun = Crash, rechts unsichtbare Wand)", true, function(s)
+	-- gefaehrliche Barriere (Barrier + Hazard): Beruehrung = Crash
+	part({
+		Name = "Elektrozaun",
+		Size = Vector3.new(1, 3, STATION_LENGTH - 10),
+		CFrame = frame(s, -(ROAD_WIDTH / 2 - 1.5), 1.5),
+		Color = Color3.fromRGB(230, 40, 40),
+		Material = Enum.Material.Neon,
+		Tags = { "Barrier", "Hazard" },
+		Attributes = { Message = "Elektrozaun!" },
+		Parent = track,
+	})
+	-- unsichtbare Barriere rechts (Invisible = true): haelt dich auf der Strasse
+	part({
+		Name = "UnsichtbareWand",
+		Size = Vector3.new(1, 6, STATION_LENGTH - 10),
+		CFrame = frame(s, ROAD_WIDTH / 2 - 4, 3),
+		Color = Color3.fromRGB(150, 200, 255),
+		Tags = { "Barrier" },
+		Attributes = { Invisible = true },
+		Parent = track,
+	})
 	-- Pendel haengt an der Oberkante und schwingt quer (deshalb um 90 Grad gedreht)
 	part({
 		Name = "Pendulum",
@@ -760,7 +781,17 @@ do
 	})
 end
 
-station(21, "Props: Kisten und Pylonen umfahren (Chaos-Zaehler)", true, function(s)
+station(21, "Props: Kisten und Pylonen umfahren (Chaos-Zaehler), Strohballen = NoDamage", true, function(s)
+	-- Strohballen (NoDamage): voll dagegen = kein Crash
+	part({
+		Name = "Strohballen",
+		Size = Vector3.new(6, 3, 3),
+		CFrame = frame(s + 26, -8, 1.5),
+		Color = Color3.fromRGB(220, 190, 90),
+		Material = Enum.Material.Fabric,
+		Tags = { "NoDamage" },
+		Parent = track,
+	})
 	local spots =
 		{ { -8, -12 }, { -3, -6 }, { 4, -10 }, { 9, -2 }, { -6, 4 }, { 2, 8 }, { 7, 12 }, { -2, 14 } }
 	for index, spot in spots do
@@ -777,7 +808,17 @@ station(21, "Props: Kisten und Pylonen umfahren (Chaos-Zaehler)", true, function
 	end
 end)
 
-station(22, "ForceZone: Wind drueckt nach rechts (im Takt)", true, function(s)
+station(22, "ForceZone: Wind drueckt nach rechts (gelbe Barriere: entlanggleiten)", true, function(s)
+	-- Barriere rechts: der Wind drueckt dich dagegen, du gleitest entlang statt zu crashen
+	part({
+		Name = "Barriere",
+		Size = Vector3.new(1, 3, STATION_LENGTH - 6),
+		CFrame = frame(s, ROAD_WIDTH / 2 - 1.5, 1.5),
+		Color = Color3.fromRGB(255, 210, 40),
+		Tags = { "Barrier" },
+		Attributes = { Bounce = 4 },
+		Parent = track,
+	})
 	part({
 		Name = "Wind",
 		Size = Vector3.new(ROAD_WIDTH, 10, 30),
@@ -792,8 +833,33 @@ station(22, "ForceZone: Wind drueckt nach rechts (im Takt)", true, function(s)
 	})
 end)
 
-station(23, "Chaser: der Hund rennt dir nach", false, function(s)
+station(23, "Chaser: der Hund rennt dir nach; Huegel-Kuhfeld = Stabil-Zone", false, function(s)
 	dog(track, frame(s - 10, -24, 0) * CFrame.Angles(0, math.rad(-90), 0))
+	-- Huegelfeld: Buckel quer ueber die Strasse, ein paar Kuehe, darueber eine Stabil-Zone
+	-- (kein Umkippen, harter Aufprall kein Crash; Kuehe kosten weiter ein Leben)
+	for i = 0, 5 do
+		part({
+			Name = "Buckel",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(ROAD_WIDTH + 20, 5, 5),
+			CFrame = frame(s - 22 + i * 9, if i % 2 == 0 then -3 else 4, -1.2) * CFrame.Angles(0, math.rad(if i % 2 == 0 then 8 else -8), 0),
+			Color = Color3.fromRGB(96, 150, 70),
+			Material = Enum.Material.Grass,
+			Parent = track,
+		})
+	end
+	cow(track, frame(s - 4, 6, 0))
+	cow(track, frame(s + 12, -7, 0))
+	part({
+		Name = "StabilZone",
+		Size = Vector3.new(ROAD_WIDTH + 30, 20, STATION_LENGTH - 6),
+		CFrame = frame(s, 0, 8),
+		Color = Color3.fromRGB(120, 255, 200),
+		Transparency = 0.9,
+		CanCollide = false,
+		Tags = { "StableZone" },
+		Parent = track,
+	})
 end)
 
 station(24, "Checkpoint 3", true, function(s)

@@ -43,6 +43,18 @@ Abilities (Doublejump, Schild, Boost, Wurf-Items) gut schaffbar.
   Config.TuningPanel. Fehlersuche bei Bodenbausteinen: Config.Debug.TrackPieces.
 
 ## Aktueller Meilenstein
+Barrieren und Stabil-Zone (gebaut, noch nicht in Studio getestet; README „Barrieren und
+Stabil-Zone testen“, Kombinations-Tabelle unter „Barrieren: welche Kombination wann?“):
+- NoDamage (Tag): Beruehrung = nie Crash durch Aufprall (client/Guides -> relaxImpact).
+- Barrier (Tag): Server macht sie fest, reibungslos, ohne Abprallen (Invisible = unsichtbar);
+  Client (Guides) wandelt Tempo in die Wand in Tempo entlang (Config.Barrier.SpeedKeep),
+  drueckt mit Bounce zurueck, dreht sanft in Wandrichtung. Ohne Hazard = NoDamage, mit Hazard =
+  fest + Crash.
+- StableZone (Tag, unsichtbar): ab MaxTilt weich aufrichten (nur Winkelgeschwindigkeit),
+  Kippen/Nicken gedaempft, NoCrash; Ein-/Ausblenden ueber BlendTime. Config.StableZone.
+- Logik Toolkit/GuideMath (getestet). Teststrecke: Station 11 (Elektrozaun + unsichtbare Wand),
+  21 (Strohballen), 22 (gelbe Barriere im Wind), 23 (Huegel-Kuhfeld mit Stabil-Zone).
+- Duo-Wagen und Chaos-Wagen: Technik-Vorschlag gemacht, warten auf OK (nichts gebaut).
 Atmosphäre (gebaut, noch nicht in Studio getestet; README „Atmosphäre testen“; Regler im
 F2-Abschnitt „Atmosphaere“; alle Sounds leere Platzhalter):
 - Tempogefühl: Config.Atmosphere (TopSpeed = Bezug). ChaseCamera Sichtfeld ab FovStart (70 %)
@@ -262,8 +274,9 @@ Checkpoints, Hindernisse, Zufallsereignisse, Sound; drei Feedback-Runden: Drift 
 Standard-Fahrmodus (Shift = normal), Hopp, Boost beim Drift-Ende.)
 
 ## Später
-- Noch offen: Rammen bei „Letzter Wagen“ (wartet auf OK), Hupen-Shop. Nächster Schritt ist das
-  Testen in Studio (Testlisten im README: Atmosphäre, Hupe/Verfolger/Party, Nach dem Map-Test, M2.5/M3, M4, M5, Meter/Glücksrad, Terrain/Streaming) und Feedback einarbeiten.
+- Noch offen: Duo-/Chaos-Wagen (Vorschlag, wartet auf OK), Rammen bei „Letzter Wagen“ (wartet
+  auf OK), Hupen-Shop. Nächster Schritt ist das
+  Testen in Studio (Testlisten im README: Barrieren/Stabil-Zone, Atmosphäre, Hupe/Verfolger/Party, Nach dem Map-Test, M2.5/M3, M4, M5, Meter/Glücksrad, Terrain/Streaming) und Feedback einarbeiten.
 
 ## Steuerung
 | Aktion | Tastatur | Gamepad | Touch |

@@ -70,6 +70,7 @@ Hinweise:
 | 9 | Mover | Am querfahrenden Block vorbei | Block fährt hin und her, schiebt den Wagen sauber |
 | 10 | Spinner | Am drehenden Balken vorbei | Balken dreht sich, schubst bei Berührung |
 | 11 | Pendulum | Unter dem Pendel durch | Pendel schwingt quer, trifft bei falschem Timing |
+| 11 | Barrieren | Links an den roten Elektrozaun, rechts an die unsichtbare Wand | Links: Crash („Elektrozaun!“, Barrier + Hazard). Rechts: du gleitest an einer unsichtbaren Wand entlang, kein Crash |
 | 12 | Zufall | Eine Seite ist gesperrt | Nach T ist es vielleicht die andere Seite |
 | 13 | Launchable | Kuh (links) bzw. Mülltonne (rechts) umfahren; vorne spawnt ein Kuh-Spawner alle ~4 s eine Kuh, die aufrecht die Straße hinunterrutscht | „MUUH!“/„SCHEPPER!“, kurzer Stillstand, Kamera wackelt, Wagen fährt weiter, Objekt fliegt; oben „Kuh: … m“; Mülltonne verschwindet mit Stern im Himmel; ein Leben weg (nicht mit Schalter „Tode“ aus). Gespawnte Kühe: einholen, treffen, fliegen genauso |
 | 14 | Checkpoint 2 | Durchfahren | Hinweis „Checkpoint“ (Zwischenzeit ab dem 2. Lauf) |
@@ -81,8 +82,10 @@ Hinweise:
 | 19 | Abkürzungs-Tür | Linke Spur | Ohne Sprungfeder: Schild „nur mit Trampolin-Sprungfeder“, Tür fest. Mit (Shop oder Debug): Tür fährt weg, Bonus-Münzen dahinter |
 | 20 | Collapse | Über die Holzbrücke | Bretter wackeln und fallen nacheinander; wer zu langsam ist, fällt in die Grube (Crash). R: Brücke wieder da |
 | 21 | Props | Kisten und Pylonen umfahren | Fliegen weg, kein Crash; im Ergebnis „Chaos: X“ |
-| 22 | ForceZone | Durch den Wind | Wagen wird im 2-s-Takt nach rechts gedrückt |
+| 21 | NoDamage | Voll gegen den Strohballen (links hinten) | Wagen prallt ab, aber kein Crash |
+| 22 | ForceZone + Barriere | Durch den Wind | Wagen wird im 2-s-Takt nach rechts gedrückt, gleitet an der gelben Barriere entlang und wird sanft geradeaus gedreht – kein Abprallen, kein Crash |
 | 23 | Chaser | Langsam am Hund vorbei | Hund rennt dir nach, bleibt knapp hinter dem Wagen, gibt nach ~6 s auf, läuft heim |
+| 23 | Stabil-Zone (Hügel-Kuhfeld) | Schnell und schief über die Buckel | Wagen hüpft wild, kippt aber nicht um (dreht sich weich zurück), harter Aufprall = kein Crash; Kühe kosten weiter ein Leben |
 | 24 | Checkpoint 3 | Durchfahren | Hinweis „Checkpoint“ |
 | 25 | Ziel (Zuschauer) | Schnell durchs Ziel | Zuschauer links und rechts hüpfen und jubeln („JUHU!“) |
 | 25 | Ziel | Durchs Ziel | Ergebnis mit Zeit, Note (Grenzen 50/65/80/100/130 s), Münzen, Leben, Treffer, Chaos; Münzen der Strecke sind wieder da |
@@ -218,6 +221,7 @@ Unity-Vergleich: wie der Test Runner im Edit Mode – nur Logik, ohne Szene.
 | `src/client/Soundscape.luau` | Client | Ambiente je Bereich (SoundZone), Strecken-Musik mit zweiter Spur, Stille bei Sprüngen |
 | `src/client/ComicText.luau` | Client | Comic-Text in der Welt, 3D-Einmal-Sound |
 | `src/client/Toolkit/AmbientSounds.luau`, `AmbientParticles.luau`, `BirdFlocks.luau`, `Villagers.luau`, `Spectators.luau`, `Nearby.luau` | Client | Umgebungsleben-Bausteine (nur in deiner Nähe aktiv) |
+| `src/client/Guides.luau` | Client | Barrieren (entlanggleiten, lenken), NoDamage, Stabil-Zone (Logik `Toolkit/GuideMath`, getestet) |
 | `src/client/NearMiss.luau` / `src/server/NearMiss.luau` | beide | Near-Miss „KNAPP!“: Client erkennt, Server zahlt mit Grenzen (Logik `Progression/NearMissRules`) |
 | `src/server/Rewind.luau` | Server | Nimmt die Rückspul-Meldung an (nur wenn erlaubt), Meter pausieren, Lauf nicht für die Bestenliste |
 | `src/client/VisualFX.luau` | Client | Visuelle Extras: Speed-Linien, Landestaub, Boost-Flammen, Konfetti |
@@ -284,6 +288,9 @@ geschrieben wie in der Tabelle). Mehrere Tags pro Part sind erlaubt (z. B. `Move
 | `Collapse` | Brücke/Boden: wackelt nach dem Befahren und stürzt ab, steht bei R/T wieder | `Delay` (s) – 0.8; `Shake` (Studs) – 0.25; `FallSpin` – 1.5; `ListenSignal` (dann nur per Signal) |
 | `Prop` | Loser Gegenstand (Kiste, Pylone, Stand): fliegt weg, kein Crash. Zählt als „Chaos“. Zurück nur bei T | `Density` (Zahl) – 0.4 |
 | `ForceZone` | Bereich drückt den Wagen Richtung Vorderseite (Wind, Rasensprenger, Förderband) | `Strength` (Studs/s²) – 60; `Pulse` (s, 0 = immer) – 0; `PulseOn` (0–1) – 0.5; `Phase` – 0; `ListenSignal`; `ActiveTime` (s) – 3 |
+| `NoDamage` | Part oder Model: Zusammenstoß ist nie ein Crash (auch nicht bei hartem Aufprall), kein Lebensverlust | – |
+| `Barrier` | Wand/Leitplanke, die lenkt: Der Wagen gleitet daran entlang und wird sanft in Fahrtrichtung zurückgedreht statt zu stoppen oder abzuprallen (glatt, ohne Reibung). Standardmäßig NoDamage; mit zusätzlichem Tag `Hazard` = gefährliche Barriere (Crash bei Berührung) | `Invisible` (Bool) – false (unsichtbare Begrenzung); `Bounce` (Studs/s) – 4 (wie stark sie zurückdrückt) |
+| `StableZone` | Unsichtbarer Bereich (Part, keine Kollision): Darin kippt der Wagen nicht um – ab `MaxTilt` dreht er sich weich zurück (nur die Drehung, Tempo bleibt) – und harter Aufprall ist kein Crash. Hazard und Launchable wirken weiter. Weicher Übergang beim Rein-/Rausfahren | `MaxTilt` (Grad) – 25; `RightingSpeed` (rad/s) – 3; `NoCrash` (Bool) – true |
 | `AmbientSound` | Part als Klangquelle mit Schleife (Kuhglocken, Bach, Kirche). Nur die nächsten 8 in Hörweite spielen | `SoundId` – nötig; `Volume` – 0.5; `Range` (Studs) – 80; `Pitch` – 1 |
 | `AmbientParticles` | Bereich (Part, unsichtbar) mit Blättern, Pollen oder Staub; folgen dem `GlobalWind` (Workspace) | `Kind` („Leaves“, „Pollen“, „Dust“) – Leaves; `Rate` – je nach Kind; `Color` (Color3) |
 | `BirdFlock` | Vögel sitzen auf dem Part (unsichtbar) und fliegen auf, wenn du näher kommst; später sitzen sie wieder da | `Count` – 6; `TriggerRadius` – 35; `SoundId` – sonst `Config.Sounds.BirdsFly` |
@@ -476,6 +483,17 @@ sonst verschwinden sie vorher. Bei `Kinematic = true` wirken die Physik-Tags nic
   offen; der Server prüft sie nicht – sie öffnet nur einen Weg, verteilt keine Belohnung.)
 - **Hund**: Hunde-Modell (Pivot vorne = Schnauze), Tag `Chaser`, `Radius` = 35, `MaxSpeed` = 30.
   Mit `ListenSignal` startet er nur per Signal (der Radius zählt dann nicht).
+
+### Barrieren: welche Kombination wann?
+
+| Du willst … | Nimm | Wirkung |
+|---|---|---|
+| Spieler auf der Strecke halten (Kurven-Außenseite, Leitplanke, Brückengeländer) | `Barrier` | Entlanggleiten, sanft zurück in Fahrtrichtung, nie Crash |
+| Unsichtbare Grenze (Klippe, Kartenrand, „hier geht's nicht weiter“) | `Barrier` + `Invisible` = true | Wie oben, aber unsichtbar |
+| Gefährliche Wand (Elektrozaun, Kaktushecke, Lava-Mauer) | `Barrier` + `Hazard` | Fest, Berührung = Crash (Attribut `Message` für den Text) |
+| Hindernis, gegen das man prallen darf, ohne zu crashen (Strohballen, Gummi-Poller, weiche Deko) | `NoDamage` | Normales Abprallen (Physik), aber nie Crash |
+| Wilde, hügelige Passage kurz vor dem Ziel ohne Frust | `StableZone` über dem Gelände | Kein Umkippen, kein Aufprall-Crash; Hazards/Kühe zählen weiter |
+| Hindernis, das bestrafen soll | ohne Tag (harter Aufprall = Crash) oder `Hazard` (jede Berührung = Crash) | wie bisher |
 
 ### Party-Arena bauen
 
@@ -1117,6 +1135,24 @@ Vorlagen anlegen. Für Signale hilft `Config.Debug.Toolkit = true`.
 | Boost-Flammen | Drift-Boost, Turbo-Pausenbrot oder Start-Turbo | Orange Flammen hinten am Wagen, solange der Schub läuft |
 | Konfetti | Ins Ziel fahren | Konfetti fällt von oben; bei neuer Bestzeit doppelt so viel |
 | Effekte aus | Einstellungen → „Extra-Effekte“ aus | Nichts davon mehr zu sehen |
+
+## Barrieren und Stabil-Zone testen
+
+Regler: F2 → Bausteine („Barriere: …“, „Stabil-Zone: …“). Für den Crash-Test den Schalter
+„Tode“ (Cheats / Test) auf **An** stellen, sonst crasht in Studio sowieso nichts.
+
+| Funktion | Was du tun kannst | Was passieren sollte |
+|---|---|---|
+| Barriere entlanggleiten | Station 22: im Wind schräg gegen die gelbe Barriere | Kein Abprallen, kein Stopp: Wagen gleitet mit fast vollem Tempo entlang und dreht sich sanft in Wandrichtung |
+| Barriere frontal | Station 22: fast senkrecht gegen die Barriere | Wagen wird zur Seite umgelenkt, kein Crash |
+| Bounce | Attribut `Bounce` an der gelben Barriere auf 15 | Drückt merklich stärker von der Wand weg |
+| Unsichtbare Wand | Station 11 rechts | Unsichtbar, man gleitet daran entlang |
+| Gefährliche Barriere | Station 11 links, roter Elektrozaun | Crash „Elektrozaun!“ (mit Tode an) |
+| NoDamage | Station 21: frontal gegen den Strohballen | Abprallen, kein Crash, kein Leben weg |
+| Stabil-Zone | Station 23: schnell und schief über die Buckel | Wagen hüpft, wird bei starker Neigung weich zurückgedreht, kippt nicht um; harte Landungen = kein Crash; Tempo bleibt |
+| Kühe in der Zone | Station 23: eine Kuh treffen | Kuh fliegt, Leben weg (Launchable wirkt weiter) |
+| Raus aus der Zone | Station 23 verlassen, dann an einem normalen Hindernis hart aufprallen | Kurzer weicher Übergang, danach wieder normale Physik und Crashs |
+| MaxTilt | Attribut `MaxTilt` an „StabilZone“ auf 10 | Richtet schon bei kleiner Neigung auf |
 
 ## Atmosphäre testen (Tempogefühl, Umgebungsleben, Sound-Landschaft, Near-Miss)
 
