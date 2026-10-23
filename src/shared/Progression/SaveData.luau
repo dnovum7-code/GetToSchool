@@ -68,6 +68,7 @@ export type Settings = {
 	EffectsVolume: number, -- 0..1
 	MuteHorns: boolean, -- Hupen anderer Spieler stummschalten
 	SpeedShake: boolean, -- leichtes Kamerazittern bei hohem Tempo
+	TomatoOptIn: boolean, -- auch im Solo-Lauf von Tomaten getroffen werden ("bewerfbar")
 }
 
 -- Standardwerte; nur diese Schluessel gibt es (der Client darf nichts anderes setzen)
@@ -79,6 +80,7 @@ SaveData.SETTINGS_DEFAULTS = {
 	EffectsVolume = 1,
 	MuteHorns = false,
 	SpeedShake = true,
+	TomatoOptIn = false,
 } :: Settings
 
 export type Data = {

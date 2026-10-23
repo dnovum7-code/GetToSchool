@@ -9,6 +9,12 @@
         "CollectCoin": {
           "$className": "RemoteEvent"
         },
+        "Crew": {
+          "$className": "RemoteEvent"
+        },
+        "CrewInput": {
+          "$className": "UnreliableRemoteEvent"
+        },
         "DevTuning": {
           "$className": "RemoteEvent"
         },
@@ -52,6 +58,9 @@
           "$className": "RemoteEvent"
         },
         "ShopRequest": {
+          "$className": "RemoteEvent"
+        },
+        "Tomato": {
           "$className": "RemoteEvent"
         }
       },

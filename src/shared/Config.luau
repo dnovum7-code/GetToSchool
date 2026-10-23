@@ -616,6 +616,74 @@ Config.Pursuer = {
 	DisplayName = "Verfolger", -- Attribut "DisplayName" (z. B. "Schulbus") fuer die Anzeige
 }
 
+-- Duo- und Chaos-Wagen (Menue-Reiter "Wagen"): mehrere Spieler in einem Wagen. Die Physik
+-- rechnet der Fahrer/Gastgeber (wie sonst), die anderen schicken ihre Eingaben ueber den
+-- Server (CrewInput). Leben, Muenzen und Zeit gelten fuer alle; Upgrades/Abilities = Gastgeber.
+Config.Crew = {
+	InputSendInterval = 0.2, -- Mitfahrer: Eingaben spaetestens so oft schicken (auch ohne Aenderung)
+	InputTimeout = 0.5, -- so lange (s) ohne Meldung = alles losgelassen
+	HostInputDelay = 0, -- Chaos: eigene Eingaben des Gastgebers kuenstlich verzoegern (s), 0 = aus
+	InviteTime = 20, -- so lange (s) gilt eine Einladung
+	HandoverFreeze = 0.2, -- Physik-Uebergabe: so lange (s) steht der Wagen still
+	Seats = { Duo = 2, Chaos = 4 }, -- Plaetze (inkl. Fahrer)
+	Chaos = {
+		MinPlayers = 2, -- darunter faehrt der Gastgeber allein mit allen Steuerelementen
+		ShuffleInterval = 30, -- alle so viele Sekunden neu mischen (0 = nie)
+		ShuffleCountdown = 3, -- "Neue Steuerung in 3... 2... 1..."
+	},
+	-- Chaos-Tasten (wer ein Steuerelement hat, benutzt seine gewohnte Taste)
+	Keys = {
+		Gas = { Enum.KeyCode.W, Enum.KeyCode.Up, Enum.KeyCode.ButtonR2 },
+		Brake = { Enum.KeyCode.S, Enum.KeyCode.Down, Enum.KeyCode.ButtonL2 },
+		Left = { Enum.KeyCode.A, Enum.KeyCode.Left, Enum.KeyCode.DPadLeft },
+		Right = { Enum.KeyCode.D, Enum.KeyCode.Right, Enum.KeyCode.DPadRight },
+		Jump = { Enum.KeyCode.Space, Enum.KeyCode.ButtonA },
+		Drift = { Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift, Enum.KeyCode.ButtonB },
+		Boost = { Enum.KeyCode.F, Enum.KeyCode.ButtonR1 },
+		Items = { Enum.KeyCode.G, Enum.KeyCode.ButtonL1 },
+	},
+	Names = {
+		Gas = "GAS",
+		Brake = "BREMSE",
+		Left = "LINKS",
+		Right = "RECHTS",
+		Jump = "SPRUNG",
+		Drift = "DRIFT/NORMAL",
+		Boost = "BOOST",
+		Items = "TOMATE",
+	},
+	KeyNames = {
+		Gas = "W",
+		Brake = "S",
+		Left = "A",
+		Right = "D",
+		Jump = "Leertaste",
+		Drift = "Shift",
+		Boost = "F",
+		Items = "G",
+	},
+}
+
+-- Tomaten (Duo-Schuetze: Maus/rechter Stick zielen, Linksklick/RT werfen; Chaos: Steuerelement
+-- "Items" wirft nach vorne). Kein Lebensverlust: Matsch auf dem Bildschirm und ein Schubs.
+Config.Tomato = {
+	MaxAmmo = 5,
+	RegenInterval = 6, -- alle so viele Sekunden eine Tomate nach
+	Cooldown = 0.6, -- zwischen zwei Wuerfen (s)
+	Speed = 90, -- Wurf-Tempo (Studs/s)
+	Up = 18, -- etwas nach oben (Bogen)
+	Gravity = 60, -- Schwerkraft der Tomate (kleiner = weiter)
+	MaxTime = 2.5, -- so lange fliegt sie hoechstens (s)
+	HitRadius = 6, -- Spielraum fuer den Treffer (Studs, wegen Verzoegerung grosszuegig)
+	SplatTime = 4, -- so lange (s) Matsch auf dem Bildschirm
+	SplatStrength = 0.6, -- Deckkraft des Matschs (0..1)
+	Push = 25, -- Schubs (Studs/s)
+	ProtectSolo = true, -- Solo-Laeufe werden nicht getroffen (ausser Einstellung "bewerfbar")
+	ItemBoxRefill = 5, -- ItemBox (Tag) fuellt so viele auf ...
+	ItemBoxCooldown = 10, -- ... und ist danach fuer diese Crew so lange leer (s)
+	ItemBoxRadius = 8,
+}
+
 -- Barrieren (Tag "Barrier", Wand/Leitplanke): Der Wagen gleitet daran entlang und wird sanft in
 -- Fahrtrichtung gelenkt statt abzuprallen. Standardmaessig ohne Crash (wie Tag "NoDamage");
 -- zusammen mit Tag "Hazard": gefaehrliche Barriere (Crash bei Beruehrung).
@@ -806,6 +874,10 @@ Config.Sounds = {
 	HornBike = { Id = "", Volume = 0.9 }, -- Fahrrad-Troete
 	HornMoo = { Id = "", Volume = 0.9 }, -- Kuh-Muh
 	HornTrain = { Id = "", Volume = 0.9 }, -- Zug-Horn
+	TomatoThrow = { Id = "", Volume = 0.7 }, -- Tomate geworfen
+	TomatoSplat = { Id = "", Volume = 0.9 }, -- Tomate trifft (lustiges Platschen)
+	ItemBox = { Id = "", Volume = 0.7 }, -- ItemBox eingesammelt
+	ChaosShuffle = { Id = "", Volume = 0.8 }, -- Chaos: neue Steuerung
 	-- Atmosphaere (Platzhalter, Ids selbst eintragen)
 	Wind = { Id = "", Volume = 0.6 }, -- Fahrtwind (Schleife), lauter und hoeher mit dem Tempo
 	AmbienceWind = { Id = "", Volume = 0.5 }, -- Grund-Ambiente (Wind)
@@ -1048,6 +1120,18 @@ Config.TuningPanel = {
 			{ label = "Verfolger: MaxGap", path = "Pursuer.MaxGap" },
 			{ label = "Verfolger: Startverzoegerung", path = "Pursuer.StartDelay" },
 			{ label = "Party: Countdown (s)", path = "Party.Countdown", server = true },
+			{ label = "Chaos: neu mischen alle (s)", path = "Crew.Chaos.ShuffleInterval", server = true },
+			{ label = "Crew: Eingabe-Timeout (s)", path = "Crew.InputTimeout" },
+			{
+				label = "Chaos: Gastgeber-Verzoegerung (s)",
+				path = "Crew.HostInputDelay",
+				span = 0.3,
+				min = 0,
+			},
+			{ label = "Tomate: Wurf-Tempo", path = "Tomato.Speed", server = true },
+			{ label = "Tomate: Treffer-Spielraum", path = "Tomato.HitRadius", server = true },
+			{ label = "Tomate: Matsch-Dauer (s)", path = "Tomato.SplatTime" },
+			{ label = "Tomate: Schubs", path = "Tomato.Push" },
 			{ label = "Kuh-Bowling: Dauer (s)", path = "Party.CowBowling.Duration", server = true },
 			{ label = "Letzter Wagen: Leben", path = "Party.LastCart.Lives", server = true },
 			{ label = "Letzter Wagen: max. Dauer (s)", path = "Party.LastCart.MaxDuration", server = true },

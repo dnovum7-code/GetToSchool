@@ -57,6 +57,15 @@
         },
         "Party": {
           "$className": "RemoteEvent"
+        },
+        "Crew": {
+          "$className": "RemoteEvent"
+        },
+        "CrewInput": {
+          "$className": "UnreliableRemoteEvent"
+        },
+        "Tomato": {
+          "$className": "RemoteEvent"
         }
       }
     },

@@ -97,6 +97,7 @@ local function render(_snapshot: ProgressClient.Snapshot)
 	toggleRow(5, "Extra-Effekte (Speed-Linien, Staub, Konfetti)", "VisualEffects")
 	toggleRow(6, "Hupen anderer Spieler stumm", "MuteHorns")
 	toggleRow(7, "Tempo-Zittern der Kamera", "SpeedShake")
+	toggleRow(8, "Im Solo-Lauf mit Tomaten bewerfbar", "TomatoOptIn")
 
 	-- Steuerung: Spalte des aktuellen Geraets hervorgehoben
 	local device = ControlsInfo.device()
