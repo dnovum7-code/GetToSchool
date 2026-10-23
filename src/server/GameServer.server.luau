@@ -17,6 +17,7 @@ local Horn = require(script.Parent:WaitForChild("Horn"))
 local Party = require(script.Parent:WaitForChild("Party"))
 local NearMiss = require(script.Parent:WaitForChild("NearMiss"))
 local Crew = require(script.Parent:WaitForChild("Crew"))
+local Tomato = require(script.Parent:WaitForChild("Tomato"))
 local Launchables = require(script.Parent:WaitForChild("Launchables"))
 local ObjectPhysics = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObjectPhysics"))
 local Leaderboards = require(script.Parent:WaitForChild("Leaderboards"))
@@ -78,6 +79,7 @@ Horn.init() -- Hupe (H): Abklingzeit pruefen, an alle verteilen
 Party.init() -- Party-Modi: Anmeldung, Countdown, Arena, Runde, Ergebnis
 NearMiss.init() -- Near-Miss-Bonus ("KNAPP!"): Server zahlt mit Grenzen
 Crew.init() -- Duo-/Chaos-Wagen: Plaetze, Einladungen, Eingaben weiterleiten
+Tomato.init() -- Tomaten-Wuerfe (Treffer prueft der Server), ItemBox
 StreamAhead.init() -- StreamingEnabled: Gelaende in Fahrtrichtung vorausladen
 DevTuning.init(cartsFolder) -- Tuning-Panel (nur in Studio aktiv)
 

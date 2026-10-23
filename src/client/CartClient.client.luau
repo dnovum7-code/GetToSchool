@@ -39,6 +39,7 @@ local Guides = require(script.Parent:WaitForChild("Guides"))
 local PartyState = require(script.Parent:WaitForChild("PartyState"))
 local PartyUI = require(script.Parent:WaitForChild("PartyUI"))
 local CrewClient = require(script.Parent:WaitForChild("CrewClient"))
+local TomatoClient = require(script.Parent:WaitForChild("TomatoClient"))
 local Pursuers = require(script.Parent:WaitForChild("Toolkit"):WaitForChild("Pursuers"))
 local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 local ProgressClient = require(script.Parent:WaitForChild("ProgressClient"))
@@ -217,6 +218,22 @@ SpinUI.init() -- taegliches Gluecksrad (Reiter im Menue)
 SettingsUI.init() -- Einstellungen und Steuerung (Reiter im Menue)
 PartyUI.init() -- Party-Modi (Reiter im Menue, Anzeige in der Runde)
 CrewClient.init() -- Duo-/Chaos-Wagen (Reiter "Wagen", Mitfahren, Chaos-Steuerung)
+TomatoClient.init() -- Tomaten (Duo-Schuetze, Chaos "Items"), Matsch, ItemBox
+-- Tomaten-Treffer: Schubs (kein Crash). Im Wagen rechnet dieser Client die Physik.
+TomatoClient.setPushHandler(function(push: Vector3)
+	local current = controller
+	if current then
+		crashDetector:expectVelocityChange(push)
+		current.base.AssemblyLinearVelocity += push
+		ChaseCamera.addShake(3)
+		return
+	end
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if root and root:IsA("BasePart") then
+		root.AssemblyLinearVelocity += push + Vector3.new(0, 15, 0)
+	end
+end)
 -- Chaos: Turbo-Taste F nur, wenn "Boost" dem Gastgeber gehoert (sonst kommt Boost vom Mitfahrer)
 Abilities.setTurboKeyGate(function()
 	return not CrewClient.isChaosHost()

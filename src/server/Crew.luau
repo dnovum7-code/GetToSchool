@@ -47,6 +47,7 @@ export type CrewData = {
 local crews: { [Player]: CrewData } = {} -- Gastgeber -> Crew
 local guestCrew: { [Player]: CrewData } = {} -- Mitfahrer -> Crew
 local invites: { [Player]: { from: Player, at: number } } = {}
+local itemsHandler: ((Player) -> ())? = nil -- Tomate werfen (server/Tomato)
 
 local function seatNames(kind: Kind): { string }
 	local result = {}
@@ -334,6 +335,14 @@ local function action(player: Player, name: unknown, seq: unknown)
 	if crew.assignment[name] ~= player.UserId then
 		return -- gehoert ihm nicht
 	end
+	if name == "Items" then
+		-- Tomate: wirft der Server direkt (Munition gehoert dem Werfer)
+		local handler = itemsHandler
+		if handler then
+			handler(player)
+		end
+		return
+	end
 	crewRemote:FireClient(crew.host, "Action", name, player.UserId)
 end
 
@@ -366,6 +375,29 @@ end
 function Crew.isActive(player: Player): boolean
 	local crew = Crew.of(player)
 	return crew ~= nil and #guests(crew) > 0
+end
+
+-- Darf dieser Spieler Tomaten werfen? Duo: der Schuetze hinten. Chaos: wer "Items" hat.
+function Crew.canThrow(player: Player): boolean
+	local crew = Crew.of(player)
+	if not crew then
+		return false
+	end
+	if crew.kind == "Duo" then
+		return crew.seats.CrewSeat2 == player
+	end
+	return crew.assignment.Items == player.UserId
+end
+
+function Crew.setItemsHandler(handler: (Player) -> ())
+	itemsHandler = handler
+end
+
+-- Crew dieses Wagens (ueber den Besitzer)
+function Crew.ofCart(cart: Model): CrewData?
+	local ownerId = cart:GetAttribute("OwnerUserId")
+	local owner = if type(ownerId) == "number" then Players:GetPlayerByUserId(ownerId) else nil
+	return if owner then crews[owner] else nil
 end
 
 function Crew.members(crew: CrewData): { Player }
