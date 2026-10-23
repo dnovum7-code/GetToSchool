@@ -10,6 +10,8 @@
 --   Riding  sitzt im Wagen (wird automatisch wieder hineingesetzt, falls er herausfaellt)
 --   OnFoot  ist mit E ausgestiegen und laeuft herum
 --   Ragdoll ist nach einem Crash als schlaffe Puppe aus dem Wagen geflogen
+--   Passenger sitzt als Mitfahrer im Duo-/Chaos-Wagen eines anderen (CrewSeat2 ...); einen
+--             eigenen Wagen hat er dann nicht. Die Physik rechnet der Fahrer/Gastgeber.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -22,7 +24,7 @@ local CartBuilder = require(script.Parent:WaitForChild("CartBuilder"))
 
 local CartManager = {}
 
-export type Mode = "Riding" | "OnFoot" | "Ragdoll"
+export type Mode = "Riding" | "OnFoot" | "Ragdoll" | "Passenger"
 
 type PlayerState = {
 	cart: Model?,
@@ -30,6 +32,10 @@ type PlayerState = {
 	mode: Mode,
 	lastAction: number, -- Zeitpunkt des letzten Aus-/Einsteigens (Spam-Schutz)
 	ragdollSince: number, -- Zeitpunkt des letzten Crashs mit Ragdoll
+	rideCart: Model?, -- Mitfahrer: in diesem Wagen ...
+	rideSeat: string?, -- ... auf diesem Sitz ("CrewSeat2" ...)
+	rideConnection: RBXScriptConnection?,
+	passengerRagdoll: boolean, -- Mitfahrer fliegt gerade als Ragdoll (Crash des Wagens)
 }
 
 local states: { [Player]: PlayerState } = {}
@@ -58,6 +64,22 @@ function CartManager.setVehicleResolver(resolver: (player: Player) -> string)
 	vehicleResolver = resolver
 end
 
+-- Welcher Wagen-Typ? nil = normal, "Duo" / "Chaos" = mit Zusatzsitzen (server/Crew)
+local crewKindResolver: (player: Player) -> string? = function(_player)
+	return nil
+end
+
+function CartManager.setCrewKindResolver(resolver: (player: Player) -> string?)
+	crewKindResolver = resolver
+end
+
+-- Wird ganz am Anfang von removePlayer aufgerufen (z. B. Crew: Wagen an einen Mitfahrer
+-- uebergeben, bevor er geloescht wird)
+local removeHook: ((player: Player) -> ())? = nil
+function CartManager.setRemoveHook(hook: (player: Player) -> ())
+	removeHook = hook
+end
+
 -- Wird nach jedem neu gebauten Wagen aufgerufen (z. B. Lackierung anwenden)
 local builtCallbacks: { (player: Player, cart: Model) -> () } = {}
 function CartManager.onCartBuilt(callback: (player: Player, cart: Model) -> ())
@@ -67,7 +89,7 @@ end
 local function getState(player: Player): PlayerState
 	local state = states[player]
 	if not state then
-		state = { mode = "Riding", lastAction = -math.huge, ragdollSince = 0 }
+		state = { mode = "Riding", lastAction = -math.huge, ragdollSince = 0, passengerRagdoll = false }
 		states[player] = state
 	end
 	return state
@@ -120,7 +142,9 @@ local function applyModeToPart(part: BasePart, mode: Mode)
 	if part:GetAttribute("OriginalMassless") == nil then
 		part:SetAttribute("OriginalMassless", part.Massless)
 	end
-	part.Massless = if mode == "Riding" then true else part:GetAttribute("OriginalMassless") == true
+	part.Massless = if mode == "Riding" or mode == "Passenger"
+		then true
+		else part:GetAttribute("OriginalMassless") == true
 	part.CollisionGroup = if mode == "OnFoot" then "Default" else CartBuilder.COLLISION_GROUP
 end
 
@@ -266,7 +290,7 @@ local function createCart(player: Player, state: PlayerState, at: CFrame, vehicl
 	if state.cart then
 		state.cart:Destroy()
 	end
-	local cart = CartBuilder.build(player, at, vehicleId)
+	local cart = CartBuilder.build(player, at, vehicleId, crewKindResolver(player))
 	for _, callback in builtCallbacks do
 		callback(player, cart)
 	end
@@ -367,6 +391,10 @@ function CartManager.reset(player: Player, at: CFrame?, changeVehicle: boolean?)
 	if cart and currentVehicle ~= vehicleId then
 		cart = nil -- anderes Fahrzeug gewaehlt (Garage): neu bauen
 	end
+	if cart and changeVehicle and cart:GetAttribute("CrewKind") ~= crewKindResolver(player) then
+		cart = nil -- anderer Wagen-Typ (Solo/Duo/Chaos): neu bauen
+	end
+	local oldCart = state.cart
 	if cart and isCartIntact(cart) then
 		-- PivotTo verschiebt das ganze Modell; ein angeschweisster Fahrer kommt mit.
 		cart:PivotTo(spawnCFrame)
@@ -377,6 +405,15 @@ function CartManager.reset(player: Player, at: CFrame?, changeVehicle: boolean?)
 	if seat.Occupant ~= humanoid then
 		task.spawn(seatPlayer, player, cart :: Model)
 	end
+	-- Mitfahrer kommen mit (neu gebauter Wagen: umziehen; nach Crash: wieder hinsetzen)
+	if oldCart and oldCart ~= cart then
+		for _, other in states do
+			if other.rideCart == oldCart then
+				other.rideCart = cart
+			end
+		end
+	end
+	CartManager.reseatPassengers(cart :: Model)
 	return spawnCFrame
 end
 
@@ -459,6 +496,209 @@ function CartManager.crash(player: Player): boolean
 	end
 	setCharacterMode(character, "Ragdoll")
 	setRagdoll(character, humanoid, true)
+	CartManager.crashPassengers(state.cart :: Model) -- Mitfahrer fliegen mit
+	return true
+end
+
+-- Mitfahrer ---------------------------------------------------------------------------
+
+local function passengerHumanoid(player: Player): Humanoid?
+	return getAliveHumanoid(player)
+end
+
+-- Mitfahrer auf seinen Sitz setzen (wiederholt kurz, falls die Figur noch nicht bereit ist)
+local function sitPassenger(player: Player, state: PlayerState)
+	local cart = state.rideCart
+	local seatName = state.rideSeat
+	if not cart or not seatName then
+		return
+	end
+	local seat = cart:FindFirstChild(seatName)
+	if not seat or not seat:IsA("Seat") then
+		return
+	end
+	for _ = 1, 10 do
+		local humanoid = passengerHumanoid(player)
+		if not humanoid or state.rideCart ~= cart or state.mode ~= "Passenger" or state.passengerRagdoll then
+			return
+		end
+		if seat.Occupant == humanoid then
+			return
+		end
+		if seat.Occupant == nil then
+			local character = humanoid.Parent :: Model
+			character:PivotTo(seat.CFrame + Vector3.new(0, 2, 0))
+			seat:Sit(humanoid)
+		end
+		task.wait(0.1)
+	end
+end
+
+-- Spieler wird Mitfahrer in `cart` auf Sitz `seatName`. Sein eigener Wagen verschwindet.
+function CartManager.seatPassenger(player: Player, cart: Model, seatName: string): boolean
+	local humanoid = getAliveHumanoid(player)
+	local seat = cart:FindFirstChild(seatName)
+	if not humanoid or not seat or not seat:IsA("Seat") then
+		return false
+	end
+	if seat.Occupant ~= nil and seat.Occupant ~= humanoid then
+		return false
+	end
+	local state = getState(player)
+	if state.seatConnection then
+		state.seatConnection:Disconnect()
+		state.seatConnection = nil
+	end
+	if state.rideConnection then
+		state.rideConnection:Disconnect()
+		state.rideConnection = nil
+	end
+	-- eigenen Wagen loslassen (Sitz-Schweissnaht weg), dann loeschen
+	local own = state.cart
+	if own then
+		local ownSeat = own:FindFirstChild("Seat")
+		local weldToOwn = ownSeat and ownSeat:FindFirstChild("SeatWeld")
+		if weldToOwn then
+			weldToOwn:Destroy()
+		end
+		own:Destroy()
+		state.cart = nil
+	end
+	local character = humanoid.Parent :: Model
+	if state.mode == "Ragdoll" or state.passengerRagdoll then
+		setRagdoll(character, humanoid, false)
+	end
+	state.mode = "Passenger"
+	state.rideCart = cart
+	state.rideSeat = seatName
+	state.passengerRagdoll = false
+	setCharacterMode(character, "Passenger")
+	-- faellt er ungewollt vom Sitz, sofort wieder hinsetzen
+	state.rideConnection = seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+		if
+			seat.Occupant == nil
+			and state.mode == "Passenger"
+			and state.rideCart == cart
+			and not state.passengerRagdoll
+		then
+			task.delay(0.1, function()
+				sitPassenger(player, state)
+			end)
+		end
+	end)
+	task.spawn(sitPassenger, player, state)
+	return true
+end
+
+-- Mitfahrer steigt aus der Crew aus (danach: normaler Neustart mit eigenem Wagen)
+function CartManager.removePassenger(player: Player)
+	local state = states[player]
+	if not state or state.mode ~= "Passenger" then
+		return
+	end
+	if state.rideConnection then
+		state.rideConnection:Disconnect()
+		state.rideConnection = nil
+	end
+	local cart = state.rideCart
+	local seat = cart and state.rideSeat and cart:FindFirstChild(state.rideSeat)
+	local seatWeld = seat and seat:FindFirstChild("SeatWeld")
+	if seatWeld then
+		seatWeld:Destroy()
+	end
+	local humanoid = getAliveHumanoid(player)
+	if humanoid and state.passengerRagdoll then
+		setRagdoll(humanoid.Parent :: Model, humanoid, false)
+	end
+	state.rideCart = nil
+	state.rideSeat = nil
+	state.passengerRagdoll = false
+	state.mode = "Riding" -- der naechste Neustart baut den eigenen Wagen
+	if humanoid then
+		setCharacterMode(humanoid.Parent :: Model, "Riding")
+	end
+end
+
+-- In welchem Wagen faehrt der Spieler mit? (nil = kein Mitfahrer)
+function CartManager.getRideCart(player: Player): Model?
+	local state = states[player]
+	return if state and state.mode == "Passenger" then state.rideCart else nil
+end
+
+-- Crash des Wagens: alle Mitfahrer fliegen als Ragdoll heraus
+function CartManager.crashPassengers(cart: Model)
+	if not Config.Crash.Ragdoll then
+		return
+	end
+	for player, state in states do
+		if state.mode == "Passenger" and state.rideCart == cart and not state.passengerRagdoll then
+			local humanoid = getAliveHumanoid(player)
+			if humanoid then
+				local seat = state.rideSeat and cart:FindFirstChild(state.rideSeat)
+				local seatWeld = seat and seat:FindFirstChild("SeatWeld")
+				state.passengerRagdoll = true
+				if seatWeld then
+					seatWeld:Destroy()
+				end
+				local character = humanoid.Parent :: Model
+				setCharacterMode(character, "Ragdoll")
+				setRagdoll(character, humanoid, true)
+			end
+		end
+	end
+end
+
+-- Nach einem Neustart des Wagens: alle Mitfahrer wieder auf ihre Sitze
+function CartManager.reseatPassengers(cart: Model)
+	for player, state in states do
+		if state.mode == "Passenger" and state.rideCart == cart then
+			local humanoid = getAliveHumanoid(player)
+			if humanoid and state.passengerRagdoll then
+				setRagdoll(humanoid.Parent :: Model, humanoid, false)
+			end
+			state.passengerRagdoll = false
+			if humanoid then
+				setCharacterMode(humanoid.Parent :: Model, "Passenger")
+			end
+			task.spawn(sitPassenger, player, state)
+		end
+	end
+end
+
+-- Physik-Uebergabe: Der Wagen von `old` gehoert ab jetzt `new` (bisher Mitfahrer), der vom
+-- Mitfahrer-Sitz auf den Fahrersitz wechselt. Der Wagen steht dabei kurz still.
+function CartManager.transferCart(old: Player, new: Player): boolean
+	local oldState = states[old]
+	local cart = oldState and oldState.cart
+	if not oldState or not cart or not isCartIntact(cart) then
+		return false
+	end
+	if oldState.seatConnection then
+		oldState.seatConnection:Disconnect()
+		oldState.seatConnection = nil
+	end
+	oldState.cart = nil
+	-- alter Fahrer runter vom Sitz (falls er noch da ist)
+	local seat = getSeat(cart)
+	local oldWeld = seat:FindFirstChild("SeatWeld")
+	if oldWeld then
+		oldWeld:Destroy()
+	end
+	CartManager.removePassenger(new)
+	local newState = getState(new)
+	if newState.cart and newState.cart ~= cart then
+		newState.cart:Destroy()
+	end
+	newState.cart = cart
+	newState.mode = "Riding"
+	cart:SetAttribute("OwnerUserId", new.UserId)
+	cart.Name = "Cart_" .. new.Name
+	setOwner(cart, nil) -- kurz rechnet der Server: Wagen still stellen
+	calmCart(cart)
+	watchSeat(new, newState, cart)
+	task.delay(Config.Crew.HandoverFreeze, function()
+		seatPlayer(new, cart) -- setzt ihn auf den Fahrersitz und gibt ihm die Physik
+	end)
 	return true
 end
 
@@ -495,12 +735,19 @@ function CartManager.getCart(player: Player): Model?
 end
 
 function CartManager.removePlayer(player: Player)
+	local hook = removeHook
+	if hook then
+		hook(player) -- z. B. Crew: Wagen an einen Mitfahrer uebergeben
+	end
 	local state = states[player]
 	if not state then
 		return
 	end
 	if state.seatConnection then
 		state.seatConnection:Disconnect()
+	end
+	if state.rideConnection then
+		state.rideConnection:Disconnect()
 	end
 	if state.cart then
 		state.cart:Destroy()

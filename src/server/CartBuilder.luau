@@ -403,7 +403,70 @@ end
 -- Erzeugt einen neuen Wagen an `cframe` (Mitte des Bodens) fuer `owner`.
 -- `vehicleId`: Fahrzeug aus Config.Vehicles (nil = Einkaufswagen).
 -- Der Wagen wird noch nicht in den Workspace gesetzt; das macht der Aufrufer.
-function CartBuilder.build(owner: Player, cframe: CFrame, vehicleId: string?): Model
+-- Zusatzsitze fuer Duo-/Chaos-Wagen ("CrewSeat2" ...) mit Platzhalter-Aussehen.
+-- Duo: Schuetzensitz hinten auf einem Brett. Chaos: breiter Wagen mit drei weiteren Plaetzen
+-- (links, rechts, vorne) auf seitlichen Baenken. Alles ohne Masse und ohne Kollision, damit
+-- sich die Fahrphysik nicht aendert.
+local function addCrewSeats(model: Model, base: BasePart, cframe: CFrame, c: any, seatY: number, kind: string)
+	local w, l = c.Width, c.Length
+	local wood = Color3.fromRGB(150, 105, 60)
+	local spots: { Vector3 } = {}
+	if kind == "Duo" then
+		visual(model, base, cframe, {
+			Name = "Schuetzenbrett",
+			Size = Vector3.new(w * 0.8, 0.3, 2.4),
+			Offset = CFrame.new(0, seatY - 0.2, l / 2 + 1.1),
+			Color = wood,
+			Material = Enum.Material.WoodPlanks,
+			CanCollide = false,
+		})
+		visual(model, base, cframe, {
+			Name = "Schuetzenlehne",
+			Size = Vector3.new(w * 0.6, 1.6, 0.3),
+			Offset = CFrame.new(0, seatY + 0.8, l / 2 + 2.2),
+			Color = Color3.fromRGB(200, 60, 60),
+			CanCollide = false,
+		})
+		table.insert(spots, Vector3.new(0, seatY + 0.1, l / 2 + 1.1))
+	else
+		for _, side in { -1, 1 } do
+			visual(model, base, cframe, {
+				Name = "Chaosbank",
+				Size = Vector3.new(1.8, 0.4, l * 0.9),
+				Offset = CFrame.new(side * (w / 2 + 0.9), seatY - 0.1, 0),
+				Color = Color3.fromRGB(230, 120, 30),
+				CanCollide = false,
+			})
+		end
+		visual(model, base, cframe, {
+			Name = "Chaosbug",
+			Size = Vector3.new(w + 3.6, 0.4, 1.8),
+			Offset = CFrame.new(0, seatY - 0.1, -(l / 2 + 0.9)),
+			Color = Color3.fromRGB(230, 120, 30),
+			CanCollide = false,
+		})
+		table.insert(spots, Vector3.new(-(w / 2 + 0.9), seatY + 0.1, 0))
+		table.insert(spots, Vector3.new(w / 2 + 0.9, seatY + 0.1, 0))
+		table.insert(spots, Vector3.new(0, seatY + 0.1, -(l / 2 + 0.9)))
+	end
+	for index, spot in spots do
+		local seat = Instance.new("Seat")
+		seat.Name = "CrewSeat" .. (index + 1)
+		seat.Size = Vector3.new(2, 0.2, 2)
+		seat.CFrame = cframe * CFrame.new(spot)
+		seat.Transparency = 1
+		seat.CanCollide = false
+		seat.CanTouch = false -- nur per Skript (CartManager.seatPassenger)
+		seat.CanQuery = false
+		seat.Massless = true
+		seat.CollisionGroup = CartBuilder.COLLISION_GROUP
+		seat.Parent = model
+		weld(base, seat)
+	end
+end
+
+-- `crewKind`: nil = normaler Wagen, "Duo" oder "Chaos" = mit Zusatzsitzen (Attribut CrewKind)
+function CartBuilder.build(owner: Player, cframe: CFrame, vehicleId: string?, crewKind: string?): Model
 	ensureCollisionGroup()
 
 	local def = Vehicles.get(vehicleId) or Vehicles.get(Vehicles.defaultId())
@@ -460,6 +523,10 @@ function CartBuilder.build(owner: Player, cframe: CFrame, vehicleId: string?): M
 	seat.CollisionGroup = CartBuilder.COLLISION_GROUP
 	seat.Parent = model
 	weld(base, seat)
+	if crewKind == "Duo" or crewKind == "Chaos" then
+		model:SetAttribute("CrewKind", crewKind)
+		addCrewSeats(model, base, cframe, c, seatY, crewKind)
+	end
 
 	-- Ballast: ersetzt das Gewicht des Fahrers. Hoehe bestimmt, wie kippelig der Wagen ist.
 	local ballast = makePart({
