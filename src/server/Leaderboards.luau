@@ -78,6 +78,15 @@ function Leaderboards.boards(): { Board }
 	for _, id in existing do
 		add(id)
 	end
+	-- Duo-/Chaos-Laeufe: eigene Listen pro Strecke ("Track1@Duo")
+	for _, board in table.clone(result) do
+		for _, kind in { "Duo", "Chaos" } do
+			table.insert(
+				result,
+				{ id = board.id .. "@" .. kind, kind = "Time", name = `{board.name} ({kind})` }
+			)
+		end
+	end
 	table.insert(result, { id = L().FlightBoardId, kind = "Distance", name = L().FlightBoardName })
 	table.insert(result, { id = L().MetersBoardId, kind = "Meters", name = L().MetersBoardName })
 	return result
@@ -92,6 +101,11 @@ local function findBoard(boardId: string): Board?
 	end
 	if Track.exists(boardId) then
 		return { id = boardId, kind = "Time", name = Track.displayName(boardId) }
+	end
+	-- Duo-/Chaos-Liste einer Strecke
+	local trackId, kind = string.match(boardId, "^(.+)@(%a+)$")
+	if trackId and (kind == "Duo" or kind == "Chaos") and Track.exists(trackId) then
+		return { id = boardId, kind = "Time", name = `{Track.displayName(trackId)} ({kind})` }
 	end
 	return nil
 end

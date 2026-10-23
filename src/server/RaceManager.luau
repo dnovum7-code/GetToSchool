@@ -43,7 +43,31 @@ local runState = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("RunStat
 
 local RaceManager = {}
 
-type Phase = "Ready" | "Running" | "Finished" | "Aborted" | "GameOver" | "Party"
+type Phase = "Ready" | "Running" | "Finished" | "Aborted" | "GameOver" | "Party" | "Crew"
+
+-- Duo-/Chaos-Wagen (server/Crew): Mitfahrer sind in der Phase "Crew". Ihr Lauf ist der des
+-- Fahrers/Gastgebers (Zeit, Leben, Muenzen); dessen Nachrichten gehen auch an sie.
+export type CrewHooks = {
+	hostOf: (player: Player) -> Player?, -- Mitfahrer -> Gastgeber
+	guestsOf: (host: Player) -> { Player }, -- Gastgeber -> Mitfahrer
+	kindOf: (host: Player) -> string?, -- "Duo" / "Chaos" (nil = solo)
+	respawnGuest: (player: Player) -> (), -- Figur neu: wieder auf den Sitz
+}
+local crewHooks: CrewHooks? = nil
+-- Diese Lauf-Nachrichten bekommen auch die Mitfahrer
+local MIRROR = {
+	Lives = true,
+	Started = true,
+	Finished = true,
+	GameOver = true,
+	Meters = true,
+	Checkpoint = true,
+	WrongCheckpoint = true,
+	Best = true,
+	Aborted = true,
+	Track = true,
+	CrewReset = true,
+}
 
 -- Party-Modi (server/Party): waehrend einer Runde ist der Spieler in der Phase "Party".
 -- Neustart, Crash, Treffer und Einsteigen entscheidet dann das Party-Modul.
@@ -112,6 +136,17 @@ export type RunResult = {
 
 local races: { [Player]: RaceState } = {}
 
+-- Nachricht an den Spieler (und bei Lauf-Nachrichten auch an seine Mitfahrer)
+local function fire(player: Player, kind: string, ...: any)
+	runState:FireClient(player, kind, ...)
+	local hooks = crewHooks
+	if hooks and MIRROR[kind] then
+		for _, guest in hooks.guestsOf(player) do
+			runState:FireClient(guest, kind, ...)
+		end
+	end
+end
+
 local function getRace(player: Player): RaceState
 	local race = races[player]
 	if not race then
@@ -153,7 +188,7 @@ end
 -- Bestzeit des Spielers fuer seinen aktuellen Track an den Client schicken (fuer die Anzeige)
 local function sendBest(player: Player, race: RaceState)
 	local best = BestTimes.get(player, race.trackId)
-	runState:FireClient(player, "Best", if best then best.time else nil)
+	fire(player, "Best", if best then best.time else nil)
 end
 
 -- Helm-Ladungen je nach gekaufter Stufe (Upgrade "Helmet")
@@ -171,12 +206,17 @@ end
 -- Leben und Helm an den Client schicken (Anzeige)
 local function sendLives(player: Player, race: RaceState)
 	local life = race.life
-	runState:FireClient(player, "Lives", life.lives, life.maxLives, life.shield, life.maxShield)
+	fire(player, "Lives", life.lives, life.maxLives, life.shield, life.maxShield)
 end
 
 -- Kompletter Neustart (Taste T): Wagen an den Start, neuer Lauf, Zeit wieder auf 0.
 function RaceManager.restart(player: Player)
 	local race = getRace(player)
+	local crew = crewHooks
+	if race.phase == "Crew" and crew then
+		crew.respawnGuest(player) -- Mitfahrer: zurueck auf den Sitz (Lauf = der des Gastgebers)
+		return
+	end
 	local hooks = partyHooks
 	if race.phase == "Party" and hooks then
 		hooks.respawn(player) -- in einer Party-Runde: zurueck an einen Spawnpunkt der Arena
@@ -209,12 +249,13 @@ function RaceManager.restart(player: Player)
 	race.lastMeterPos = nil
 	race.rewinding = false
 	race.usedRewind = false
-	runState:FireClient(player, "Meters", 0, false)
+	fire(player, "Meters", 0, false)
 	Launchables.resetRun(player) -- umgeschleuderte Objekte stehen wieder
 	-- Neuer Lauf: Zufallsereignisse neu wuerfeln (vor "Reset", damit die Strecke steht)
-	runState:FireClient(player, "Events", RandomEvents.roll())
-	runState:FireClient(player, "Reset", spawnCFrame, false)
-	runState:FireClient(player, "Track", race.trackId) -- fuer die Strecken-Musik (Soundscape)
+	fire(player, "Events", RandomEvents.roll())
+	fire(player, "Reset", spawnCFrame, false)
+	fire(player, "Track", race.trackId) -- fuer die Strecken-Musik (Soundscape)
+	fire(player, "CrewReset") -- Mitfahrer: neuer Lauf (Anzeige zuruecksetzen)
 	sendBest(player, race)
 	sendLives(player, race)
 	Ghosts.cancel(player)
@@ -248,7 +289,7 @@ function RaceManager.restartAtCheckpoint(player: Player)
 	end
 	race.lastRestart = os.clock()
 	race.lastMeterPos = nil -- Teleport zaehlt nicht als Strecke
-	runState:FireClient(player, "Reset", cframe, true)
+	fire(player, "Reset", cframe, true)
 end
 
 -- Game Over (0 Leben): lustiger Screen beim Client, dann kompletter Neustart
@@ -257,7 +298,7 @@ local function gameOver(player: Player, race: RaceState)
 	local wasRunning = race.phase == "Running"
 	race.phase = "GameOver"
 	local runId = race.runId
-	runState:FireClient(player, "GameOver", {
+	fire(player, "GameOver", {
 		hits = race.hits,
 		coins = Coins.getRunTotal(player),
 		time = if wasRunning then os.clock() - race.startTime else nil,
@@ -308,14 +349,14 @@ function RaceManager.hitLaunchable(player: Player, object: unknown, spawn: unkno
 			if typeof(object) == "Instance" then object:GetFullName() else "?",
 			reason
 		)
-		runState:FireClient(player, "LaunchRejected", object, key, reason)
+		fire(player, "LaunchRejected", object, key, reason)
 		return
 	end
 	local race = partyRace
 	local hooks = partyHooks
 	if race.phase == "Party" and hooks then
 		-- Party (Kuh-Bowling): kein Lebensverlust, Punkte und Anzeige fuer alle macht Party
-		runState:FireClient(player, "Launch", object, info)
+		fire(player, "Launch", object, info)
 		hooks.launch(player, object, spawn, info)
 		return
 	end
@@ -324,14 +365,14 @@ function RaceManager.hitLaunchable(player: Player, object: unknown, spawn: unkno
 	if not best or info.meters > best.meters then
 		race.bestFlight = { name = info.name, meters = info.meters }
 	end
-	runState:FireClient(player, "Launch", object, info)
+	fire(player, "Launch", object, info)
 	if Config.Debug.GodMode or Config.Debug.NoDeaths then
 		return -- God Mode / keine Tode (nur Studio): kein Lebensverlust
 	end
 	local outcome = RaceManager.applyHit(player)
 	-- Letztes Leben weg: Figur fliegt auch noch hinterher
 	if outcome == "GameOver" and CartManager.crash(player) then
-		runState:FireClient(player, "Ragdoll")
+		fire(player, "Ragdoll")
 	end
 end
 
@@ -354,6 +395,57 @@ end
 
 -- Ist der Spieler gerade ausserhalb eines Laufs (Shop, Track-Wahl erlaubt)?
 -- Erlaubt: am Start vor dem Losfahren, nach dem Ziel, nach einem Abbruch.
+-- Duo-/Chaos-Wagen --------------------------------------------------------------------
+
+function RaceManager.setCrewHooks(hooks: CrewHooks)
+	crewHooks = hooks
+end
+
+-- Mitfahrer: eigener Lauf endet, ab jetzt zaehlt der des Gastgebers
+function RaceManager.enterCrew(player: Player)
+	local race = getRace(player)
+	Ghosts.cancel(player)
+	race.phase = "Crew"
+	race.runId += 1
+	race.lastMeterPos = nil
+	race.rewinding = false
+	runState:FireClient(player, "CrewMode", true)
+end
+
+-- Mitfahrer steigt aus: normaler Neustart mit eigenem Wagen
+function RaceManager.leaveCrew(player: Player)
+	local race = getRace(player)
+	if race.phase ~= "Crew" then
+		return
+	end
+	race.phase = "Ready"
+	runState:FireClient(player, "CrewMode", false)
+	RaceManager.restart(player)
+end
+
+-- Physik-Uebergabe: der Lauf (Zeit, Leben, Muenzen ...) wandert zum neuen Gastgeber
+function RaceManager.transferRace(old: Player, new: Player)
+	local race = races[old]
+	if not race then
+		return
+	end
+	races[new] = race
+	races[old] = nil
+	runState:FireClient(new, "CrewMode", false)
+	runState:FireClient(
+		new,
+		"Lives",
+		race.life.lives,
+		race.life.maxLives,
+		race.life.shield,
+		race.life.maxShield
+	)
+end
+
+function RaceManager.isInCrew(player: Player): boolean
+	return getRace(player).phase == "Crew"
+end
+
 -- Party-Modi --------------------------------------------------------------------------
 
 function RaceManager.setPartyHooks(hooks: PartyHooks)
@@ -374,7 +466,7 @@ function RaceManager.enterParty(player: Player)
 	race.lastMeterPos = nil
 	race.rewinding = false
 	race.lastRestart = os.clock()
-	runState:FireClient(player, "PartyMode", true)
+	fire(player, "PartyMode", true)
 end
 
 -- Runde vorbei oder verlassen: zurueck ins normale Spiel (kompletter Neustart am Start)
@@ -384,7 +476,7 @@ function RaceManager.leaveParty(player: Player)
 		return
 	end
 	race.phase = "Ready"
-	runState:FireClient(player, "PartyMode", false)
+	fire(player, "PartyMode", false)
 	RaceManager.restart(player)
 end
 
@@ -397,14 +489,14 @@ function RaceManager.teleport(player: Player, cframe: CFrame): boolean
 	local race = getRace(player)
 	race.lastRestart = os.clock()
 	race.lastMeterPos = nil
-	runState:FireClient(player, "Reset", placed, true)
+	fire(player, "Reset", placed, true)
 	return true
 end
 
 -- Crash mit Ragdoll (z. B. Leben verloren im Modus "Letzter Wagen")
 function RaceManager.ragdoll(player: Player)
 	if CartManager.crash(player) then
-		runState:FireClient(player, "Ragdoll")
+		fire(player, "Ragdoll")
 	end
 end
 
@@ -453,6 +545,15 @@ end
 -- Neustart-Wunsch vom Client: "Checkpoint" (R, Crash) oder "Full" (T). Mit Spam-Schutz.
 function RaceManager.requestRestart(player: Player, kind: unknown)
 	local race = getRace(player)
+	local crew = crewHooks
+	if race.phase == "Crew" and crew then
+		-- Mitfahrer druecken R/T: gilt fuer den ganzen Wagen
+		local host = crew.hostOf(player)
+		if host then
+			RaceManager.requestRestart(host, kind)
+		end
+		return
+	end
 	if os.clock() - race.lastRestart < Config.Race.MinRestartInterval then
 		return
 	end
@@ -486,7 +587,7 @@ local function checkCheckpoints(player: Player, race: RaceState, base: BasePart)
 			-- falsche Reihenfolge: einmal melden, nicht speichern
 			if race.wrongCheckpoint ~= instance then
 				race.wrongCheckpoint = instance
-				runState:FireClient(player, "WrongCheckpoint")
+				fire(player, "WrongCheckpoint")
 			end
 			continue
 		end
@@ -525,7 +626,7 @@ local function checkCheckpoints(player: Player, race: RaceState, base: BasePart)
 				delta = elapsed - bestSplit
 			end
 		end
-		runState:FireClient(player, "Checkpoint", elapsed, delta)
+		fire(player, "Checkpoint", elapsed, delta)
 		return
 	end
 end
@@ -584,6 +685,17 @@ local function submitToLeaderboard(player: Player, race: RaceState, time: number
 		}
 	)
 	if ok then
+		local hooks = crewHooks
+		local kind = hooks and hooks.kindOf(player)
+		local guests: { Player } = if hooks then hooks.guestsOf(player) else {}
+		if kind and #guests > 0 then
+			-- Duo-/Chaos-Lauf: eigene Bestenliste, Eintrag fuer jeden Mitfahrer
+			Leaderboards.submitTime(player, race.trackId .. "@" .. kind, time)
+			for _, guest in guests do
+				Leaderboards.submitTime(guest, race.trackId .. "@" .. kind, time)
+			end
+			return nil
+		end
 		Leaderboards.submitTime(player, race.trackId, time)
 		return nil
 	end
@@ -594,7 +706,13 @@ end
 local function finish(player: Player, race: RaceState, finishZone: BasePart, position: Vector3)
 	local time = os.clock() - race.startTime
 	race.phase = "Finished"
-	local isNewBest, previousBest = BestTimes.submit(player, race.trackId, time, race.splits)
+	local hooks = crewHooks
+	local crewRun = hooks ~= nil and hooks.kindOf(player) ~= nil and #hooks.guestsOf(player) > 0
+	-- Crew-Laeufe zaehlen nicht als eigene Solo-Bestzeit (eigene Bestenliste, kein Geist)
+	local isNewBest, previousBest = false, nil
+	if not crewRun then
+		isNewBest, previousBest = BestTimes.submit(player, race.trackId, time, race.splits)
+	end
 	local grade = RaceTime.gradeFor(time, finishZone)
 
 	-- Belohnung: Grundbetrag plus Bonus je nach Note
@@ -625,13 +743,13 @@ local function finish(player: Player, race: RaceState, finishZone: BasePart, pos
 		meterCoins = race.meterCoins,
 		meterBoost = race.meterBoost,
 	}
-	runState:FireClient(player, "Finished", result)
+	fire(player, "Finished", result)
 	-- Alle Muenzen der Strecke (seit dem letzten Ziel)? Vor dem Wiederherstellen zaehlen.
 	local coinsHave, coinsTotal = Coins.trackProgress(player, race.trackId)
 	-- Ziel erreicht: die eingesammelten Muenzen dieser Strecke erscheinen wieder
 	Coins.restoreTrack(player, race.trackId)
 	-- Neue Bestzeit: Aufnahme wird der neue Geist
-	Ghosts.finish(player, race.trackId, isNewBest and not race.usedRewind, time)
+	Ghosts.finish(player, race.trackId, isNewBest and not race.usedRewind and not crewRun, time)
 	PlayerEvents.fire(player, {
 		type = "Finish",
 		trackId = race.trackId,
@@ -666,9 +784,9 @@ function RaceManager.requestExit(player: Player)
 		-- Wer aussteigt, hat keinen gueltigen Lauf mehr (und kein Auto-Neustart nach dem Ziel)
 		race.phase = "Aborted"
 		Ghosts.cancel(player)
-		runState:FireClient(player, "Aborted")
+		fire(player, "Aborted")
 	end
-	runState:FireClient(player, "Exited", landing)
+	fire(player, "Exited", landing)
 end
 
 function RaceManager.requestEnter(player: Player)
@@ -716,21 +834,21 @@ function RaceManager.reportCrash(player: Player, reason: unknown)
 		else
 			local outcome = RaceManager.applyHit(player)
 			if outcome == "Shielded" then
-				runState:FireClient(player, "Shielded", reason, race.life.shield)
+				fire(player, "Shielded", reason, race.life.shield)
 			end
 		end
 		if race.phase == "GameOver" and CartManager.crash(player) then
-			runState:FireClient(player, "Ragdoll")
+			fire(player, "Ragdoll")
 		end
 		return
 	end
 	local outcome = RaceManager.applyHit(player)
 	if outcome == "Shielded" then
-		runState:FireClient(player, "Shielded", reason, getRace(player).life.shield)
+		fire(player, "Shielded", reason, getRace(player).life.shield)
 		return
 	end
 	if CartManager.crash(player) then
-		runState:FireClient(player, "Ragdoll")
+		fire(player, "Ragdoll")
 	end
 end
 
@@ -744,7 +862,7 @@ local function startMeters(player: Player, race: RaceState, position: Vector3)
 		race.meterBoost = true
 		Profiles.markChanged(player)
 	end
-	runState:FireClient(player, "Meters", 0, race.meterBoost)
+	fire(player, "Meters", 0, race.meterBoost)
 end
 
 -- Jeden Frame im Lauf: plausible Strecke zaehlen, Muenzen auszahlen, Client informieren
@@ -778,13 +896,16 @@ local function countMeters(player: Player, race: RaceState, position: Vector3)
 	end
 	if now - race.lastMeterSend >= M.SendInterval then
 		race.lastMeterSend = now
-		runState:FireClient(player, "Meters", race.meters, race.meterBoost)
+		fire(player, "Meters", race.meters, race.meterBoost)
 	end
 end
 
 local function updatePlayer(player: Player, race: RaceState)
 	if race.phase == "GameOver" then
 		return -- nach dem Game-Over-Screen startet der Server selbst neu
+	end
+	if race.phase == "Crew" then
+		return -- Mitfahrer: der Lauf des Gastgebers zaehlt
 	end
 	if race.phase == "Party" then
 		-- Party-Runde: keine Zeit, keine Meter. Nur das Sicherheitsnetz (Ragdoll, Wagen weg).
@@ -845,7 +966,7 @@ local function updatePlayer(player: Player, race: RaceState)
 			PlayerEvents.fire(player, { type = "RunStarted", trackId = race.trackId }) -- z. B. Powerups
 			local vehicle = if cart then cart:GetAttribute("VehicleId") else nil
 			Ghosts.start(player, race.trackId, if type(vehicle) == "string" then vehicle else "")
-			runState:FireClient(player, "Started")
+			fire(player, "Started")
 		end
 	elseif race.phase == "Running" then
 		Ghosts.record(player, base.CFrame, os.clock() - race.startTime)

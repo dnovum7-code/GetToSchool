@@ -378,10 +378,24 @@ function Profiles.markChanged(player: Player)
 end
 
 -- Muenzen gutschreiben (auch negativ, nie unter 0). Gibt den neuen Stand zurueck.
+-- Duo-/Chaos-Wagen: Muenzen des Gastgebers bekommen auch die Mitfahrer (server/Crew)
+local coinShare: ((player: Player) -> { Player })? = nil
+function Profiles.setCoinShare(share: (player: Player) -> { Player })
+	coinShare = share
+end
+
 function Profiles.addCoins(player: Player, amount: number): number
 	local data = Profiles.get(player)
 	data.coins = math.max(0, data.coins + math.floor(amount))
 	Profiles.markChanged(player)
+	local share = coinShare
+	if share and amount > 0 then
+		for _, other in share(player) do
+			local otherData = Profiles.get(other)
+			otherData.coins += math.floor(amount)
+			Profiles.markChanged(other)
+		end
+	end
 	return data.coins
 end
 
