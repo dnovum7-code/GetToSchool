@@ -185,6 +185,7 @@ function TrackPieces.init()
 			"AmbientParticles",
 			"BirdFlock",
 			"SoundZone",
+			"StableZone",
 		}
 	do
 		TagList.watch(tag, function(instance)
@@ -198,9 +199,33 @@ function TrackPieces.init()
 		end)
 	end
 
+	-- Barriere: feste, glatte Wand (keine Reibung, kein Abprallen; das Entlanggleiten und
+	-- Lenken rechnet der Client, client/Guides). Invisible = true: unsichtbare Begrenzung.
+	TagList.watch("Barrier", function(instance)
+		local invisible = instance:GetAttribute("Invisible") == true
+		forEachPart(instance, function(part)
+			part.Anchored = true
+			part.CanCollide = true
+			part.CanQuery = true -- fuer die Beruehrungs-Abfrage des Clients
+			local current = part.CurrentPhysicalProperties
+			part.CustomPhysicalProperties = PhysicalProperties.new(current.Density, 0, 0, 100, 100)
+			if invisible then
+				part.Transparency = 1
+				part.CastShadow = false
+			end
+		end)
+	end)
+	-- NoDamage: fuer die Beruehrungs-Abfrage des Clients erreichbar machen
+	TagList.watch("NoDamage", function(instance)
+		forEachPart(instance, function(part)
+			part.CanQuery = true
+		end)
+	end)
+
 	-- Hazard: standardmaessig nicht fest (Wasser, Grube), mit Attribut Solid = true fest
 	TagList.watch("Hazard", function(instance)
-		local solid = instance:GetAttribute("Solid") == true
+		-- gefaehrliche Barriere (Barrier + Hazard) ist immer fest
+		local solid = instance:GetAttribute("Solid") == true or instance:HasTag("Barrier")
 		forEachPart(instance, function(part)
 			part.Anchored = true
 			part.CanCollide = solid

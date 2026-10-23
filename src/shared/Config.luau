@@ -616,6 +616,30 @@ Config.Pursuer = {
 	DisplayName = "Verfolger", -- Attribut "DisplayName" (z. B. "Schulbus") fuer die Anzeige
 }
 
+-- Barrieren (Tag "Barrier", Wand/Leitplanke): Der Wagen gleitet daran entlang und wird sanft in
+-- Fahrtrichtung gelenkt statt abzuprallen. Standardmaessig ohne Crash (wie Tag "NoDamage");
+-- zusammen mit Tag "Hazard": gefaehrliche Barriere (Crash bei Beruehrung).
+-- Attribute: Invisible (true = unsichtbar), Bounce (Studs/s von der Wand weg).
+Config.Barrier = {
+	Bounce = 4, -- so viel (Studs/s) drueckt sie zurueck (Attribut "Bounce")
+	SpeedKeep = 0.95, -- so viel vom Tempo bleibt beim Anschrammen (1 = alles)
+	SteerRate = 3, -- wie stark der Wagen in Richtung Wand-Verlauf gedreht wird
+	SteerResponse = 8, -- wie schnell diese Drehung greift
+	Padding = 0.6, -- so nah (Studs) zaehlt als Beruehrung
+	NoDamageGrace = 0.3, -- so lange (s) nach der Beruehrung kein Crash durch harten Aufprall
+}
+
+-- Stabil-Zone (Tag "StableZone", unsichtbarer Bereich): darin kann der Wagen nicht umkippen
+-- (ab MaxTilt dreht er sich weich zurueck, ohne Schwung zu erzeugen) und ein harter Aufprall ist
+-- kein Crash (Hazard und Launchable wirken weiter). Attribute: MaxTilt, RightingSpeed, NoCrash.
+Config.StableZone = {
+	MaxTilt = 25, -- ab dieser Neigung (Grad) wird aufgerichtet
+	RightingSpeed = 3, -- so schnell (rad/s) dreht er sich hoechstens zurueck
+	Damping = 6, -- Kipp- und Nickbewegungen werden so stark gedaempft (pro Sekunde)
+	BlendTime = 0.5, -- weicher Uebergang beim Hinein- und Hinausfahren (s)
+	NoCrash = true,
+}
+
 -- TextTrigger (Tag "TextTrigger", Part): Text auf dem Bildschirm beim Hineinfahren.
 -- Attribute Text, SubText, Color, Duration, Once, Cooldown (siehe client/Toolkit/TextTriggers)
 Config.TextTrigger = {
@@ -954,6 +978,12 @@ Config.TuningPanel = {
 			{ label = "Himmel-Chance (0..1)", path = "Launch.SkyChance", server = true, span = 0.25 },
 			{ label = "Flug-Schwerkraft", path = "Launch.Gravity", server = true, min = 5 },
 			{ label = "Spawner: Schuss-Staerke (Faktor)", path = "Spawner.Strength" },
+			{ label = "Barriere: Zurueckdruecken", path = "Barrier.Bounce" },
+			{ label = "Barriere: Tempo bleibt (Anteil)", path = "Barrier.SpeedKeep", span = 0.1, min = 0 },
+			{ label = "Barriere: Lenken entlang", path = "Barrier.SteerRate" },
+			{ label = "Stabil-Zone: ab Neigung (Grad)", path = "StableZone.MaxTilt" },
+			{ label = "Stabil-Zone: Aufricht-Tempo", path = "StableZone.RightingSpeed" },
+			{ label = "Stabil-Zone: Daempfung", path = "StableZone.Damping" },
 			{ label = "Spawner: Pad-Faktor (Boost/Jump)", path = "Spawner.PadFactor" },
 			{ label = "LowGravity: Schwerkraft-Anteil", path = "ObjectPhysics.GravityScale", server = true },
 			{ label = "NoFriction: Reibung", path = "ObjectPhysics.Friction", server = true, span = 0.5 },

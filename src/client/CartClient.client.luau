@@ -35,6 +35,7 @@ local Horn = require(script.Parent:WaitForChild("Horn"))
 local WheelDust = require(script.Parent:WaitForChild("WheelDust"))
 local Soundscape = require(script.Parent:WaitForChild("Soundscape"))
 local NearMiss = require(script.Parent:WaitForChild("NearMiss"))
+local Guides = require(script.Parent:WaitForChild("Guides"))
 local PartyState = require(script.Parent:WaitForChild("PartyState"))
 local PartyUI = require(script.Parent:WaitForChild("PartyUI"))
 local Pursuers = require(script.Parent:WaitForChild("Toolkit"):WaitForChild("Pursuers"))
@@ -700,6 +701,7 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 		local spawnCFrame: CFrame, keepRunning: boolean = ...
 		Rewind.clear() -- Neustart/Checkpoint: nicht in die Zeit davor zurueckspulen
 		NearMiss.reset()
+		Guides.reset()
 		if not keepRunning then
 			-- kompletter Neustart: neuer Lauf. Beim Checkpoint-Neustart laeuft die Zeit weiter.
 			runPhase = "Ready"
@@ -1049,6 +1051,13 @@ RunService.PreSimulation:Connect(function(dt)
 		end)
 	end
 
+	-- Barrieren (entlanggleiten), NoDamage, Stabil-Zone: dort ist harter Aufprall kein Crash
+	if not crashed then
+		local guide = Guides.step(dt, current)
+		if guide.noDamage or guide.stable then
+			crashDetector:relaxImpact(math.huge, Config.Barrier.NoDamageGrace)
+		end
+	end
 	-- Bouncy: federt ab, ein harter Aufprall ist hier kein Crash
 	if TrackSensors.touching(current.cart, "Bouncy") then
 		crashDetector:relaxImpact(math.huge, Config.Track.BouncyCrashGrace)
