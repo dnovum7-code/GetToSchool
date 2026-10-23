@@ -15,6 +15,7 @@ local Garage = require(script.Parent:WaitForChild("Garage"))
 local Homework = require(script.Parent:WaitForChild("Homework"))
 local Horn = require(script.Parent:WaitForChild("Horn"))
 local Party = require(script.Parent:WaitForChild("Party"))
+local NearMiss = require(script.Parent:WaitForChild("NearMiss"))
 local Launchables = require(script.Parent:WaitForChild("Launchables"))
 local ObjectPhysics = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObjectPhysics"))
 local Leaderboards = require(script.Parent:WaitForChild("Leaderboards"))
@@ -74,6 +75,7 @@ PlayerEvents.init() -- Ereignisse (Ziel, Wurf, Drift ...) fuer Hausaufgaben und 
 Homework.init() -- Hausaufgaben (taegliche Aufgaben)
 Horn.init() -- Hupe (H): Abklingzeit pruefen, an alle verteilen
 Party.init() -- Party-Modi: Anmeldung, Countdown, Arena, Runde, Ergebnis
+NearMiss.init() -- Near-Miss-Bonus ("KNAPP!"): Server zahlt mit Grenzen
 StreamAhead.init() -- StreamingEnabled: Gelaende in Fahrtrichtung vorausladen
 DevTuning.init(cartsFolder) -- Tuning-Panel (nur in Studio aktiv)
 

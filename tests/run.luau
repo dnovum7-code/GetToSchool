@@ -29,6 +29,7 @@ local SPECS = {
 	"./PursuerSpec",
 	"./PartySpec",
 	"./AtmosphereSpec",
+	"./NearMissSpec",
 }
 
 for _, path in SPECS do

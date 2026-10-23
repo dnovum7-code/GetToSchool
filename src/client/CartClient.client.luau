@@ -34,6 +34,7 @@ local FlyMode = require(script.Parent:WaitForChild("FlyMode"))
 local Horn = require(script.Parent:WaitForChild("Horn"))
 local WheelDust = require(script.Parent:WaitForChild("WheelDust"))
 local Soundscape = require(script.Parent:WaitForChild("Soundscape"))
+local NearMiss = require(script.Parent:WaitForChild("NearMiss"))
 local PartyState = require(script.Parent:WaitForChild("PartyState"))
 local PartyUI = require(script.Parent:WaitForChild("PartyUI"))
 local Pursuers = require(script.Parent:WaitForChild("Toolkit"):WaitForChild("Pursuers"))
@@ -698,6 +699,7 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 	if kind == "Reset" then
 		local spawnCFrame: CFrame, keepRunning: boolean = ...
 		Rewind.clear() -- Neustart/Checkpoint: nicht in die Zeit davor zurueckspulen
+		NearMiss.reset()
 		if not keepRunning then
 			-- kompletter Neustart: neuer Lauf. Beim Checkpoint-Neustart laeuft die Zeit weiter.
 			runPhase = "Ready"
@@ -1036,6 +1038,7 @@ RunService.PreSimulation:Connect(function(dt)
 	end
 	if not crashed then
 		CoinsClient.update(current.base)
+		NearMiss.update(current.cart, current.base, runPhase == "Running") -- "KNAPP!"
 		-- Launchable getroffen: Hit-Stop, Kamera-Wackeln; ein riesiger Tempo-Sprung ist hier
 		-- kein Crash (der Wagen steht kurz still und faehrt dann weiter)
 		LaunchablesClient.update(current.cart, current.base, function()

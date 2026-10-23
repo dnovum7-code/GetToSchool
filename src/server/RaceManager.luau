@@ -433,6 +433,11 @@ function RaceManager.setRewinding(player: Player, on: boolean)
 end
 
 -- Laeuft gerade ein Lauf (Zeit laeuft)?
+-- Nummer des aktuellen Laufs (aendert sich bei jedem kompletten Neustart)
+function RaceManager.getRunId(player: Player): number
+	return getRace(player).runId
+end
+
 function RaceManager.isRunning(player: Player): boolean
 	return getRace(player).phase == "Running"
 end

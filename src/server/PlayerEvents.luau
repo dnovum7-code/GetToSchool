@@ -18,7 +18,7 @@ local PlayerEvents = {}
 
 -- Alle Felder sind optional, je nach Art (type)
 export type Event = {
-	type: string, -- "Finish", "Launch", "Coins", "Drift", "HomeworkDone"
+	type: string, -- "Finish", "Launch", "Coins", "Drift", "HomeworkDone", "NearMiss"
 	amount: number?, -- Coins/Drift
 	name: string?, -- Launch: DisplayName
 	meters: number?, -- Launch: Flugweite
