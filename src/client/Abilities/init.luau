@@ -31,6 +31,9 @@ local TURBO_ACTION = "GetToSchoolTurbo"
 local upgrades: { [string]: number } = {}
 local turboRequested = false
 local active = false
+local turboKeyGate: () -> boolean = function()
+	return true
+end
 
 -- Stufe einer Ability (Upgrade-Id). Config.Debug.AllUpgrades: in Studio alles maximal.
 function Abilities.getLevel(id: string): number
@@ -49,12 +52,26 @@ local function bindTurbo()
 	end
 	-- Touch-Button erscheint nur, wenn das Pausenbrot gekauft ist
 	ContextActionService:BindAction(TURBO_ACTION, function(_, inputState)
-		if inputState == Enum.UserInputState.Begin then
+		if inputState == Enum.UserInputState.Begin and turboKeyGate() then
 			turboRequested = true
 		end
 		return Enum.ContextActionResult.Sink
 	end, true, Enum.KeyCode.F, Enum.KeyCode.ButtonR1)
 	ContextActionService:SetTitle(TURBO_ACTION, "Turbo")
+end
+
+-- Chaos-Wagen: Turbo-Taste nur, wenn `gate()` ja sagt (Boost gehoert evtl. einem anderen)
+function Abilities.setTurboKeyGate(gate: () -> boolean)
+	turboKeyGate = gate
+end
+
+-- Turbo von aussen ausloesen (Chaos: Mitfahrer mit "Boost"). false = kein Pausenbrot gekauft
+function Abilities.requestTurbo(): boolean
+	if Abilities.getLevel("Turbo") < 1 then
+		return false
+	end
+	turboRequested = true
+	return true
 end
 
 -- Gekaufte Stufen vom Server (Spielstand-Kopie)

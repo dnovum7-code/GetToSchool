@@ -38,6 +38,7 @@ local NearMiss = require(script.Parent:WaitForChild("NearMiss"))
 local Guides = require(script.Parent:WaitForChild("Guides"))
 local PartyState = require(script.Parent:WaitForChild("PartyState"))
 local PartyUI = require(script.Parent:WaitForChild("PartyUI"))
+local CrewClient = require(script.Parent:WaitForChild("CrewClient"))
 local Pursuers = require(script.Parent:WaitForChild("Toolkit"):WaitForChild("Pursuers"))
 local OwnCart = require(script.Parent:WaitForChild("OwnCart"))
 local ProgressClient = require(script.Parent:WaitForChild("ProgressClient"))
@@ -215,6 +216,11 @@ AchievementUI.init() -- Erfolge (Reiter im Menue, Popup)
 SpinUI.init() -- taegliches Gluecksrad (Reiter im Menue)
 SettingsUI.init() -- Einstellungen und Steuerung (Reiter im Menue)
 PartyUI.init() -- Party-Modi (Reiter im Menue, Anzeige in der Runde)
+CrewClient.init() -- Duo-/Chaos-Wagen (Reiter "Wagen", Mitfahren, Chaos-Steuerung)
+-- Chaos: Turbo-Taste F nur, wenn "Boost" dem Gastgeber gehoert (sonst kommt Boost vom Mitfahrer)
+Abilities.setTurboKeyGate(function()
+	return not CrewClient.isChaosHost()
+end)
 -- Powerups aus dem Gluecksrad wirken beim Losfahren (Leben/Helm zaehlt der Server)
 remotes:WaitForChild("Progress").OnClientEvent:Connect(function(kind: string, used: unknown)
 	if kind ~= "Powerups" or type(used) ~= "table" then
@@ -783,6 +789,14 @@ runState.OnClientEvent:Connect(function(kind: string, ...)
 			PartyState.reset()
 			ChaseCamera.watch(nil)
 		end
+	elseif kind == "CrewMode" or kind == "CrewReset" then
+		-- Mitfahrer (Duo/Chaos): eigener Lauf ruht, Anzeige kommt vom Gastgeber
+		runPhase = "Ready"
+		gameOver = false
+		GhostClient.stopRun()
+		Tricks.cancel()
+		RaceUI.hideResult()
+		RaceUI.hideGameOver()
 	elseif kind == "Exited" then
 		onExited(...)
 	elseif kind == "Aborted" then
@@ -942,6 +956,23 @@ local function readInput(): (number, number)
 	return throttle, steer
 end
 
+-- Chaos "Boost": Turbo-Pausenbrot, wenn gekauft, sonst ein kleiner Schub mit Abklingzeit
+local chaosBoostReadyAt = 0
+local function chaosBoost(current: CartController.Controller)
+	if Abilities.requestTurbo() then
+		return
+	end
+	if os.clock() < chaosBoostReadyAt then
+		return
+	end
+	local B = Config.Crew.Chaos
+	chaosBoostReadyAt = os.clock() + B.BoostCooldown
+	current:startBoost(B.BoostGain, B.BoostDuration)
+	crashDetector:expectVelocityChange(Vector3.zero)
+	SoundSystem.play("Boost")
+	ChaseCamera.kickFov(Config.Camera.BoostFovKick)
+end
+
 -- PreSimulation laeuft direkt vor jedem Physik-Schritt (wie FixedUpdate in Unity).
 RunService.PreSimulation:Connect(function(dt)
 	updateSeat()
@@ -995,17 +1026,39 @@ RunService.PreSimulation:Connect(function(dt)
 		RaceUI.setSpeed(current.base.AssemblyLinearVelocity.Magnitude)
 		return
 	end
-	local driftMode = if Config.Drift.DriftByDefault then not shift else shift
 	local surface = TrackSensors.sampleGround(current.cart)
 	local hop = hopRequested and UserInputService:GetFocusedTextBox() == nil
 	hopRequested = false
+	local holdJump = jumpHeld and not typing
+	-- Chaos-Wagen: Steuerelemente sind auf die Crew verteilt (eigene + gemeldete Eingaben)
+	if CrewClient.isChaosHost() then
+		local crewInput = CrewClient.drive({
+			throttle = throttle,
+			steer = steer,
+			shift = shift,
+			hop = hop,
+			jumpHeld = holdJump,
+			boost = false,
+			items = false,
+		})
+		throttle, steer, shift = crewInput.throttle, crewInput.steer, crewInput.shift
+		hop, holdJump = crewInput.hop, crewInput.jumpHeld
+		lastSteer = steer
+		if crewInput.boost and not crashed then
+			chaosBoost(current)
+		end
+		if crewInput.items and not crashed then
+			CrewClient.throwItem()
+		end
+	end
+	local driftMode = if Config.Drift.DriftByDefault then not shift else shift
 	-- Abilities (Sprungfeder, Turbo, Fallschirm ...): vor und nach der Fahrphysik
 	local abilityContext: Abilities.StepContext = {
 		controller = current,
 		telemetry = nil,
 		character = player.Character,
 		jumpPressed = hop,
-		jumpHeld = jumpHeld and UserInputService:GetFocusedTextBox() == nil,
+		jumpHeld = holdJump,
 		dt = dt,
 		expectImpulse = function(delta: Vector3)
 			crashDetector:expectVelocityChange(delta)

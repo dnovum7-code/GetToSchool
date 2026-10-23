@@ -630,6 +630,10 @@ Config.Crew = {
 		MinPlayers = 2, -- darunter faehrt der Gastgeber allein mit allen Steuerelementen
 		ShuffleInterval = 30, -- alle so viele Sekunden neu mischen (0 = nie)
 		ShuffleCountdown = 3, -- "Neue Steuerung in 3... 2... 1..."
+		-- Steuerelement "Boost" ohne Turbo-Pausenbrot: kleiner Schub
+		BoostGain = 25, -- Tempo-Zuwachs (Studs/s)
+		BoostDuration = 0.5, -- verteilt ueber (s)
+		BoostCooldown = 4, -- Abklingzeit (s)
 	},
 	-- Chaos-Tasten (wer ein Steuerelement hat, benutzt seine gewohnte Taste)
 	Keys = {
@@ -651,6 +655,17 @@ Config.Crew = {
 		Drift = "DRIFT/NORMAL",
 		Boost = "BOOST",
 		Items = "TOMATE",
+	},
+	-- Gamepad-Anzeige
+	PadNames = {
+		Gas = "RT",
+		Brake = "LT",
+		Left = "Pfeil links",
+		Right = "Pfeil rechts",
+		Jump = "A",
+		Drift = "B",
+		Boost = "RB",
+		Items = "LB",
 	},
 	KeyNames = {
 		Gas = "W",
