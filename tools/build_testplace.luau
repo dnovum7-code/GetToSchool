@@ -320,7 +320,13 @@ end
 ------------------------------------------------------------------------------------------
 -- Teststrecke
 ------------------------------------------------------------------------------------------
-local track = model("TestTrack", nil, nil, { TrackId = "Track1", TrackName = "Teststrecke" })
+local track = model("TestTrack", nil, nil, {
+	TrackId = "Track1",
+	TrackName = "Teststrecke",
+	-- Strecken-Musik (Soundscape): Ids selbst eintragen; MusicIntenseId = zweite Spur bei Tempo
+	MusicId = "",
+	MusicIntenseId = "",
+})
 
 -- Start
 road(track, -30, FIRST_STATION, true)
@@ -1256,6 +1262,177 @@ do
 		Color = Color3.fromRGB(180, 180, 200),
 		Parent = arena,
 	})
+end
+
+------------------------------------------------------------------------------------------
+-- Atmosphaere: Ambiente-Zonen, Klangquellen, Partikel, Voegel, Dorfbewohner, Zuschauer,
+-- Untergrund-Streifen fuer die Radpartikel
+------------------------------------------------------------------------------------------
+local function person(parent: any, cf: any, name: string, shirt: any, tags: { string }, attributes: { [string]: any }?): any
+	local m = model(name, parent, tags, attributes)
+	local body = part({
+		Name = "Body",
+		Size = Vector3.new(2, 2.4, 1),
+		CFrame = cf * CFrame.new(0, 3.2, 0),
+		Color = shirt,
+		Parent = m,
+	})
+	part({
+		Name = "Head",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(1.4, 1.4, 1.4),
+		CFrame = cf * CFrame.new(0, 5.1, 0),
+		Color = Color3.fromRGB(240, 200, 160),
+		Parent = m,
+	})
+	for _, x in { -0.5, 0.5 } do
+		part({
+			Name = "Leg",
+			Size = Vector3.new(0.8, 2, 0.8),
+			CFrame = cf * CFrame.new(x, 1, 0),
+			Color = Color3.fromRGB(50, 60, 110),
+			Parent = m,
+		})
+	end
+	m.PrimaryPart = body
+	return m
+end
+
+do
+	-- Ambiente-Zonen entlang der Strecke (Wiese, Wald, Dorf)
+	local zones = {
+		{ name = "ZoneWiese", ambience = "Meadow", from = 1, to = 8 },
+		{ name = "ZoneWald", ambience = "Forest", from = 9, to = 16 },
+		{ name = "ZoneDorf", ambience = "Village", from = 17, to = 27 },
+	}
+	for _, z in zones do
+		local s1, s2 = stationStart(z.from), stationStart(z.to + 1)
+		part({
+			Name = z.name,
+			Size = Vector3.new(GROUND_WIDTH + 40, 120, s2 - s1),
+			CFrame = frame((s1 + s2) / 2, 0, 30),
+			Color = Color3.fromRGB(150, 200, 255),
+			Transparency = 0.95,
+			CanCollide = false,
+			Tags = { "SoundZone" },
+			Attributes = { Ambience = z.ambience },
+			Parent = track,
+		})
+	end
+
+	-- Klangquellen (SoundId selbst eintragen; ohne Id bleiben sie still)
+	for _, src in {
+		{ name = "Kuhglocken", s = stationStart(13) + 35, x = -50, range = 90 },
+		{ name = "Bach", s = stationStart(7) + 35, x = 40, range = 70 },
+		{ name = "Kirchenglocke", s = stationStart(26) + 60, x = -60, range = 200 },
+	} do
+		part({
+			Name = src.name,
+			Size = Vector3.new(3, 3, 3),
+			CFrame = frame(src.s, src.x, 2),
+			Color = Color3.fromRGB(255, 120, 200),
+			Transparency = 0.5,
+			CanCollide = false,
+			Tags = { "AmbientSound" },
+			Attributes = { SoundId = "", Volume = 0.6, Range = src.range },
+			Parent = track,
+		})
+	end
+
+	-- Partikel-Bereiche (folgen dem GlobalWind)
+	for _, zp in {
+		{ name = "Pollen", s = stationStart(2) + 35, kind = "Pollen" },
+		{ name = "Blaetter", s = stationStart(10) + 35, kind = "Leaves" },
+		{ name = "Staub", s = stationStart(16) + 35, kind = "Dust" },
+	} do
+		part({
+			Name = zp.name,
+			Size = Vector3.new(60, 20, 60),
+			CFrame = frame(zp.s, 0, 10),
+			Color = Color3.fromRGB(255, 220, 120),
+			Transparency = 0.9,
+			CanCollide = false,
+			Tags = { "AmbientParticles" },
+			Attributes = { Kind = zp.kind },
+			Parent = track,
+		})
+	end
+
+	-- Vogelschwaerme neben der Strasse
+	for _, b in { { s = stationStart(4) + 40, x = 24 }, { s = stationStart(21) + 20, x = -24 } } do
+		part({
+			Name = "Vogelschwarm",
+			Size = Vector3.new(12, 1, 12),
+			CFrame = frame(b.s, b.x, 0.5),
+			Color = Color3.fromRGB(120, 90, 60),
+			Transparency = 0.8,
+			CanCollide = false,
+			Tags = { "BirdFlock" },
+			Attributes = { Count = 7 },
+			Parent = track,
+		})
+	end
+
+	-- Dorfbewohner (Station 17: laeuft herum, 18: schimpft, 22: springt zur Seite, 24: winkt)
+	local villagers = {
+		{ s = stationStart(17) + 20, x = 18, reaction = "Random", walk = 8, color = Color3.fromRGB(200, 60, 60) },
+		{ s = stationStart(18) + 50, x = -11, reaction = "Scold", walk = 0, color = Color3.fromRGB(60, 140, 60) },
+		{ s = stationStart(22) + 55, x = 9, reaction = "Dodge", walk = 0, color = Color3.fromRGB(220, 180, 40) },
+		{ s = stationStart(24) + 20, x = -11, reaction = "Wave", walk = 0, color = Color3.fromRGB(80, 120, 220) },
+	}
+	for index, v in villagers do
+		person(track, frame(v.s, v.x, 0) * CFrame.Angles(0, math.rad(90), 0), "Dorfbewohner" .. index, v.color, { "Villager" }, {
+			Reaction = v.reaction,
+			WalkRadius = v.walk,
+		})
+	end
+
+	-- Zuschauer am Ziel (beide Seiten) und an der Sprungschanze (Station 3)
+	local finish = stationStart(25) + STATION_LENGTH / 2
+	local colors = {
+		Color3.fromRGB(230, 80, 80),
+		Color3.fromRGB(80, 160, 230),
+		Color3.fromRGB(250, 200, 60),
+		Color3.fromRGB(120, 200, 120),
+		Color3.fromRGB(200, 120, 220),
+		Color3.fromRGB(250, 140, 60),
+	}
+	for side = -1, 1, 2 do
+		for i = 1, 6 do
+			person(
+				track,
+				frame(finish - 25 + i * 8, side * (ROAD_WIDTH / 2 + 4), 0) * CFrame.Angles(0, math.rad(-90 * side), 0),
+				"Zuschauer",
+				colors[i],
+				{ "Spectator" }
+			)
+		end
+	end
+	for i = 1, 3 do
+		person(
+			track,
+			frame(stationStart(3) + 40 + i * 6, ROAD_WIDTH / 2 + 4, 0) * CFrame.Angles(0, math.rad(90), 0),
+			"Zuschauer",
+			colors[i + 3],
+			{ "Spectator" }
+		)
+	end
+
+	-- Untergrund-Streifen fuer die Radpartikel (zwischen Startzone und Station 1)
+	for index, strip in {
+		{ name = "StreifenGras", material = Enum.Material.Grass, color = Color3.fromRGB(90, 160, 60) },
+		{ name = "StreifenErde", material = Enum.Material.Ground, color = Color3.fromRGB(130, 100, 70) },
+		{ name = "StreifenSchnee", material = Enum.Material.Snow, color = Color3.fromRGB(245, 250, 255) },
+	} do
+		part({
+			Name = strip.name,
+			Size = Vector3.new(ROAD_WIDTH, 0.2, 8),
+			CFrame = frame(18 + index * 9, 0, 0.1),
+			Color = strip.color,
+			Material = strip.material,
+			Parent = track,
+		})
+	end
 end
 
 -- SpawnLocation neben dem Start
